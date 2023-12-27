@@ -7,6 +7,7 @@ import androidx.compose.ui.window.rememberWindowState
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.compose.resources.resource
 import runtime.AdbStore
+import runtime.ContextStore
 import runtime.adb.Adb
 import runtime.adb.Terminal
 import ui.MainUI
@@ -18,7 +19,7 @@ val LocalAdb = compositionLocalOf<Adb> { error("Not provided") }
 val LocalAdbRuntime = compositionLocalOf<AdbStore> { error("Not provided.") }
 
 fun main() = application {
-    val adbStore = AdbStore(File(".file"))
+    val adbStore = AdbStore(ContextStore().fileDir)
     var isFinish by remember { mutableStateOf(false) }
     initProperties(adbStore) {
         isFinish = true

@@ -2,7 +2,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.compose") version "1.6.0-alpha01"
+    id("org.jetbrains.compose") version "1.5.10-rc01"
 }
 
 group = "top.wkbin"
@@ -23,13 +23,16 @@ dependencies {
     @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
     implementation(compose.components.resources)
     implementation("com.darkrockstudios:mpfilepicker:2.1.0")
-    implementation("com.google.code.gson:gson:2.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.0")
 }
 
 compose.desktop {
     application {
         mainClass = "MainKt"
+
+        buildTypes.release.proguard {
+            isEnabled.set(false)
+        }
 
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
