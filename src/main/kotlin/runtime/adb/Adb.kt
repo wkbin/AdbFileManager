@@ -46,6 +46,14 @@ class Adb(
         return AdbWifiState(true, ipAddress, port)
     }
 
+    suspend fun connect(deviceId: String, ipAddress: String): AdbWifiState {
+        val port = "5555"
+        val commandConnect = "adb -s $deviceId connect $ipAddress"
+        terminal.run(commandConnect)
+        println("commandConnect = $commandConnect")
+        return AdbWifiState(false, ipAddress, port)
+    }
+
     suspend fun listAvds(): List<AndroidVirtualDevice> {
         val androidHome = try {
             Environment.ANDROID_HOME

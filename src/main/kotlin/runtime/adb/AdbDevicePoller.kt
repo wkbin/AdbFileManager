@@ -7,6 +7,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.min
 
 object AppContext{
+    @Volatile
     var adbDevice: AdbDevice? = null
 }
 
@@ -40,17 +41,22 @@ class AdbDevicePoller(
     }
 
     fun exec(cmd: String, callBack: ((List<String>) -> Unit)? = null) = coroutineScope.launch {
-        println("cmd = $cmd")
-        println("adb devices = ${AppContext.adbDevice}")
         AppContext.adbDevice ?: return@launch
         val result = adb.exec(AppContext.adbDevice!!, cmd)
-        println("result = $result")
         callBack?.invoke(result)
         invalidate()
     }
 
     fun request(callback: (List<AndroidVirtualDevice>) -> Unit) = coroutineScope.launch {
         callback(adb.listAvds())
+    }
+
+    fun connect(adbDevice: AdbDevice) = coroutineScope.launch {
+        AppContext.adbDevice = adbDevice
+        val ipAddress = adbDevice.adbWifiState.ipAddress ?: return@launch
+        adb.connect(adbDevice.deviceId, ipAddress)
+        println("adbDevice = ${AppContext.adbDevice}")
+        invalidate()
     }
 
     private fun invalidate() {

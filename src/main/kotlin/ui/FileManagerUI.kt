@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -32,7 +33,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import runtime.adb.AdbDevice
 import runtime.adb.AdbDevicePoller
+import runtime.adb.AndroidVirtualDevice
+import runtime.adb.AppContext
 import utils.FileManagerUtils
 import utils.RemountFile
 import weight.DropBoxPanel
@@ -78,7 +82,7 @@ fun FileManagerUI(adbDevicePoller: AdbDevicePoller) {
 
     LaunchedEffect(dirList.size, manualRefresh) {
         val dir = dirList.joinToString("/")
-        adbDevicePoller.exec( "shell ls -l -p /${dir} | sort") {
+        adbDevicePoller.exec("shell ls -l -p /${dir} | sort") {
             fileList = if (
                 it.firstOrNull()?.startsWith("ls") == true ||
                 it.lastOrNull()?.contains("Permission") == true ||
@@ -227,47 +231,7 @@ fun FileManagerContentUI(
                 Column(modifier = Modifier.fillMaxWidth().background(Color.White).padding(10.dp)) {
                     Text("/${dirList.joinToString("/")}", fontSize = 20.sp)
                     Spacer(modifier = Modifier.height(10.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(30.dp)
-                    ) {
-                        Row(modifier = Modifier.clickable {
-                            if (dirList.isNotEmpty()) {
-                                dirList.removeAt(dirList.size - 1)
-                            }
-                        }, verticalAlignment = Alignment.CenterVertically) {
-                            Image(
-                                modifier = Modifier.size(26.dp),
-                                painter = painterResource(R.icons.iconBack),
-                                contentDescription = null
-                            )
-                            Spacer(modifier = Modifier.width(5.dp))
-                            Text("返回", fontSize = 16.sp)
-                        }
-                        Row(modifier = Modifier.clickable {
-                            createFileDirCallback.invoke()
-                        }, verticalAlignment = Alignment.CenterVertically) {
-                            Image(
-                                modifier = Modifier.size(26.dp),
-                                painter = painterResource(R.icons.folder),
-                                contentDescription = null
-                            )
-                            Spacer(modifier = Modifier.width(5.dp))
-                            Text("创建", fontSize = 16.sp)
-                        }
-                        Row(modifier = Modifier.clickable {
-                            manualRefreshCallback.invoke()
-                        }, verticalAlignment = Alignment.CenterVertically) {
-                            Image(
-                                modifier = Modifier.size(26.dp),
-                                painter = painterResource(R.icons.iconRefresh),
-                                contentDescription = null
-                            )
-                            Spacer(modifier = Modifier.width(5.dp))
-                            Text("刷新", fontSize = 16.sp)
-                        }
-                    }
+                    MenuUI(dirList, manualRefreshCallback, createFileDirCallback)
                 }
                 Divider(modifier = Modifier.fillMaxWidth())
             }
@@ -328,6 +292,57 @@ fun FileManagerContentUI(
     }
 }
 
+@Composable
+private fun MenuUI(
+    dirList: SnapshotStateList<String>,
+    manualRefreshCallback: () -> Unit,
+    createFileDirCallback: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(30.dp)
+    ) {
+        Row(modifier = Modifier.clickable {
+            if (dirList.isNotEmpty()) {
+                dirList.removeAt(dirList.size - 1)
+            }
+        }, verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                modifier = Modifier.size(26.dp),
+                painter = painterResource(R.icons.iconBack),
+                contentDescription = null
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text("返回", fontSize = 16.sp)
+        }
+        Row(modifier = Modifier.clickable {
+            createFileDirCallback.invoke()
+        }, verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                modifier = Modifier.size(26.dp),
+                painter = painterResource(R.icons.folder),
+                contentDescription = null
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text("创建", fontSize = 16.sp)
+        }
+        Row(modifier = Modifier.clickable {
+            manualRefreshCallback.invoke()
+        }, verticalAlignment = Alignment.CenterVertically) {
+            Image(
+                modifier = Modifier.size(26.dp),
+                painter = painterResource(R.icons.iconRefresh),
+                contentDescription = null
+            )
+            Spacer(modifier = Modifier.width(5.dp))
+            Text("刷新", fontSize = 16.sp)
+        }
+        Spacer(modifier = Modifier.weight(1f))
+
+    }
+}
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun FileItem(modifier: Modifier, remountFile: RemountFile, action: Action) {
@@ -382,14 +397,6 @@ private fun FileItem(modifier: Modifier, remountFile: RemountFile, action: Actio
                     isDropdownExpanded = false
                 }
             ) {
-//                DropdownMenuItem(
-//                    content = {
-//                        Text("权限")
-//                    },
-//                    onClick = {
-//
-//                    }
-//                )
                 if (!remountFile.isDir) {
                     DropdownMenuItem(
                         content = {
