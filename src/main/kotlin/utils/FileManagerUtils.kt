@@ -14,65 +14,51 @@ data class RemountFile(
 
 object FileManagerUtils {
 
-     fun parseLsToRemountFileList(lsList: List<String>): List<RemountFile> {
+    fun parseLsToRemountFileList(lsList: List<String>): List<RemountFile> {
         val decimalFormat = DecimalFormat("#.##")
         return lsList.filter {
-            it.first() in listOf('d', 'l', '-')
+            it.first() in listOf('d', 'l', '-') && !it.contains("?")
         }.map { line ->
-
             val tokens = line.split("\\s+".toRegex())
-            if (tokens.contains("?")){
-                RemountFile(
-                    isDir = false,
-                    fileName = "?",
-                    size = "?",
-                    date = "?",
-                    icon = getIconPath(false, "?"),
-                    link = ""
-                )
-            }else{
-                // 权限
-                val permissions = tokens[0]
-                // links
-                val links = tokens[1].toIntOrNull()?:0
-                val owner = tokens[2]
-                val group = tokens[3]
-                val size = tokens[4].toLongOrNull()?:0
-                val date = tokens[5]
-                val time = tokens[6]
-                val isDir = permissions.first() in listOf('d', 'l')
+            // 权限
+            val permissions = tokens[0]
+            // links
+            val links = tokens[1].toIntOrNull() ?: 0
+            val owner = tokens[2]
+            val group = tokens[3]
+            val size = tokens[4].toLongOrNull() ?: 0
+            val date = tokens[5]
+            val time = tokens[6]
+            val isDir = permissions.first() in listOf('d', 'l')
 
-                println("tokens = ${tokens}")
-                val name = tokens[7].run {
-                    println("name = $this")
-                    if (permissions.startsWith("d")) {
-                        substring(0, length - 1)
+            println("tokens = ${tokens}")
+            val name = tokens[7].run {
+                println("name = $this")
+                if (permissions.startsWith("d")) {
+                    substring(0, length - 1)
+                } else {
+                    this
+                }
+            }
+            val link = if (permissions.startsWith("l")) {
+                tokens[9].run {
+                    if (startsWith("/")) {
+                        substring(1, length)
                     } else {
                         this
                     }
                 }
-                val link = if (permissions.startsWith("l")) {
-                    tokens[9].run {
-                        if (startsWith("/")) {
-                            substring(1, length)
-                        } else {
-                            this
-                        }
-                    }
-                } else {
-                    null
-                }
-
-                RemountFile(
-                    isDir = isDir,
-                    fileName = name,
-                    size = if (isDir) "" else formatSize(decimalFormat, size),
-                    date = "${date.replace("-", "/")} $time",
-                    icon = getIconPath(isDir, name),
-                    link = link
-                )
+            } else {
+                null
             }
-
+            RemountFile(
+                isDir = isDir,
+                fileName = name,
+                size = if (isDir) "" else formatSize(decimalFormat, size),
+                date = "${date.replace("-", "/")} $time",
+                icon = getIconPath(isDir, name),
+                link = link
+            )
         }.sortedBy {
             val index = it.fileName.lastIndexOf(".")
             if (index == -1) {
