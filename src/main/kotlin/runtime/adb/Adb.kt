@@ -48,7 +48,7 @@ class Adb(
 
     suspend fun connect(deviceId: String, ipAddress: String): AdbWifiState {
         val port = "5555"
-        val commandConnect = "adb -s $deviceId connect $ipAddress"
+        val commandConnect = "$adbPath -s $deviceId connect $ipAddress"
         terminal.run(commandConnect)
         println("commandConnect = $commandConnect")
         return AdbWifiState(false, ipAddress, port)
@@ -67,7 +67,7 @@ class Adb(
     }
 
     suspend fun exec(adbDevice: AdbDevice,cmd:String):List<String>{
-        val jCmd = "adb -s ${adbDevice.deviceId} $cmd"
+        val jCmd = "$adbPath -s ${adbDevice.deviceId} $cmd"
         val result =  terminal.run(jCmd)
         println("jcmd = $jCmd , reuslt = $result")
         return result

@@ -17,48 +17,70 @@ object FileManagerUtils {
     fun parseLsToRemountFileList(lsList: List<String>): List<RemountFile> {
         val decimalFormat = DecimalFormat("#.##")
         return lsList.filter {
-            it.first() in listOf('d', 'l', '-') && !it.contains("?")
+            it.first() in listOf('d', 'l', '-')
         }.map { line ->
             val tokens = line.split("\\s+".toRegex())
             // 权限
             val permissions = tokens[0]
-            // links
-            val links = tokens[1].toIntOrNull() ?: 0
-            val owner = tokens[2]
-            val group = tokens[3]
-            val size = tokens[4].toLongOrNull() ?: 0
-            val date = tokens[5]
-            val time = tokens[6]
             val isDir = permissions.first() in listOf('d', 'l')
 
-            println("tokens = ${tokens}")
-            val name = tokens[7].run {
-                println("name = $this")
-                if (permissions.startsWith("d")) {
-                    substring(0, length - 1)
+            if (permissions.contains("?")) {
+                val isLink = tokens.contains("->")
+                var link: String? = null
+                val name = if (isLink) {
+                    link = tokens.last()
+                    tokens[tokens.size - 3]
                 } else {
-                    this
+                    tokens.last()
                 }
-            }
-            val link = if (permissions.startsWith("l")) {
-                tokens[9].run {
-                    if (startsWith("/")) {
-                        substring(1, length)
+
+                RemountFile(
+                    isDir = isDir,
+                    fileName = name,
+                    size = "",
+                    date = "",
+                    icon = getIconPath(isDir, name),
+                    link = link
+                )
+            }else{
+                // links
+                val links = tokens[1].toIntOrNull() ?: 0
+                val owner = tokens[2]
+                val group = tokens[3]
+                val size = tokens[4].toLongOrNull() ?: 0
+                val date = tokens[5]
+                val time = tokens[6]
+
+                val name = tokens[7].run {
+                    println("name = $this")
+                    if (permissions.startsWith("d")) {
+                        substring(0, length - 1)
                     } else {
                         this
                     }
                 }
-            } else {
-                null
+                val link = if (permissions.startsWith("l")) {
+                    tokens[9].run {
+                        if (startsWith("/")) {
+                            substring(1, length)
+                        } else {
+                            this
+                        }
+                    }
+                } else {
+                    null
+                }
+                RemountFile(
+                    isDir = isDir,
+                    fileName = name,
+                    size = if (isDir) "" else formatSize(decimalFormat, size),
+                    date = "${date.replace("-", "/")} $time",
+                    icon = getIconPath(isDir, name),
+                    link = link
+                )
             }
-            RemountFile(
-                isDir = isDir,
-                fileName = name,
-                size = if (isDir) "" else formatSize(decimalFormat, size),
-                date = "${date.replace("-", "/")} $time",
-                icon = getIconPath(isDir, name),
-                link = link
-            )
+
+
         }.sortedBy {
             val index = it.fileName.lastIndexOf(".")
             if (index == -1) {

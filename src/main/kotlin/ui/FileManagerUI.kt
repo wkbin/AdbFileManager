@@ -75,10 +75,11 @@ fun FileManagerUI(adbDevicePoller: AdbDevicePoller) {
         editDialog = true
     })
 
+    
 
     LaunchedEffect(dirList.size, manualRefresh) {
         val dir = dirList.joinToString("/")
-        adbDevicePoller.exec("shell su -c ls -l -p /${dir} | sort") {
+        adbDevicePoller.exec("shell ls -l -p /${dir} | sort") {
             fileList = if (
                 it.firstOrNull()?.startsWith("ls") == true ||
                 it.lastOrNull()?.contains("Permission") == true ||
@@ -143,7 +144,7 @@ fun FileEditUI(
                         scope.launch {
                             val dir = dirList.joinToString("/")
                             adbDevicePoller.exec(
-                                """shell su -c "cat > /${dir}/${currentFileName}" <<< '$escapedJsonString'"""
+                                """shell "cat > /${dir}/${currentFileName}" <<< '$escapedJsonString'"""
                             ) {
                                 editCommandCallback.invoke()
                             }
@@ -181,7 +182,7 @@ private fun FileDirCreateUI(
                     if (dirName.isNotEmpty()) {
                         scope.launch {
                             val dir = dirList.joinToString("/")
-                            adbDevicePoller.exec("shell su -c mkdir /$dir/$dirName") {
+                            adbDevicePoller.exec("shell mkdir /$dir/$dirName") {
                                 dirName = ""
                                 createCallback.invoke(true)
                             }
@@ -254,7 +255,7 @@ fun FileManagerContentUI(
                         scope.launch {
                             val dir = dirList.joinToString("/")
                             currentFileNameCallBack.invoke(remountFile.fileName)
-                            adbDevicePoller.exec("shell su -c rm -rf /${dir}/${remountFile.fileName}") {
+                            adbDevicePoller.exec("shell rm -rf /${dir}/${remountFile.fileName}") {
                                 manualRefreshCallback.invoke()
                             }
                         }
@@ -264,7 +265,7 @@ fun FileManagerContentUI(
                         scope.launch {
                             val dir = dirList.joinToString("/")
                             currentFileNameCallBack.invoke(remountFile.fileName)
-                            adbDevicePoller.exec("shell su -c cat /${dir}/${remountFile.fileName}") {
+                            adbDevicePoller.exec("shell cat /${dir}/${remountFile.fileName}") {
                                 val sb = StringBuilder()
                                 it.forEach { line ->
                                     sb.append(line)
