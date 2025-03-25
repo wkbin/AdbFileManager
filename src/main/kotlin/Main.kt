@@ -1,4 +1,8 @@
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -9,47 +13,96 @@ import org.jetbrains.compose.resources.resource
 import runtime.AdbStore
 import runtime.ContextStore
 import runtime.adb.Adb
+import runtime.adb.AdbDevicePoller
 import runtime.adb.Terminal
-import ui.MainUI
+import view.FileManagerScreen
+import view.components.DeviceSelector
+import view.components.NoDeviceScreen
+import view.theme.AdbFileManagerTheme
+import viewmodel.DeviceViewModel
+import viewmodel.FileManagerViewModel
 import java.io.File
 
+// Composition locals
+val LocalWindow = compositionLocalOf<ComposeWindow> { error("Window not provided") }
+val LocalAdb = compositionLocalOf<Adb> { error("Adb not provided") }
+val LocalAdbStore = compositionLocalOf<AdbStore> { error("AdbStore not provided") }
 
-val LocalWindowMain = compositionLocalOf<ComposeWindow> { error("Not provided.") }
-val LocalAdb = compositionLocalOf<Adb> { error("Not provided") }
-val LocalAdbRuntime = compositionLocalOf<AdbStore> { error("Not provided.") }
-
+/**
+ * 应用程序入口点
+ */
 fun main() = application {
     val adbStore = AdbStore(ContextStore().fileDir)
-    var isFinish by remember { mutableStateOf(false) }
-    initProperties(adbStore) {
-        isFinish = true
+    var isRuntimeInitialized by remember { mutableStateOf(false) }
+    
+    // 初始化ADB运行时
+    initAdbRuntime(adbStore) {
+        isRuntimeInitialized = true
     }
+    
+    // 主应用程序窗口
     Window(
-        title = "AdbFileManager",
-        state = rememberWindowState(width = 1000.dp, height = 800.dp),
-        onCloseRequest = ::exitApplication) {
-        if (isFinish) {
+        title = "ADB 文件管理器",
+        state = rememberWindowState(width = 1200.dp, height = 800.dp),
+        onCloseRequest = ::exitApplication
+    ) {
+        if (isRuntimeInitialized) {
+            // 设置依赖项
             val adb = Adb("${adbStore.adbHostFile.absolutePath}${File.separator}adb", Terminal())
+            
+            // 提供Composition locals
             CompositionLocalProvider(
-                LocalWindowMain provides window,
+                LocalWindow provides window,
                 LocalAdb provides adb,
-                LocalAdbRuntime provides adbStore
+                LocalAdbStore provides adbStore
             ) {
-                MainUI()
+                AdbFileManagerTheme {
+                    AppContent()
+                }
             }
         }
     }
 }
 
+/**
+ * 主应用程序内容
+ */
+@Composable
+private fun AppContent() {
+    val adb = LocalAdb.current
+    val coroutineScope = rememberCoroutineScope()
+    
+    // 创建设备轮询器
+    val adbDevicePoller = remember { AdbDevicePoller(adb, coroutineScope) }
+    
+    // 创建视图模型
+    val deviceViewModel = remember { DeviceViewModel(adbDevicePoller, coroutineScope) }
+    val fileManagerViewModel = remember { FileManagerViewModel(adbDevicePoller, coroutineScope) }
+    
+    // 已连接设备状态
+    val connectedDevices by deviceViewModel.connectedDevices.collectAsState(initial = emptyList())
+    val selectedDeviceId by deviceViewModel.selectedDeviceId
+    
+    // 根据设备连接状态显示适当的屏幕
+    if (connectedDevices.isEmpty()) {
+        NoDeviceScreen()
+    } else {
+        FileManagerScreen(fileManagerViewModel)
+    }
+}
+
+/**
+ * 初始化ADB运行时
+ */
 @OptIn(ExperimentalResourceApi::class)
 @Composable
-private fun initProperties(adbStore: AdbStore, loadFinishCallback: () -> Unit) {
+private fun initAdbRuntime(adbStore: AdbStore, onInitialized: () -> Unit) {
     LaunchedEffect(Unit) {
         adbStore.installRuntime(
             resource(adbStore.resourceName).readBytes(),
             adbStore.adbHostFile.absolutePath
         )
-        loadFinishCallback.invoke()
+        onInitialized()
     }
 }
 

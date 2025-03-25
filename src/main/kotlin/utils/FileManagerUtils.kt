@@ -44,9 +44,6 @@ object FileManagerUtils {
                 )
             }else{
                 // links
-                val links = tokens[1].toIntOrNull() ?: 0
-                val owner = tokens[2]
-                val group = tokens[3]
                 val size = tokens[4].toLongOrNull() ?: 0
                 val date = tokens[5]
                 val time = tokens[6]

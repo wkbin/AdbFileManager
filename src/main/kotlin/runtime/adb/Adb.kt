@@ -1,13 +1,18 @@
 package runtime.adb
 
 import runtime.adb.env.Environment
+import java.io.IOException
 
+/**
+ * Class handling ADB command execution and device management
+ */
 class Adb(
     private val adbPath: String,
     private val terminal: Terminal
 ) {
-
-
+    /**
+     * Get list of connected devices
+     */
     suspend fun devices(): List<String> {
         val cmd = "$adbPath devices"
         val result = terminal.run(cmd)
@@ -22,6 +27,9 @@ class Adb(
             .map { matchResult -> matchResult.groupValues[1].trim() }
     }
 
+    /**
+     * Check Wi-Fi state of an ADB device
+     */
     suspend fun wifiState(deviceId: String): AdbWifiState {
         deviceIdToAdbWifiState(deviceId)?.let { return it }
 
@@ -46,33 +54,41 @@ class Adb(
         return AdbWifiState(true, ipAddress, port)
     }
 
+    /**
+     * Connect to a device via Wi-Fi
+     */
     suspend fun connect(deviceId: String, ipAddress: String): AdbWifiState {
         val port = "5555"
         val commandConnect = "$adbPath -s $deviceId connect $ipAddress"
         terminal.run(commandConnect)
-        println("commandConnect = $commandConnect")
         return AdbWifiState(false, ipAddress, port)
     }
 
+    /**
+     * List available Android Virtual Devices
+     */
     suspend fun listAvds(): List<AndroidVirtualDevice> {
         val androidHome = try {
             Environment.ANDROID_HOME
         } catch (tr: Throwable) {
             null
-        }
-            ?: return emptyList()
+        } ?: return emptyList()
+        
         val cmd = "$androidHome/emulator/emulator -list-avds"
-        val result = terminal.run(cmd)
-        return result.map { name -> AndroidVirtualDevice(name) }
+        return try {
+            terminal.run(cmd).map { name -> AndroidVirtualDevice(name) }
+        } catch (e: IOException) {
+            emptyList()
+        }
     }
 
-    suspend fun exec(adbDevice: AdbDevice,cmd:String):List<String>{
-        val jCmd = "$adbPath -s ${adbDevice.deviceId} $cmd"
-        val result =  terminal.run(jCmd)
-        println("jcmd = $jCmd , reuslt = $result")
-        return result
+    /**
+     * Execute an ADB command on a specific device
+     */
+    suspend fun exec(adbDevice: AdbDevice, cmd: String): List<String> {
+        val fullCommand = "$adbPath -s ${adbDevice.deviceId} $cmd"
+        return terminal.run(fullCommand)
     }
-
 }
 
 data class AdbDevice(
@@ -91,6 +107,5 @@ data class AdbWifiState(
 data class AndroidVirtualDevice(
     val name: String
 )
-
 
 val WIFI_UNAVAILABLE = AdbWifiState(false, null, null)
