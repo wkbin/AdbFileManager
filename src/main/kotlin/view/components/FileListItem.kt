@@ -31,6 +31,26 @@ import kotlinx.coroutines.launch
 import model.FileItem
 
 /**
+ * 判断文件是否可编辑
+ */
+private fun isEditableFile(fileName: String): Boolean {
+    if (fileName.isBlank()) return false
+    
+    // 获取文件扩展名
+    val extension = fileName.substringAfterLast('.', "").lowercase()
+    
+    // 定义可编辑的文件类型
+    val editableExtensions = setOf(
+        "txt", "md", "json", "xml", "html", "css", "js", "ts", 
+        "jsx", "tsx", "java", "kt", "py", "sh", "bat", "c", "cpp", 
+        "h", "hpp", "gradle", "properties", "yaml", "yml", "toml", 
+        "ini", "conf", "csv", "log", "sql", "php", "rb"
+    )
+    
+    return extension in editableExtensions
+}
+
+/**
  * 文件列表项组件
  */
 @Composable
@@ -72,6 +92,9 @@ fun FileListItem(
     }
     
     val interactionSource = remember { MutableInteractionSource() }
+    
+    // 判断文件是否可编辑
+    val isEditable = !file.isDir && isEditableFile(file.fileName)
     
     // 主卡片
     Card(
@@ -219,8 +242,8 @@ fun FileListItem(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 编辑按钮 - 只为非目录文件显示
-                    if (!file.isDir) {
+                    // 编辑按钮 - 只为可编辑的文件显示
+                    if (isEditable) {
                         IconButton(onClick = onEditFile) {
                             Icon(
                                 imageVector = Icons.Rounded.Edit,
@@ -269,8 +292,8 @@ fun FileListItem(
                         expanded = showDropdown,
                         onDismissRequest = { showDropdown = false }
                     ) {
-                        // 编辑选项 - 仅对非目录文件显示
-                        if (!file.isDir) {
+                        // 编辑选项 - 仅对可编辑文件显示
+                        if (isEditable) {
                             DropdownMenuItem(
                                 text = { Text("编辑") },
                                 onClick = { 

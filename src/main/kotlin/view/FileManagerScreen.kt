@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.ArrowUpward
@@ -54,28 +55,11 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
         viewModel.loadFiles()
     }
     
-    // 顶部应用栏滚动行为
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-
     AdbFileManagerTheme {
         // 整个屏幕容器
         Scaffold(
-            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-            topBar = {
-                AppBar(
-                    title = "ADB 文件管理器",
-                    navigationIcon = null,
-                    actions = {
-                        IconButton(onClick = { /* 搜索功能，待实现 */ }) {
-                            Icon(
-                                imageVector = Icons.Outlined.Search,
-                                contentDescription = "搜索文件",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                )
-            }
+            // 移除nestedScroll修饰符
+            // 移除topBar部分
         ) { paddingValues ->
             Box(
                 modifier = Modifier
@@ -83,40 +67,69 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                     .padding(paddingValues)
             ) {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // 当前路径显示
+                    // 顶部导航区域（包含路径导航和工具栏）
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
                             .shadow(
-                                elevation = 1.dp,
+                                elevation = 2.dp,
                                 shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp)
                             ),
                         color = MaterialTheme.colorScheme.surface,
                         tonalElevation = 1.dp
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                        ) {
-                            // 路径导航组件
-                            PathNavigator(
-                                currentPath = viewModel.directoryPath,
-                                onPathClick = { index -> 
-                                    // 跳转到指定路径
-                                    viewModel.navigateToPathIndex(index)
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            // 路径导航区域
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    // 路径导航组件，占用主要空间
+                                    PathNavigator(
+                                        currentPath = viewModel.directoryPath,
+                                        onPathClick = { index -> 
+                                            // 跳转到指定路径
+                                            viewModel.navigateToPathIndex(index)
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    
+                                    // 搜索按钮放在路径导航旁边
+                                    IconButton(
+                                        onClick = { /* 搜索功能，待实现 */ },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Search,
+                                            contentDescription = "搜索文件",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 }
+                            }
+                            
+                            // 分隔线
+                            Divider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                thickness = 1.dp,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+                            
+                            // 工具栏
+                            FileManagerToolbar(
+                                onBackClick = { viewModel.navigateUp() },
+                                onCreateDirectoryClick = { showCreateDirDialog = true },
+                                onRefreshClick = { viewModel.loadFiles() },
+                                canNavigateUp = viewModel.directoryPath.isNotEmpty()
                             )
                         }
                     }
-                    
-                    // 工具栏
-                    FileManagerToolbar(
-                        onBackClick = { viewModel.navigateUp() },
-                        onCreateDirectoryClick = { showCreateDirDialog = true },
-                        onRefreshClick = { viewModel.loadFiles() },
-                        canNavigateUp = viewModel.directoryPath.isNotEmpty()
-                    )
                     
                     // 错误消息
                     Box {
@@ -147,10 +160,10 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Icon(
-                                            painter = if (isPermissionError)
-                                                painterResource("res/icons/icon_error.png")
+                                            imageVector = if (isPermissionError)
+                                                Icons.Outlined.Error
                                             else
-                                                painterResource("res/icons/icon_error.png"),
+                                                Icons.Outlined.Error,
                                             contentDescription = null,
                                             tint = if (isPermissionError) 
                                                 MaterialTheme.colorScheme.error 

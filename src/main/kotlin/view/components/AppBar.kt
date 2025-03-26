@@ -1,17 +1,14 @@
 package view.components
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.CreateNewFolder
-import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -66,35 +63,40 @@ fun AppBar(
 }
 
 /**
- * 工具栏按钮组件
+ * 工具栏按钮
  */
 @Composable
-private fun ToolbarButton(
+fun ToolbarButton(
     onClick: () -> Unit,
-    enabled: Boolean = true,
     icon: ImageVector,
     text: String,
-    tint: Color = MaterialTheme.colorScheme.primary
+    tint: Color = MaterialTheme.colorScheme.primary,
+    modifier: Modifier = Modifier
 ) {
-    OutlinedButton(
-        onClick = onClick,
-        enabled = enabled,
-        modifier = Modifier.padding(horizontal = 4.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = tint
-        )
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+        modifier = modifier.padding(horizontal = 2.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium
-        )
+        Row(
+            modifier = Modifier
+                .clickable(onClick = onClick)
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -108,24 +110,17 @@ fun FileManagerToolbar(
     onBackClick: () -> Unit,
     canNavigateUp: Boolean = false
 ) {
-    val elevation by animateDpAsState(
-        targetValue = if (canNavigateUp) 2.dp else 0.dp,
-        animationSpec = tween(durationMillis = 300),
-        label = "toolbarElevation"
-    )
-    
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceVariant,
-        tonalElevation = elevation,
-        shadowElevation = elevation
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.Start
         ) {
             // 返回按钮
             AnimatedVisibility(
@@ -139,25 +134,27 @@ fun FileManagerToolbar(
                     text = "返回",
                     tint = MaterialTheme.colorScheme.primary
                 )
+                
+                Spacer(modifier = Modifier.width(4.dp))
             }
             
             // 创建文件夹按钮
             ToolbarButton(
                 onClick = onCreateDirectoryClick,
                 icon = Icons.Rounded.CreateNewFolder,
-                text = "创建文件夹",
+                text = "新建文件夹",
                 tint = MaterialTheme.colorScheme.secondary
             )
+            
+            Spacer(modifier = Modifier.width(4.dp))
             
             // 刷新按钮
             ToolbarButton(
                 onClick = onRefreshClick,
                 icon = Icons.Rounded.Refresh,
                 text = "刷新",
-                tint = MaterialTheme.colorScheme.tertiary
+                tint = MaterialTheme.colorScheme.primary
             )
-            
-            Spacer(Modifier.weight(1f))
         }
     }
 } 
