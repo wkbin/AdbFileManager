@@ -114,7 +114,8 @@ fun FileManagerToolbar(
     onCreateFileClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onBackClick: () -> Unit,
-    canNavigateUp: Boolean = false
+    canNavigateUp: Boolean = false,
+    onImportClick: () -> Unit = {}
 ) {
     // 获取当前主题模式状态
     val isSystemDark = isSystemInDarkTheme()
@@ -180,6 +181,16 @@ fun FileManagerToolbar(
                     icon = Icons.Rounded.NoteAdd,
                     text = "新建文件",
                     tint = MaterialTheme.colorScheme.tertiary
+                )
+                
+                Spacer(modifier = Modifier.width(4.dp))
+                
+                // 导入文件按钮
+                ToolbarButton(
+                    onClick = onImportClick,
+                    icon = Icons.Rounded.Upload,
+                    text = "导入文件",
+                    tint = MaterialTheme.colorScheme.secondary
                 )
                 
                 Spacer(modifier = Modifier.width(4.dp))

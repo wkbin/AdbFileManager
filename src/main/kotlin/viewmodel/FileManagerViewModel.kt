@@ -350,6 +350,34 @@ class FileManagerViewModel(
     }
     
     /**
+     * Import a file from local system to current directory
+     */
+    fun importFile(file: java.io.File, onSuccess: () -> Unit) {
+        _isLoading.value = true
+        _error.value = null
+        
+        coroutineScope.launch {
+            try {
+                val dirPath = _directoryPath.joinToString("/")
+                val localFilePath = file.absolutePath
+                
+                adbDevicePoller.exec("push \"$localFilePath\" \"/${dirPath}/\"") { result ->
+                    if (result.any { it.contains("error") || it.contains("failed") }) {
+                        _error.value = "导入文件失败: ${result.joinToString("\n")}"
+                    } else {
+                        _error.value = null
+                        onSuccess()
+                    }
+                    _isLoading.value = false
+                }
+            } catch (e: Exception) {
+                _error.value = "导入文件失败: ${e.message}"
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
      * 刷新当前目录内容
      */
     fun reload() {

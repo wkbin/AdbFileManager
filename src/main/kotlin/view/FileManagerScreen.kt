@@ -24,10 +24,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
+import com.darkrockstudios.libraries.mpfilepicker.FilePicker
 import kotlinx.coroutines.launch
 import view.components.*
 import view.theme.AdbFileManagerTheme
 import viewmodel.FileManagerViewModel
+import java.io.File
 
 /**
  * 文件管理器主屏幕
@@ -44,6 +46,7 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
     var showCreateDirDialog by remember { mutableStateOf(false) }
     var showCreateFileDialog by remember { mutableStateOf(false) }
     var showFileEditDialog by remember { mutableStateOf(false) }
+    var showFilePicker by remember { mutableStateOf(false) }
     
     // 列表状态，用于滚动相关功能
     val listState = rememberLazyListState()
@@ -133,7 +136,8 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                     onCreateFileClick = { showCreateFileDialog = true },
                                     onRefreshClick = { viewModel.reload() },
                                     onBackClick = { viewModel.navigateUp() },
-                                    canNavigateUp = viewModel.canNavigateUp()
+                                    canNavigateUp = viewModel.canNavigateUp(),
+                                    onImportClick = { showFilePicker = true }
                                 )
                             }
                         }
@@ -409,6 +413,19 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                             }
                         }
                     )
+                }
+                
+                // 文件选择器
+                FilePicker(showFilePicker) { path ->
+                    showFilePicker = false
+                    path?.let {
+                        // 复制文件到当前目录
+                        val file = File(it.path)
+                        viewModel.importFile(file) {
+                            // 刷新文件列表
+                            viewModel.reload()
+                        }
+                    }
                 }
             }
         }
