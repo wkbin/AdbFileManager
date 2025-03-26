@@ -258,7 +258,20 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                                 file = file,
                                                 onFileClick = {
                                                     if (file.isDir) {
-                                                        viewModel.navigateTo(file.link ?: file.fileName)
+                                                        // 如果是目录，则导航到该目录
+                                                        // 对于软链接目录，使用link属性作为导航目标（如果有）
+                                                        if (file.link != null) {
+                                                            viewModel.navigateTo(file.link)
+                                                        } else {
+                                                            viewModel.navigateTo(file.fileName)
+                                                        }
+                                                    } else {
+                                                        // 如果是文件且可编辑，加载文件内容
+                                                        if (isEditableFile(file.fileName)) {
+                                                            viewModel.loadFileContent(file.fileName) { _ ->
+                                                                showFileEditDialog = true
+                                                            }
+                                                        }
                                                     }
                                                 },
                                                 onEditFile = {

@@ -74,24 +74,58 @@ class FileManagerViewModel(
     
     /**
      * Navigate to a directory
+     * 支持普通目录和软链接目录（绝对路径和相对路径）
      */
     fun navigateTo(directoryName: String) {
         // 保存当前路径列表的副本，以便在出错时恢复
         val previousPath = _directoryPath.toList()
         
-        // 添加新目录并尝试加载
-        _directoryPath.add(directoryName)
+        // 检查是否为软链接路径
+        val isSymlink = directoryName.contains("/") || directoryName.contains("\\")
         
+        // 处理目录路径
+        if (isSymlink) {
+            // 软链接可能是指向绝对路径或相对路径
+            if (directoryName.startsWith("/")) {
+                // 绝对路径 - 重置目录路径并导航到链接目标
+                _directoryPath.clear()
+                // 移除开头的斜杠，分割路径组件，并过滤掉空字符串
+                val pathComponents = directoryName.substring(1).split("/").filter { it.isNotEmpty() }
+                _directoryPath.addAll(pathComponents)
+            } else {
+                // 相对路径 - 相对于当前目录
+                val pathComponents = directoryName.split("/").filter { it.isNotEmpty() }
+                
+                // 处理特殊情况如 "../../path"
+                for (component in pathComponents) {
+                    when (component) {
+                        "." -> continue // 当前目录，不操作
+                        ".." -> {
+                            // 上一级目录，如果有目录可以移除则移除
+                            if (_directoryPath.isNotEmpty()) {
+                                _directoryPath.removeLast()
+                            }
+                        }
+                        else -> _directoryPath.add(component) // 正常目录名，添加
+                    }
+                }
+            }
+        } else {
+            // 普通目录，直接添加
+            _directoryPath.add(directoryName)
+        }
+        
+        // 验证目录是否可访问
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
                 // 先检查目录是否可访问
                 adbDevicePoller.exec("shell cd /${dirPath} && echo SUCCESS || echo FAILURE") { result ->
-                    if (result.any { it.contains("Permission denied") || it.contains("FAILURE") }) {
+                    if (result.any { it.contains("Permission denied") || it.contains("FAILURE") || it.contains("No such file") }) {
                         // 恢复之前的路径
                         _directoryPath.clear()
                         _directoryPath.addAll(previousPath)
-                        _error.value = "权限不足：无法访问 ${directoryName} 目录"
+                        _error.value = "无法访问目录: 权限不足或目录不存在"
                     }
                     // 无论成功与否，都加载文件列表
                     loadFiles()
@@ -100,7 +134,7 @@ class FileManagerViewModel(
                 // 出现异常时，也恢复路径
                 _directoryPath.clear()
                 _directoryPath.addAll(previousPath)
-                _error.value = "Error accessing directory: ${e.message}"
+                _error.value = "访问目录出错: ${e.message}"
                 loadFiles()
             }
         }

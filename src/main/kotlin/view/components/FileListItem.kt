@@ -33,7 +33,7 @@ import model.FileItem
 /**
  * 判断文件是否可编辑
  */
-private fun isEditableFile(fileName: String): Boolean {
+fun isEditableFile(fileName: String): Boolean {
     if (fileName.isBlank()) return false
     
     // 获取文件扩展名
@@ -180,7 +180,7 @@ fun FileListItem(
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (file.link != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
                 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -189,7 +189,7 @@ fun FileListItem(
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // 文件类型标签（仅对目录显示）
+                    // 文件类型标签
                     if (file.isDir) {
                         Surface(
                             modifier = Modifier.padding(end = 8.dp),
@@ -197,9 +197,22 @@ fun FileListItem(
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                         ) {
                             Text(
-                                text = "目录",
+                                text = if (file.link != null) "链接目录" else "目录",
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    } else if (file.link != null) {
+                        Surface(
+                            modifier = Modifier.padding(end = 8.dp),
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
+                        ) {
+                            Text(
+                                text = "链接",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
