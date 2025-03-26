@@ -314,4 +314,18 @@ class FileManagerViewModel(
             }
         }
     }
+    
+    /**
+     * 刷新当前目录内容
+     */
+    fun reload() {
+        loadFiles()
+    }
+    
+    /**
+     * 检查是否可以向上导航
+     */
+    fun canNavigateUp(): Boolean {
+        return _directoryPath.isNotEmpty()
+    }
 } 

@@ -1,4 +1,3 @@
-
 import androidx.compose.runtime.*
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.unit.dp
@@ -13,6 +12,7 @@ import runtime.adb.Adb
 import runtime.adb.AdbDevicePoller
 import runtime.adb.Terminal
 import view.FileManagerScreen
+import view.components.CustomWindowFrame
 import view.components.NoDeviceScreen
 import view.theme.AdbFileManagerTheme
 import viewmodel.DeviceViewModel
@@ -40,7 +40,8 @@ fun main() = application {
     Window(
         title = "ADB 文件管理器",
         state = rememberWindowState(width = 1200.dp, height = 800.dp),
-        onCloseRequest = ::exitApplication
+        onCloseRequest = ::exitApplication,
+        undecorated = true  // 移除默认窗口装饰
     ) {
         if (isRuntimeInitialized) {
             // 设置依赖项
@@ -53,7 +54,13 @@ fun main() = application {
                 LocalAdbStore provides adbStore
             ) {
                 AdbFileManagerTheme {
-                    AppContent()
+                    // 自定义窗口布局，包含自定义标题栏
+                    CustomWindowFrame(
+                        title = "ADB 文件管理器",
+                        onCloseRequest = ::exitApplication
+                    ) {
+                        AppContent()
+                    }
                 }
             }
         }

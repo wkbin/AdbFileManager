@@ -123,13 +123,19 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                             )
                             
                             // 工具栏
-                            FileManagerToolbar(
-                                onBackClick = { viewModel.navigateUp() },
-                                onCreateDirectoryClick = { showCreateDirDialog = true },
-                                onCreateFileClick = { showCreateFileDialog = true },
-                                onRefreshClick = { viewModel.loadFiles() },
-                                canNavigateUp = viewModel.directoryPath.isNotEmpty()
-                            )
+                            Surface(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.surface,
+                                tonalElevation = 0.dp
+                            ) {
+                                FileManagerToolbar(
+                                    onCreateDirectoryClick = { showCreateDirDialog = true },
+                                    onCreateFileClick = { showCreateFileDialog = true },
+                                    onRefreshClick = { viewModel.reload() },
+                                    onBackClick = { viewModel.navigateUp() },
+                                    canNavigateUp = viewModel.canNavigateUp()
+                                )
+                            }
                         }
                     }
                     
@@ -346,12 +352,15 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                 if (showCreateDirDialog) {
                     CreateDirectoryDialog(
                         visible = showCreateDirDialog,
-                        onDismiss = { showCreateDirDialog = false },
+                        onDismissRequest = { showCreateDirDialog = false },
                         onConfirm = { dirName ->
-                            viewModel.createDirectory(dirName) {
-                                viewModel.loadFiles()
+                            viewModel.createDirectory(
+                                dirName
+                            ) {
+                                // 刷新文件列表并关闭对话框
+                                viewModel.reload()
+                                showCreateDirDialog = false
                             }
-                            showCreateDirDialog = false
                         }
                     )
                 }
@@ -360,12 +369,16 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                 if (showCreateFileDialog) {
                     CreateFileDialog(
                         visible = showCreateFileDialog,
-                        onDismiss = { showCreateFileDialog = false },
+                        onDismissRequest = { showCreateFileDialog = false },
                         onConfirm = { fileName, content ->
-                            viewModel.createFile(fileName, content) {
-                                viewModel.loadFiles()
+                            viewModel.createFile(
+                                fileName,
+                                content
+                            ) {
+                                // 刷新文件列表并关闭对话框
+                                viewModel.reload()
+                                showCreateFileDialog = false
                             }
-                            showCreateFileDialog = false
                         }
                     )
                 }

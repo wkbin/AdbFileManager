@@ -1,17 +1,29 @@
 package view.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
@@ -48,9 +60,9 @@ fun PathNavigator(
             // 路径分隔符
             if (currentPath.isNotEmpty()) {
                 Icon(
-                    imageVector = Icons.Default.ChevronRight,
+                    imageVector = Icons.Rounded.ChevronRight,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -66,9 +78,9 @@ fun PathNavigator(
                 
                 // 分隔符
                 Icon(
-                    imageVector = Icons.Default.ChevronRight,
+                    imageVector = Icons.Rounded.ChevronRight,
                     contentDescription = null,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
@@ -86,9 +98,9 @@ fun PathNavigator(
                     // 添加分隔符（除了最后一项）
                     if (index < currentPath.size - 1) {
                         Icon(
-                            imageVector = Icons.Default.ChevronRight,
+                            imageVector = Icons.Rounded.ChevronRight,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(20.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -106,9 +118,9 @@ fun PathNavigator(
                     // 添加分隔符（除了最后一项）
                     if (index < currentPath.size - 1) {
                         Icon(
-                            imageVector = Icons.Default.ChevronRight,
+                            imageVector = Icons.Rounded.ChevronRight,
                             contentDescription = null,
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(20.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -170,7 +182,7 @@ private fun PathItem(
             // 根目录图标
             if (isRoot) {
                 Icon(
-                    imageVector = Icons.Default.Home,
+                    imageVector = Icons.Rounded.PhoneAndroid,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp),
                     tint = contentColor

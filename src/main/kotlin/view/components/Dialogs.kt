@@ -3,6 +3,9 @@ package view.components
 import androidx.compose.animation.*
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -24,22 +27,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.rememberWindowState
+import androidx.compose.ui.window.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import view.theme.ThemeState
+import java.awt.Cursor
 
 /**
  * 创建目录对话框
@@ -47,7 +51,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun CreateDirectoryDialog(
     visible: Boolean,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit = {},
+    onDismissRequest: () -> Unit = onDismiss,
     onConfirm: (dirName: String) -> Unit
 ) {
     if (!visible) return
@@ -65,7 +70,7 @@ fun CreateDirectoryDialog(
     }
     
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = onDismissRequest,
         properties = DialogProperties(
             usePlatformDefaultWidth = false
         )
@@ -103,7 +108,7 @@ fun CreateDirectoryDialog(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    IconButton(onClick = onDismiss) {
+                    IconButton(onClick = onDismissRequest) {
                         Icon(
                             imageVector = Icons.Outlined.Close,
                             contentDescription = "关闭",
@@ -173,7 +178,7 @@ fun CreateDirectoryDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(
-                        onClick = onDismiss,
+                        onClick = onDismissRequest,
                         colors = ButtonDefaults.textButtonColors(
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -223,163 +228,217 @@ fun FileEditDialog(
         mutableStateOf(false)
     }
     
+    // 检测当前是否为暗色模式
+    val isDarkMode = ThemeState.isDark()
+    
     // 检测内容变化
     LaunchedEffect(content) {
         hasChanges.value = content != initialContent
     }
     
+    // 窗口状态，用于控制窗口位置
+    val windowState = rememberWindowState(width = 900.dp, height = 700.dp)
+    
     Window(
-        state = rememberWindowState(width = 900.dp, height = 700.dp),
+        state = windowState,
         title = "编辑 - $fileName",
-        onCloseRequest = onDismiss
+        onCloseRequest = onDismiss,
+        undecorated = true // 移除默认窗口装饰
     ) {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
             Column(
-                modifier = Modifier.fillMaxSize().padding(16.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
-                // 标题栏
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = fileName,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    
-                    Spacer(modifier = Modifier.weight(1f))
-                    
-                    // 状态指示
-                    AnimatedVisibility(
-                        visible = hasChanges.value,
-                        enter = fadeIn() + expandHorizontally(),
-                        exit = fadeOut() + shrinkHorizontally()
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
-                            modifier = Modifier.padding(end = 16.dp)
-                        ) {
-                            Text(
-                                text = "已修改",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                            )
-                        }
-                    }
-                }
-                
-                // 编辑器
+                // 自定义标题栏 - 可拖动
                 Surface(
-                    modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 1.dp
+                    color = if (isDarkMode) 
+                               MaterialTheme.colorScheme.surfaceVariant 
+                           else 
+                               MaterialTheme.colorScheme.surface,
+                    tonalElevation = 2.dp,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(2.dp)
-                    ) {
-                        // 行号列
-                        Column(
-                            modifier = Modifier
-                                .fillMaxHeight()
-                                .width(40.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                                .padding(top = 8.dp, end = 8.dp),
-                            horizontalAlignment = Alignment.End
+                    // 可拖动区域
+                    MoveableWindowArea { dragModifier ->
+                        Row(
+                            modifier = dragModifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val lines = content.split("\n").size
-                            for (i in 1..lines) {
-                                Text(
-                                    text = "$i",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                                    modifier = Modifier.padding(vertical = 2.dp)
+                            // 文件名称
+                            Text(
+                                text = fileName,
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            
+                            Spacer(modifier = Modifier.weight(1f))
+                            
+                            // 窗口控制按钮
+                            IconButton(
+                                onClick = onDismiss
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Close,
+                                    contentDescription = "关闭",
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
-                        
-                        // 编辑区域
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(start = 40.dp)
-                        ) {
-                            BasicTextField(
-                                value = content,
-                                onValueChange = { content = it },
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(8.dp)
-                                    .verticalScroll(scrollState)
-                                    .bringIntoViewRequester(bringIntoViewRequester)
-                                    .onFocusChanged {
-                                        if (it.isFocused) {
-                                            scope.launch {
-                                                bringIntoViewRequester.bringIntoView()
-                                            }
-                                        }
-                                    },
-                                textStyle = TextStyle(
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = MaterialTheme.typography.bodyMedium.fontSize,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                ),
-                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
-                            )
-                        }
                     }
                 }
                 
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                // 底部按钮区域
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.End),
-                    verticalAlignment = Alignment.CenterVertically
+                // 内容区域
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
                 ) {
-                    // 文件信息
-                    Text(
-                        text = "${content.length} 字符, ${content.split("\n").size} 行",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    // 取消按钮
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        )
+                    // 状态指示
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("取消")
+                        Text(
+                            text = "编辑文件内容",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        
+                        Spacer(modifier = Modifier.weight(1f))
+                        
+                        // 状态指示
+                        AnimatedVisibility(
+                            visible = hasChanges.value,
+                            enter = fadeIn() + expandHorizontally(),
+                            exit = fadeOut() + shrinkHorizontally()
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.7f),
+                                modifier = Modifier.padding(end = 16.dp)
+                            ) {
+                                Text(
+                                    text = "已修改",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
                     }
                     
-                    // 保存按钮
-                    Button(
-                        onClick = { onSave(content) },
-                        enabled = hasChanges.value,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
+                    // 编辑器
+                    Surface(
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(8.dp),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 1.dp
                     ) {
-                        Icon(
-                            imageVector = Icons.Rounded.Save,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(2.dp)
+                        ) {
+                            // 行号列
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxHeight()
+                                    .width(40.dp)
+                                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                                    .padding(top = 8.dp, end = 8.dp),
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                val lines = content.split("\n").size
+                                for (i in 1..lines) {
+                                    Text(
+                                        text = "$i",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                        modifier = Modifier.padding(vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            
+                            // 编辑区域
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(start = 40.dp)
+                            ) {
+                                BasicTextField(
+                                    value = content,
+                                    onValueChange = { content = it },
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(8.dp)
+                                        .verticalScroll(scrollState)
+                                        .bringIntoViewRequester(bringIntoViewRequester)
+                                        .onFocusChanged {
+                                            if (it.isFocused) {
+                                                scope.launch {
+                                                    bringIntoViewRequester.bringIntoView()
+                                                }
+                                            }
+                                        },
+                                    textStyle = TextStyle(
+                                        fontFamily = FontFamily.Monospace,
+                                        fontSize = MaterialTheme.typography.bodyMedium.fontSize,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary)
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // 底部按钮区域
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.End),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // 文件信息
+                        Text(
+                            text = "${content.length} 字符, ${content.split("\n").size} 行",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            modifier = Modifier.weight(1f)
                         )
-                        Spacer(Modifier.width(8.dp))
-                        Text("保存")
+                        
+                        // 取消按钮
+                        OutlinedButton(
+                            onClick = onDismiss,
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            )
+                        ) {
+                            Text("取消")
+                        }
+                        
+                        // 保存按钮
+                        Button(
+                            onClick = { onSave(content) },
+                            enabled = hasChanges.value,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Save,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("保存")
+                        }
                     }
                 }
             }
@@ -393,7 +452,8 @@ fun FileEditDialog(
 @Composable
 fun CreateFileDialog(
     visible: Boolean,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit = {},
+    onDismissRequest: () -> Unit = onDismiss,
     onConfirm: (fileName: String, content: String) -> Unit
 ) {
     if (visible) {
@@ -424,7 +484,7 @@ fun CreateFileDialog(
         }
         
         AlertDialog(
-            onDismissRequest = onDismiss,
+            onDismissRequest = onDismissRequest,
             title = {
                 Text(
                     text = "创建新文件",
@@ -486,7 +546,7 @@ fun CreateFileDialog(
                 }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) {
+                TextButton(onClick = onDismissRequest) {
                     Text("取消")
                 }
             }
