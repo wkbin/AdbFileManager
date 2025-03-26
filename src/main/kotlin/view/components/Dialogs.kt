@@ -385,4 +385,111 @@ fun FileEditDialog(
             }
         }
     }
+}
+
+/**
+ * 创建文件对话框
+ */
+@Composable
+fun CreateFileDialog(
+    visible: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (fileName: String, content: String) -> Unit
+) {
+    if (visible) {
+        var fileName by remember { mutableStateOf("") }
+        var fileContent by remember { mutableStateOf("") }
+        var isError by remember { mutableStateOf(false) }
+        var errorMessage by remember { mutableStateOf("") }
+        
+        // 验证文件名
+        val validateFileName = {
+            when {
+                fileName.isBlank() -> {
+                    isError = true
+                    errorMessage = "文件名不能为空"
+                    false
+                }
+                fileName.contains("/") || fileName.contains("\\") -> {
+                    isError = true
+                    errorMessage = "文件名不能包含特殊字符"
+                    false
+                }
+                else -> {
+                    isError = false
+                    errorMessage = ""
+                    true
+                }
+            }
+        }
+        
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = {
+                Text(
+                    text = "创建新文件",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp)
+                ) {
+                    // 文件名输入框
+                    OutlinedTextField(
+                        value = fileName,
+                        onValueChange = { 
+                            fileName = it
+                            if (isError) validateFileName()
+                        },
+                        label = { Text("文件名") },
+                        placeholder = { Text("输入文件名 (例如: note.txt)") },
+                        singleLine = true,
+                        isError = isError,
+                        supportingText = {
+                            if (isError) {
+                                Text(
+                                    text = errorMessage,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // 文件内容输入框
+                    OutlinedTextField(
+                        value = fileContent,
+                        onValueChange = { fileContent = it },
+                        label = { Text("文件内容") },
+                        placeholder = { Text("输入文件内容 (可选)") },
+                        minLines = 4,
+                        maxLines = 8,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (validateFileName()) {
+                            onConfirm(fileName, fileContent)
+                        }
+                    },
+                    enabled = fileName.isNotBlank()
+                ) {
+                    Text("创建")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("取消")
+                }
+            }
+        )
+    }
 } 

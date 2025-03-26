@@ -42,6 +42,7 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
     
     // 本地UI状态
     var showCreateDirDialog by remember { mutableStateOf(false) }
+    var showCreateFileDialog by remember { mutableStateOf(false) }
     var showFileEditDialog by remember { mutableStateOf(false) }
     
     // 列表状态，用于滚动相关功能
@@ -125,6 +126,7 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                             FileManagerToolbar(
                                 onBackClick = { viewModel.navigateUp() },
                                 onCreateDirectoryClick = { showCreateDirDialog = true },
+                                onCreateFileClick = { showCreateFileDialog = true },
                                 onRefreshClick = { viewModel.loadFiles() },
                                 canNavigateUp = viewModel.directoryPath.isNotEmpty()
                             )
@@ -350,6 +352,20 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                 viewModel.loadFiles()
                             }
                             showCreateDirDialog = false
+                        }
+                    )
+                }
+                
+                // 创建文件对话框
+                if (showCreateFileDialog) {
+                    CreateFileDialog(
+                        visible = showCreateFileDialog,
+                        onDismiss = { showCreateFileDialog = false },
+                        onConfirm = { fileName, content ->
+                            viewModel.createFile(fileName, content) {
+                                viewModel.loadFiles()
+                            }
+                            showCreateFileDialog = false
                         }
                     )
                 }

@@ -106,6 +106,7 @@ fun ToolbarButton(
 @Composable
 fun FileManagerToolbar(
     onCreateDirectoryClick: () -> Unit,
+    onCreateFileClick: () -> Unit,
     onRefreshClick: () -> Unit,
     onBackClick: () -> Unit,
     canNavigateUp: Boolean = false
@@ -144,6 +145,16 @@ fun FileManagerToolbar(
                 icon = Icons.Rounded.CreateNewFolder,
                 text = "新建文件夹",
                 tint = MaterialTheme.colorScheme.secondary
+            )
+            
+            Spacer(modifier = Modifier.width(4.dp))
+            
+            // 创建文件按钮
+            ToolbarButton(
+                onClick = onCreateFileClick,
+                icon = Icons.Rounded.NoteAdd,
+                text = "新建文件",
+                tint = MaterialTheme.colorScheme.tertiary
             )
             
             Spacer(modifier = Modifier.width(4.dp))

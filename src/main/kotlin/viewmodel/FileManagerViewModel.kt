@@ -158,6 +158,31 @@ class FileManagerViewModel(
     }
     
     /**
+     * Create a new file with content
+     */
+    fun createFile(fileName: String, content: String, onSuccess: () -> Unit) {
+        if (fileName.isEmpty()) return
+        
+        _isLoading.value = true
+        coroutineScope.launch {
+            try {
+                val dirPath = _directoryPath.joinToString("/")
+                val escapedContent = content.replace("\"", "\\\"")
+                val filePath = "/$dirPath/$fileName"
+                
+                // 先创建空文件，然后写入内容
+                adbDevicePoller.exec("""shell "echo '$escapedContent' > $filePath"""") {
+                    _isLoading.value = false
+                    onSuccess()
+                }
+            } catch (e: Exception) {
+                _error.value = "创建文件失败: ${e.message}"
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
      * Load file content for editing
      */
     fun loadFileContent(fileName: String, onContentLoaded: (String) -> Unit) {
