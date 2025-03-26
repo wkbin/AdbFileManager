@@ -15,6 +15,7 @@ ADB File Manager is a desktop application that allows you to remotely browse and
 
 <div align="center">
   <img src="docs/images/1.png" alt="ADB File Manager Preview" width="800">
+  <img src="docs/images/2.png" alt="ADB File Manager Edit Preview" width="800">
 </div>
 
 ## ✨ Features
@@ -22,10 +23,13 @@ ADB File Manager is a desktop application that allows you to remotely browse and
 - 🎨 **Material You Design** - Modern UI design following Google's latest design language
 - 📱 **Multi-device Support** - Connect to and manage multiple Android devices
 - 📂 **Intuitive File Navigation** - File browser with path navigation bar, supporting path jump by clicking
+- 🔍 **Directory Navigation** - Easy directory traversal with breadcrumb navigation, allowing instant jumps to parent directories
 - 📝 **File Editing** - Built-in text editor for editing text files on the device
 - 🔒 **Permission Check** - Smart detection and prompting for file operation permission issues
 - 🔄 **Real-time Feedback** - Real-time status feedback for all operations
 - 📥 **File Transfer** - Support for downloading files from and uploading files to devices
+- 🌓 **Dark/Light Theme** - Toggle between dark and light themes for comfortable viewing in any environment
+- 📄 **File Creation** - Create new text files with custom content directly on the device
 
 ## 🔧 Technology Stack
 
@@ -77,13 +81,24 @@ ADB File Manager is a desktop application that allows you to remotely browse and
    - Click the "New Folder" button in the toolbar
    - Enter a folder name and confirm
 
+5. **Create file**:
+   - Click the "New File" button in the toolbar
+   - Enter a file name and optional content
+   - Confirm to create the file in the current directory
+
+6. **Toggle theme**:
+   - Click the theme icon in the toolbar
+   - Select between system default, light theme, or dark theme
+
 ## 📋 Upcoming Features
 
 - [ ] File search functionality
 - [ ] File permission modification
-- [ ] Dark/light theme toggle
 - [ ] Drag and drop file upload
 - [ ] File preview functionality
+- [ ] Multiple files selection for batch operations
+- [ ] Improved file sorting and filtering options
+- [ ] Bookmark favorite directories
 
 ## 🤝 Contributing
 
