@@ -11,7 +11,6 @@ import kotlinx.coroutines.launch
 import model.FileItem
 import model.FileUtils
 import runtime.adb.AdbDevicePoller
-import java.io.File
 
 /**
  * ViewModel for file manager operations

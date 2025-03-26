@@ -1,8 +1,5 @@
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -16,7 +13,6 @@ import runtime.adb.Adb
 import runtime.adb.AdbDevicePoller
 import runtime.adb.Terminal
 import view.FileManagerScreen
-import view.components.DeviceSelector
 import view.components.NoDeviceScreen
 import view.theme.AdbFileManagerTheme
 import viewmodel.DeviceViewModel

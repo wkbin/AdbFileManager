@@ -1,7 +1,6 @@
 package view
 
 import androidx.compose.animation.*
-import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -22,11 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
 import kotlinx.coroutines.launch
-import model.FileItem
 import view.components.*
 import view.theme.AdbFileManagerTheme
 import viewmodel.FileManagerViewModel
@@ -34,7 +31,7 @@ import viewmodel.FileManagerViewModel
 /**
  * 文件管理器主屏幕
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileManagerScreen(viewModel: FileManagerViewModel) {
     val scope = rememberCoroutineScope()
