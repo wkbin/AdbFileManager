@@ -260,7 +260,7 @@ class FileManagerViewModel(
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
-                adbDevicePoller.exec("cat /${dirPath}/${fileName}") { result ->
+                adbDevicePoller.exec("shell cat /${dirPath}/${fileName}") { result ->
                     if (result.any { it.contains("unknown command") }) {
                         setError("ADB命令执行失败：未知命令")
                     } else if (result.any { it.contains("Permission denied") }) {
@@ -295,18 +295,18 @@ class FileManagerViewModel(
             try {
                 val fileName = currentFileName.value ?: return@launch
                 val dirPath = _directoryPath.joinToString("/")
-                val escapedContent = content.replace("\"", "\\\"")
-                adbDevicePoller.exec("echo \"$escapedContent\" > /${dirPath}/${fileName}") { result ->
-                    if (result.any { it.contains("unknown command") }) {
-                        setError("ADB命令执行失败：未知命令")
-                    } else if (result.any { it.contains("Permission denied") }) {
-                        setError("权限不足，无法写入文件")
-                    } else if (result.any { it.contains("No space left") }) {
-                        setError("设备存储空间不足")
-                    } else if (result.any { it.contains("Read-only file system") }) {
-                        setError("文件系统为只读")
-                    } else if (result.any { it.contains("Error:") }) {
-                        setError(result.first { it.contains("Error:") })
+                
+                // 将内容写入临时文件
+                val tempFile = java.io.File.createTempFile("temp_", ".txt")
+                tempFile.writeText(content)
+                
+                // 使用adb push命令将临时文件推送到设备
+                adbDevicePoller.exec("push \"${tempFile.absolutePath}\" \"/${dirPath}/${fileName}\"") { result ->
+                    // 删除临时文件
+                    tempFile.delete()
+                    
+                    if (result.any { it.contains("error") || it.contains("failed") }) {
+                        setError("保存文件失败: ${result.joinToString("\n")}")
                     } else {
                         setSuccess("文件保存成功")
                         onSuccess()
