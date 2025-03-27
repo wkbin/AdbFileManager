@@ -35,6 +35,10 @@ class FileManagerViewModel(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    // Success state
+    private val _success = MutableStateFlow<String?>(null)
+    val success: StateFlow<String?> = _success.asStateFlow()
+
     // Current file being edited
     val currentFileName = mutableStateOf("")
     val currentFileContent = mutableStateOf("")
@@ -52,7 +56,7 @@ class FileManagerViewModel(
                 adbDevicePoller.exec("shell ls -l -p /${dirPath} | sort") { result ->
                     // 检查权限错误
                     if (result.any { it.contains("Permission denied") }) {
-                        _error.value = "权限不足：无法访问该目录"
+                        setError("权限不足：无法访问该目录")
                         _files.value = emptyList()
                     } else if (
                         result.firstOrNull()?.startsWith("ls") == true ||
@@ -66,7 +70,7 @@ class FileManagerViewModel(
                     _isLoading.value = false
                 }
             } catch (e: Exception) {
-                _error.value = "Error loading files: ${e.message}"
+                setError("加载文件列表失败: ${e.message}")
                 _isLoading.value = false
             }
         }
@@ -155,62 +159,93 @@ class FileManagerViewModel(
      */
     fun deleteFile(fileName: String, onSuccess: () -> Unit) {
         _isLoading.value = true
+        _error.value = null
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
                 currentFileName.value = fileName
-                adbDevicePoller.exec("shell rm -rf /${dirPath}/${fileName}") {
+                adbDevicePoller.exec("shell rm -rf /${dirPath}/${fileName}") { result ->
+                    if (result.any { it.contains("Permission denied") }) {
+                        setError("权限不足，无法删除文件")
+                    } else if (result.any { it.contains("No such file") }) {
+                        setError("文件不存在")
+                    } else if (result.any { it.contains("Directory not empty") }) {
+                        setError("目录不为空，无法删除")
+                    } else if (result.any { it.contains("Error:") }) {
+                        setError(result.first { it.contains("Error:") })
+                    } else {
+                        setSuccess("文件删除成功")
+                        onSuccess()
+                    }
                     _isLoading.value = false
-                    onSuccess()
                 }
             } catch (e: Exception) {
-                _error.value = "Error deleting file: ${e.message}"
+                setError("删除文件时发生错误: ${e.message}")
                 _isLoading.value = false
             }
         }
     }
     
     /**
-     * Create a directory
-     */
-    fun createDirectory(dirName: String, onSuccess: () -> Unit) {
-        if (dirName.isEmpty()) return
-        
-        _isLoading.value = true
-        coroutineScope.launch {
-            try {
-                val dirPath = _directoryPath.joinToString("/")
-                adbDevicePoller.exec("shell mkdir /$dirPath/$dirName") {
-                    _isLoading.value = false
-                    onSuccess()
-                }
-            } catch (e: Exception) {
-                _error.value = "Error creating directory: ${e.message}"
-                _isLoading.value = false
-            }
-        }
-    }
-    
-    /**
-     * Create a new file with content
+     * Create a new file
      */
     fun createFile(fileName: String, content: String, onSuccess: () -> Unit) {
-        if (fileName.isEmpty()) return
-        
         _isLoading.value = true
+        _error.value = null
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
                 val escapedContent = content.replace("\"", "\\\"")
-                val filePath = "/$dirPath/$fileName"
-                
-                // 先创建空文件，然后写入内容
-                adbDevicePoller.exec("""shell "echo '$escapedContent' > $filePath"""") {
+                adbDevicePoller.exec("shell echo \"$escapedContent\" > /${dirPath}/${fileName}") { result ->
+                    if (result.any { it.contains("Permission denied") }) {
+                        setError("权限不足，无法创建文件")
+                    } else if (result.any { it.contains("Read-only file system") }) {
+                        setError("文件系统为只读，无法创建文件")
+                    } else if (result.any { it.contains("No space left") }) {
+                        setError("设备存储空间不足")
+                    } else if (result.any { it.contains("Error:") }) {
+                        setError(result.first { it.contains("Error:") })
+                    } else {
+                        setSuccess("文件创建成功")
+                        onSuccess()
+                    }
                     _isLoading.value = false
-                    onSuccess()
                 }
             } catch (e: Exception) {
-                _error.value = "创建文件失败: ${e.message}"
+                setError("创建文件时发生错误: ${e.message}")
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
+     * Create a new directory
+     */
+    fun createDirectory(dirName: String, onSuccess: () -> Unit) {
+        _isLoading.value = true
+        _error.value = null
+        coroutineScope.launch {
+            try {
+                val dirPath = _directoryPath.joinToString("/")
+                adbDevicePoller.exec("shell mkdir /${dirPath}/${dirName}") { result ->
+                    if (result.any { it.contains("Permission denied") }) {
+                        setError("权限不足，无法创建目录")
+                    } else if (result.any { it.contains("Read-only file system") }) {
+                        setError("文件系统为只读，无法创建目录")
+                    } else if (result.any { it.contains("No space left") }) {
+                        setError("设备存储空间不足")
+                    } else if (result.any { it.contains("File exists") }) {
+                        setError("目录已存在")
+                    } else if (result.any { it.contains("Error:") }) {
+                        setError(result.first { it.contains("Error:") })
+                    } else {
+                        setSuccess("目录创建成功")
+                        onSuccess()
+                    }
+                    _isLoading.value = false
+                }
+            } catch (e: Exception) {
+                setError("创建目录时发生错误: ${e.message}")
                 _isLoading.value = false
             }
         }
@@ -219,24 +254,32 @@ class FileManagerViewModel(
     /**
      * Load file content for editing
      */
-    fun loadFileContent(fileName: String, onContentLoaded: (String) -> Unit) {
+    fun loadFileContent(fileName: String, onSuccess: () -> Unit) {
         _isLoading.value = true
+        _error.value = null
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
-                currentFileName.value = fileName
-                adbDevicePoller.exec("shell cat /${dirPath}/${fileName}") { result ->
-                    val content = result.joinToString("\n")
-                    currentFileContent.value = if (fileName.endsWith(".json")) {
-                        FileUtils.formatJson(content)
+                adbDevicePoller.exec("cat /${dirPath}/${fileName}") { result ->
+                    if (result.any { it.contains("unknown command") }) {
+                        setError("ADB命令执行失败：未知命令")
+                    } else if (result.any { it.contains("Permission denied") }) {
+                        setError("权限不足，无法读取文件")
+                    } else if (result.any { it.contains("No such file") }) {
+                        setError("文件不存在")
+                    } else if (result.any { it.contains("Is a directory") }) {
+                        setError("无法读取目录内容")
+                    } else if (result.any { it.contains("Error:") }) {
+                        setError(result.first { it.contains("Error:") })
                     } else {
-                        content
+                        currentFileContent.value = result.joinToString("\n")
+                        currentFileName.value = fileName
+                        onSuccess()
                     }
                     _isLoading.value = false
-                    onContentLoaded(currentFileContent.value)
                 }
             } catch (e: Exception) {
-                _error.value = "Error loading file content: ${e.message}"
+                setError("读取文件时发生错误: ${e.message}")
                 _isLoading.value = false
             }
         }
@@ -247,18 +290,31 @@ class FileManagerViewModel(
      */
     fun saveFileContent(content: String, onSuccess: () -> Unit) {
         _isLoading.value = true
+        _error.value = null
         coroutineScope.launch {
             try {
+                val fileName = currentFileName.value ?: return@launch
                 val dirPath = _directoryPath.joinToString("/")
                 val escapedContent = content.replace("\"", "\\\"")
-                adbDevicePoller.exec(
-                    """shell "cat > /${dirPath}/${currentFileName.value}" <<< '$escapedContent'"""
-                ) {
+                adbDevicePoller.exec("echo \"$escapedContent\" > /${dirPath}/${fileName}") { result ->
+                    if (result.any { it.contains("unknown command") }) {
+                        setError("ADB命令执行失败：未知命令")
+                    } else if (result.any { it.contains("Permission denied") }) {
+                        setError("权限不足，无法写入文件")
+                    } else if (result.any { it.contains("No space left") }) {
+                        setError("设备存储空间不足")
+                    } else if (result.any { it.contains("Read-only file system") }) {
+                        setError("文件系统为只读")
+                    } else if (result.any { it.contains("Error:") }) {
+                        setError(result.first { it.contains("Error:") })
+                    } else {
+                        setSuccess("文件保存成功")
+                        onSuccess()
+                    }
                     _isLoading.value = false
-                    onSuccess()
                 }
             } catch (e: Exception) {
-                _error.value = "Error saving file: ${e.message}"
+                setError("保存文件时发生错误: ${e.message}")
                 _isLoading.value = false
             }
         }
@@ -272,12 +328,17 @@ class FileManagerViewModel(
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
-                adbDevicePoller.exec("pull /${dirPath}/${fileName} $destinationPath") {
+                adbDevicePoller.exec("pull /${dirPath}/${fileName} $destinationPath") { result ->
+                    if (result.any { it.contains("error") || it.contains("failed") }) {
+                        setError("导出文件失败: ${result.joinToString("\n")}")
+                    } else {
+                        setSuccess("文件导出成功")
+                    }
                     _isLoading.value = false
                     onSuccess()
                 }
             } catch (e: Exception) {
-                _error.value = "Error pulling file: ${e.message}"
+                setError("导出文件失败: ${e.message}")
                 _isLoading.value = false
             }
         }
@@ -291,12 +352,17 @@ class FileManagerViewModel(
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
-                adbDevicePoller.exec("push $localFilePath /$dirPath") {
+                adbDevicePoller.exec("push $localFilePath /$dirPath") { result ->
+                    if (result.any { it.contains("error") || it.contains("failed") }) {
+                        setError("导入文件失败: ${result.joinToString("\n")}")
+                    } else {
+                        setSuccess("文件导入成功")
+                    }
                     _isLoading.value = false
                     onSuccess()
                 }
             } catch (e: Exception) {
-                _error.value = "Error pushing file: ${e.message}"
+                setError("导入文件失败: ${e.message}")
                 _isLoading.value = false
             }
         }
@@ -363,15 +429,15 @@ class FileManagerViewModel(
                 
                 adbDevicePoller.exec("push \"$localFilePath\" \"/${dirPath}/\"") { result ->
                     if (result.any { it.contains("error") || it.contains("failed") }) {
-                        _error.value = "导入文件失败: ${result.joinToString("\n")}"
+                        setError("导入文件失败: ${result.joinToString("\n")}")
                     } else {
-                        _error.value = null
+                        setSuccess("文件导入成功")
                         onSuccess()
                     }
                     _isLoading.value = false
                 }
             } catch (e: Exception) {
-                _error.value = "导入文件失败: ${e.message}"
+                setError("导入文件失败: ${e.message}")
                 _isLoading.value = false
             }
         }
@@ -389,5 +455,33 @@ class FileManagerViewModel(
      */
     fun canNavigateUp(): Boolean {
         return _directoryPath.isNotEmpty()
+    }
+
+    // 设置错误消息并自动清除
+    private fun setError(message: String) {
+        _error.value = message
+        coroutineScope.launch {
+            kotlinx.coroutines.delay(3000) // 3秒后自动清除错误消息
+            _error.value = null
+        }
+    }
+
+    // 设置成功消息并自动清除
+    private fun setSuccess(message: String) {
+        _success.value = message
+        coroutineScope.launch {
+            kotlinx.coroutines.delay(3000) // 3秒后自动清除成功消息
+            _success.value = null
+        }
+    }
+
+    // 清除错误消息
+    fun clearError() {
+        _error.value = null
+    }
+
+    // 清除成功消息
+    fun clearSuccess() {
+        _success.value = null
     }
 } 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.Search
@@ -19,8 +20,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
@@ -39,30 +38,29 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
     val scope = rememberCoroutineScope()
     val files by viewModel.files.collectAsState(initial = emptyList())
     val isLoading by viewModel.isLoading.collectAsState(initial = false)
-    val error by viewModel.error.collectAsState(initial = null)
-    
+
     // 本地UI状态
     var showCreateDirDialog by remember { mutableStateOf(false) }
     var showCreateFileDialog by remember { mutableStateOf(false) }
     var showFileEditDialog by remember { mutableStateOf(false) }
     var showFilePicker by remember { mutableStateOf(false) }
-    
+
     // 列表状态，用于滚动相关功能
     val listState = rememberLazyListState()
     val showScrollToTop by remember {
         derivedStateOf { listState.firstVisibleItemIndex > 5 }
     }
-    
+
     // 监听目录变化，重置滚动位置
     LaunchedEffect(viewModel.directoryPath) {
         listState.animateScrollToItem(0)
     }
-    
+
     // 首次渲染时加载文件
     LaunchedEffect(Unit) {
         viewModel.loadFiles()
     }
-    
+
     AdbFileManagerTheme {
         // 整个屏幕容器
         Scaffold(
@@ -101,13 +99,13 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                     // 路径导航组件，占用主要空间
                                     PathNavigator(
                                         currentPath = viewModel.directoryPath,
-                                        onPathClick = { index -> 
+                                        onPathClick = { index ->
                                             // 跳转到指定路径
                                             viewModel.navigateToPathIndex(index)
                                         },
                                         modifier = Modifier.weight(1f)
                                     )
-                                    
+
                                     // 搜索按钮放在路径导航旁边
                                     IconButton(
                                         onClick = { /* 搜索功能，待实现 */ },
@@ -121,14 +119,14 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                     }
                                 }
                             }
-                            
+
                             // 分隔线
                             Divider(
                                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                                 thickness = 1.dp,
                                 modifier = Modifier.padding(horizontal = 8.dp)
                             )
-                            
+
                             // 工具栏
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
@@ -146,21 +144,21 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                             }
                         }
                     }
-                    
+
                     // 错误消息
                     Box {
                         androidx.compose.animation.AnimatedVisibility(
-                            visible = error != null,
+                            visible = viewModel.error.collectAsState().value != null,
                             enter = expandVertically() + fadeIn(),
                             exit = shrinkVertically() + fadeOut()
                         ) {
-                            error?.let {
+                            viewModel.error.collectAsState().value?.let {
                                 val isPermissionError = it.contains("权限不足")
-                                
+
                                 Surface(
-                                    color = if (isPermissionError) 
+                                    color = if (isPermissionError)
                                         MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.9f)
-                                    else 
+                                    else
                                         MaterialTheme.colorScheme.errorContainer,
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -181,9 +179,9 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                             else
                                                 Icons.Outlined.Error,
                                             contentDescription = null,
-                                            tint = if (isPermissionError) 
-                                                MaterialTheme.colorScheme.error 
-                                            else 
+                                            tint = if (isPermissionError)
+                                                MaterialTheme.colorScheme.error
+                                            else
                                                 MaterialTheme.colorScheme.onErrorContainer,
                                             modifier = Modifier.size(28.dp)
                                         )
@@ -200,7 +198,48 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                             }
                         }
                     }
-                    
+
+                    // 成功消息
+                    Box {
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = viewModel.success.collectAsState().value != null,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            viewModel.success.collectAsState().value?.let {
+                                Surface(
+                                    color = MaterialTheme.colorScheme.primaryContainer,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .shadow(
+                                            elevation = 1.dp,
+                                            shape = RoundedCornerShape(8.dp)
+                                        )
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.CheckCircle,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.size(28.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Text(
+                                            text = it,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     // 文件列表
                     Box(modifier = Modifier.fillMaxSize()) {
                         if (files.isEmpty() && !isLoading) {
@@ -254,7 +293,7 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                             }
                                         }
                                     }
-                                    
+
                                     // 使用带动画的包装器
                                     Box {
                                         androidx.compose.animation.AnimatedVisibility(
@@ -276,14 +315,14 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                                     } else {
                                                         // 如果是文件且可编辑，加载文件内容
                                                         if (isEditableFile(file.fileName)) {
-                                                            viewModel.loadFileContent(file.fileName) { _ ->
+                                                            viewModel.loadFileContent(file.fileName) {
                                                                 showFileEditDialog = true
                                                             }
                                                         }
                                                     }
                                                 },
                                                 onEditFile = {
-                                                    viewModel.loadFileContent(file.fileName) { _ ->
+                                                    viewModel.loadFileContent(file.fileName) {
                                                         showFileEditDialog = true
                                                     }
                                                 },
@@ -301,7 +340,7 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                 }
                             }
                         }
-                        
+
                         // 加载指示器
                         Box {
                             androidx.compose.animation.AnimatedVisibility(
@@ -341,7 +380,7 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                 }
                             }
                         }
-                        
+
                         // 回到顶部按钮
                         androidx.compose.animation.AnimatedVisibility(
                             visible = showScrollToTop,
@@ -368,57 +407,52 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                         }
                     }
                 }
-                
+
                 // 创建目录对话框
-                if (showCreateDirDialog) {
-                    CreateDirectoryDialog(
-                        visible = showCreateDirDialog,
-                        onDismissRequest = { showCreateDirDialog = false },
-                        onConfirm = { dirName ->
-                            viewModel.createDirectory(
-                                dirName
-                            ) {
-                                // 刷新文件列表并关闭对话框
-                                viewModel.reload()
-                                showCreateDirDialog = false
-                            }
+                CreateDirectoryDialog(
+                    visible = showCreateDirDialog,
+                    onDismissRequest = { showCreateDirDialog = false },
+                    onConfirm = { dirName ->
+                        viewModel.createDirectory(
+                            dirName
+                        ) {
+                            // 刷新文件列表并关闭对话框
+                            viewModel.reload()
                         }
-                    )
-                }
-                
+                        showCreateDirDialog = false
+                    }
+                )
+
                 // 创建文件对话框
-                if (showCreateFileDialog) {
-                    CreateFileDialog(
-                        visible = showCreateFileDialog,
-                        onDismissRequest = { showCreateFileDialog = false },
-                        onConfirm = { fileName, content ->
-                            viewModel.createFile(
-                                fileName,
-                                content
-                            ) {
-                                // 刷新文件列表并关闭对话框
-                                viewModel.reload()
-                                showCreateFileDialog = false
-                            }
+                CreateFileDialog(
+                    visible = showCreateFileDialog,
+                    onDismissRequest = { showCreateFileDialog = false },
+                    onConfirm = { fileName, content ->
+                        viewModel.createFile(
+                            fileName,
+                            content
+                        ) {
+                            // 刷新文件列表并关闭对话框
+                            viewModel.reload()
                         }
-                    )
-                }
-                
+                        showCreateFileDialog = false
+                    }
+                )
+
+
                 // 文件编辑对话框
-                if (showFileEditDialog) {
-                    FileEditDialog(
-                        visible = showFileEditDialog,
-                        fileName = viewModel.currentFileName.value,
-                        initialContent = viewModel.currentFileContent.value,
-                        onDismiss = { showFileEditDialog = false },
-                        onSave = { content ->
-                            viewModel.saveFileContent(content) {
-                                showFileEditDialog = false
-                            }
+                FileEditDialog(
+                    visible = showFileEditDialog,
+                    fileName = viewModel.currentFileName.value,
+                    initialContent = viewModel.currentFileContent.value,
+                    onDismiss = { showFileEditDialog = false },
+                    onSave = { content ->
+                        viewModel.saveFileContent(content) {
+                            showFileEditDialog = false
                         }
-                    )
-                }
-                
+                    }
+                )
+
                 // 文件选择器
                 FilePicker(showFilePicker) { path ->
                     showFilePicker = false

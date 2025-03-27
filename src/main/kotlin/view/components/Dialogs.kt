@@ -61,8 +61,7 @@ fun CreateDirectoryDialog(
     val isInputValid = dirName.isNotEmpty() && !dirName.contains("/") && !dirName.contains("\\")
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
-    val scope = rememberCoroutineScope()
-    
+
     // 自动聚焦到输入框
     LaunchedEffect(visible) {
         delay(100) // 短暂延迟以确保UI完全渲染
@@ -77,7 +76,7 @@ fun CreateDirectoryDialog(
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
+                .fillMaxWidth(0.6f)
                 .wrapContentHeight()
                 .padding(16.dp),
             shape = RoundedCornerShape(24.dp),
