@@ -35,18 +35,18 @@ import model.FileItem
  */
 fun isEditableFile(fileName: String): Boolean {
     if (fileName.isBlank()) return false
-    
+
     // 获取文件扩展名
     val extension = fileName.substringAfterLast('.', "").lowercase()
-    
+
     // 定义可编辑的文件类型
     val editableExtensions = setOf(
-        "txt", "md", "json", "xml", "html", "css", "js", "ts", 
-        "jsx", "tsx", "java", "kt", "py", "sh", "bat", "c", "cpp", 
-        "h", "hpp", "gradle", "properties", "yaml", "yml", "toml", 
+        "txt", "md", "json", "xml", "html", "css", "js", "ts",
+        "jsx", "tsx", "java", "kt", "py", "sh", "bat", "c", "cpp",
+        "h", "hpp", "gradle", "properties", "yaml", "yml", "toml",
         "ini", "conf", "csv", "log", "sql", "php", "rb"
     )
-    
+
     return extension in editableExtensions
 }
 
@@ -63,12 +63,11 @@ fun FileListItem(
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
-    
+
     // 状态
     var isHovered by remember { mutableStateOf(false) }
     var isExpanded by remember { mutableStateOf(false) }
-    var showDropdown by remember { mutableStateOf(false) }
-    
+
     // 动画
     val elevation by animateDpAsState(
         targetValue = if (isHovered) 2.dp else 0.dp,
@@ -78,24 +77,24 @@ fun FileListItem(
         ),
         label = "elevationAnimation"
     )
-    
+
     val scale by animateFloatAsState(
-        targetValue = if (isHovered) 1.01f else 1f,
+        targetValue = if (isHovered) 1.02f else 1f,
         animationSpec = tween(durationMillis = 150),
         label = "scaleAnimation"
     )
-    
+
     val backgroundColor = if (isHovered) {
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     } else {
         MaterialTheme.colorScheme.surface
     }
-    
+
     val interactionSource = remember { MutableInteractionSource() }
-    
+
     // 判断文件是否可编辑
     val isEditable = !file.isDir && isEditableFile(file.fileName)
-    
+
     // 主卡片
     Card(
         modifier = modifier
@@ -136,6 +135,7 @@ fun FileListItem(
         ),
         shape = RoundedCornerShape(12.dp)
     ) {
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -148,9 +148,9 @@ fun FileListItem(
                     .size(40.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(
-                        if (file.isDir) 
-                            MaterialTheme.colorScheme.primaryContainer 
-                        else 
+                        if (file.isDir)
+                            MaterialTheme.colorScheme.primaryContainer
+                        else
                             MaterialTheme.colorScheme.secondaryContainer
                     )
                     .padding(8.dp),
@@ -160,16 +160,16 @@ fun FileListItem(
                     painter = painterResource(file.icon),
                     contentDescription = null,
                     colorFilter = ColorFilter.tint(
-                        if (file.isDir) 
-                            MaterialTheme.colorScheme.onPrimaryContainer 
-                        else 
+                        if (file.isDir)
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        else
                             MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 )
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             // 文件信息
             Column(
                 modifier = Modifier.weight(1f)
@@ -182,9 +182,9 @@ fun FileListItem(
                     overflow = TextOverflow.Ellipsis,
                     color = if (file.link != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
-                
+
                 Spacer(modifier = Modifier.height(4.dp))
-                
+
                 // 文件信息（大小和日期）
                 Row(
                     verticalAlignment = Alignment.CenterVertically
@@ -217,7 +217,7 @@ fun FileListItem(
                             )
                         }
                     }
-                    
+
                     // 文件大小
                     Text(
                         text = file.size,
@@ -225,7 +225,7 @@ fun FileListItem(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.alpha(0.8f)
                     )
-                    
+
                     // 分隔点
                     Box(
                         modifier = Modifier
@@ -234,7 +234,7 @@ fun FileListItem(
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
                     )
-                    
+
                     // 修改日期
                     Text(
                         text = file.date,
@@ -244,114 +244,51 @@ fun FileListItem(
                     )
                 }
             }
-            
+
             // 操作按钮
-            AnimatedVisibility(
-                visible = isHovered,
-                enter = fadeIn() + expandHorizontally(),
-                exit = fadeOut() + shrinkHorizontally()
+            Row(
+                modifier = Modifier
+                    .height(50.dp)
+                    .alpha(if (isHovered) 1f else 0f),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // 编辑按钮 - 只为可编辑的文件显示
-                    if (isEditable) {
-                        IconButton(onClick = onEditFile) {
-                            Icon(
-                                imageVector = Icons.Rounded.Edit,
-                                contentDescription = "编辑",
-                                tint = MaterialTheme.colorScheme.tertiary
-                            )
-                        }
-                    }
-                    
-                    // 下载按钮
-                    IconButton(onClick = onDownloadFile) {
+                // 编辑按钮 - 只为可编辑的文件显示
+                if (isEditable) {
+                    IconButton(
+                        onClick = onEditFile,
+                        enabled = isHovered
+                    ) {
                         Icon(
-                            imageVector = Icons.Rounded.Download,
-                            contentDescription = "下载",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    
-                    // 删除按钮
-                    IconButton(onClick = onDeleteFile) {
-                        Icon(
-                            imageVector = Icons.Rounded.Delete,
-                            contentDescription = "删除",
-                            tint = MaterialTheme.colorScheme.error
+                            imageVector = Icons.Rounded.Edit,
+                            contentDescription = "编辑",
+                            tint = MaterialTheme.colorScheme.tertiary
                         )
                     }
                 }
-            }
-            
-            // 更多按钮 - 用于非悬停状态
-            AnimatedVisibility(
-                visible = !isHovered,
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                Box {
-                    IconButton(onClick = { showDropdown = true }) {
-                        Icon(
-                            imageVector = Icons.Rounded.MoreVert,
-                            contentDescription = "更多操作",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    
-                    DropdownMenu(
-                        expanded = showDropdown,
-                        onDismissRequest = { showDropdown = false }
-                    ) {
-                        // 编辑选项 - 仅对可编辑文件显示
-                        if (isEditable) {
-                            DropdownMenuItem(
-                                text = { Text("编辑") },
-                                onClick = { 
-                                    showDropdown = false
-                                    onEditFile() 
-                                },
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Edit,
-                                        contentDescription = null
-                                    )
-                                }
-                            )
-                        }
-                        
-                        // 下载选项
-                        DropdownMenuItem(
-                            text = { Text("下载") },
-                            onClick = { 
-                                showDropdown = false
-                                onDownloadFile() 
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Rounded.Download,
-                                    contentDescription = null
-                                )
-                            }
-                        )
-                        
-                        // 删除选项
-                        DropdownMenuItem(
-                            text = { Text("删除") },
-                            onClick = { 
-                                showDropdown = false
-                                onDeleteFile() 
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Rounded.Delete,
-                                    contentDescription = null
-                                )
-                            }
-                        )
-                    }
+
+                // 下载按钮
+                IconButton(
+                    onClick = onDownloadFile,
+                    enabled = isHovered
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Download,
+                        contentDescription = "下载",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                // 删除按钮
+                IconButton(
+                    onClick = onDeleteFile,
+                    enabled = isHovered
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Delete,
+                        contentDescription = "删除",
+                        tint = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }
