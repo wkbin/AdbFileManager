@@ -34,7 +34,6 @@ import java.io.File
 /**
  * 文件管理器主屏幕
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileManagerScreen(viewModel: FileManagerViewModel) {
     val scope = rememberCoroutineScope()
@@ -52,6 +51,11 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
     val listState = rememberLazyListState()
     val showScrollToTop by remember {
         derivedStateOf { listState.firstVisibleItemIndex > 5 }
+    }
+    
+    // 监听目录变化，重置滚动位置
+    LaunchedEffect(viewModel.directoryPath) {
+        listState.animateScrollToItem(0)
     }
     
     // 首次渲染时加载文件
