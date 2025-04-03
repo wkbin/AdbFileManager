@@ -63,11 +63,11 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "AdbFileManager"
-            packageVersion = "2.0.0"
+            packageVersion = "2.0.3"
             description = "FileManager For Desktop"
             copyright = "Copyright 2023 Kebin Wang. All rights reserved."
             vendor = "Kebin Wang"
-
+            modules("jdk.unsupported")
             windows{
                 shortcut = true
             }
