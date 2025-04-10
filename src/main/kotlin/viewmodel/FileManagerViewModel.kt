@@ -43,6 +43,18 @@ class FileManagerViewModel(
     val currentFileName = mutableStateOf("")
     val currentFileContent = mutableStateOf("")
     
+    // 搜索结果
+    private val _searchResults = MutableStateFlow<List<FileItem>>(emptyList())
+    val searchResults: StateFlow<List<FileItem>> = _searchResults.asStateFlow()
+
+    // 搜索状态
+    private val _isSearching = MutableStateFlow(false)
+    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
+
+    // 当前要下载的文件名
+    private val _fileToDownload = MutableStateFlow("")
+    val fileToDownload: StateFlow<String> = _fileToDownload.asStateFlow()
+
     /**
      * Load files from the current directory
      */
@@ -483,5 +495,49 @@ class FileManagerViewModel(
     // 清除成功消息
     fun clearSuccess() {
         _success.value = null
+    }
+
+    /**
+     * 搜索文件
+     */
+    fun searchFiles(query: String) {
+        if (query.isBlank()) {
+            _searchResults.value = emptyList()
+            return
+        }
+
+        _isSearching.value = true
+        
+        coroutineScope.launch {
+            try {
+                val dirPath = _directoryPath.joinToString("/")
+                adbDevicePoller.exec("shell ls -l -p /${dirPath} | grep -i \"${query}\" | sort") { result ->
+                    // 检查权限错误
+                    if (result.any { it.contains("Permission denied") }) {
+                        setError("权限不足：无法搜索该目录")
+                        _searchResults.value = emptyList()
+                    } else if (
+                        result.firstOrNull()?.startsWith("ls") == true ||
+                        result.lastOrNull()?.contains("Permission") == true ||
+                        result.lastOrNull()?.contains("directory") == true
+                    ) {
+                        _searchResults.value = emptyList()
+                    } else {
+                        _searchResults.value = FileUtils.parseLsOutput(result)
+                    }
+                    _isSearching.value = false
+                }
+            } catch (e: Exception) {
+                setError("搜索文件失败: ${e.message}")
+                _isSearching.value = false
+            }
+        }
+    }
+
+    /**
+     * 设置要下载的文件名
+     */
+    fun setFileToDownload(fileName: String) {
+        _fileToDownload.value = fileName
     }
 } 

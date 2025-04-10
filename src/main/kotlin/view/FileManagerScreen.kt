@@ -38,12 +38,15 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
     val scope = rememberCoroutineScope()
     val files by viewModel.files.collectAsState(initial = emptyList())
     val isLoading by viewModel.isLoading.collectAsState(initial = false)
+    val searchResults by viewModel.searchResults.collectAsState(initial = emptyList())
+    val isSearching by viewModel.isSearching.collectAsState(initial = false)
 
     // 本地UI状态
     var showCreateDirDialog by remember { mutableStateOf(false) }
     var showCreateFileDialog by remember { mutableStateOf(false) }
     var showFileEditDialog by remember { mutableStateOf(false) }
     var showFilePicker by remember { mutableStateOf(false) }
+    var showSearch by remember { mutableStateOf(false) }
 
     // 列表状态，用于滚动相关功能
     val listState = rememberLazyListState()
@@ -108,7 +111,7 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
 
                                     // 搜索按钮放在路径导航旁边
                                     IconButton(
-                                        onClick = { /* 搜索功能，待实现 */ },
+                                        onClick = { showSearch = true },
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
@@ -457,7 +460,6 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                 FilePicker(showFilePicker) { path ->
                     showFilePicker = false
                     path?.let {
-                        // 复制文件到当前目录
                         val file = File(it.path)
                         viewModel.importFile(file) {
                             // 刷新文件列表
@@ -465,6 +467,40 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                         }
                     }
                 }
+
+                // 搜索对话框
+                SearchDialog(
+                    viewModel = viewModel,
+                    visible = showSearch,
+                    onDismiss = { showSearch = false },
+                    onFileClick = { file ->
+                        if (file.isDir) {
+                            viewModel.navigateTo(file.fileName)
+                        } else if (isEditableFile(file.fileName)) {
+                            viewModel.loadFileContent(file.fileName) {
+                                showFileEditDialog = true
+                            }
+                        }
+                        showSearch = false
+                    },
+                    onEditFile = { file ->
+                        viewModel.loadFileContent(file.fileName) {
+                            showFileEditDialog = true
+                        }
+                        showSearch = false
+                    },
+                    onDeleteFile = { file ->
+                        viewModel.deleteFile(file.fileName) {
+                            viewModel.loadFiles()
+                        }
+                        showSearch = false
+                    },
+                    searchResults = searchResults,
+                    onSearch = { query ->
+                        viewModel.searchFiles(query)
+                    },
+                    isLoading = isSearching
+                )
             }
         }
     }
