@@ -16,6 +16,7 @@ ADB File Manager is a desktop application that allows you to remotely browse and
 <div align="center">
   <img src="docs/images/1.png" alt="ADB File Manager Preview" width="800">
   <img src="docs/images/2.png" alt="ADB File Manager Edit Preview" width="800">
+  <img src="docs/images/3.png" alt="ADB File Manager Search Preview" width="800">
 </div>
 
 ## ✨ Features
@@ -30,6 +31,8 @@ ADB File Manager is a desktop application that allows you to remotely browse and
 - 📥 **File Transfer** - Support for downloading files from and uploading files to devices
 - 🌓 **Dark/Light Theme** - Toggle between dark and light themes for comfortable viewing in any environment
 - 📄 **File Creation** - Create new text files with custom content directly on the device
+- 🔍 **File Search** - Search for files and directories within the current directory
+- 🔄 **Advanced Sorting** - Sort files by name, type (folders first or files first), date, and size in ascending or descending order
 
 ## 🔧 Technology Stack
 
@@ -90,14 +93,25 @@ ADB File Manager is a desktop application that allows you to remotely browse and
    - Click the theme icon in the toolbar
    - Select between system default, light theme, or dark theme
 
+7. **Search files**:
+   - Click the search icon in the toolbar
+   - Enter your search query
+   - Results will be displayed in real-time
+
+8. **Sort files**:
+   - Click the sort icon in the toolbar
+   - Choose from various sorting options:
+     - Type (folders first or files first)
+     - Name (A-Z or Z-A)
+     - Date (oldest or newest)
+     - Size (smallest or largest)
+
 ## 📋 Upcoming Features
 
-- [ ] File search functionality
 - [ ] File permission modification
 - [ ] Drag and drop file upload
 - [ ] File preview functionality
 - [ ] Multiple files selection for batch operations
-- [ ] Improved file sorting and filtering options
 - [ ] Bookmark favorite directories
 
 ## 🤝 Contributing
