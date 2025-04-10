@@ -12,6 +12,8 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Sort
+import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -54,9 +56,16 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
         derivedStateOf { listState.firstVisibleItemIndex > 5 }
     }
 
-    // 监听目录变化，重置滚动位置
-    LaunchedEffect(viewModel.directoryPath) {
-        listState.animateScrollToItem(0)
+    // 重置滚动位置
+    fun resetScroll() {
+        scope.launch {
+            listState.animateScrollToItem(0)
+        }
+    }
+
+    // 监听目录变化和排序变化，重置滚动位置
+    LaunchedEffect(viewModel.directoryPath, viewModel.sortTrigger.collectAsState().value) {
+        resetScroll()
     }
 
     // 首次渲染时加载文件
@@ -131,20 +140,16 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                             )
 
                             // 工具栏
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                color = MaterialTheme.colorScheme.surface,
-                                tonalElevation = 0.dp
-                            ) {
-                                FileManagerToolbar(
-                                    onCreateDirectoryClick = { showCreateDirDialog = true },
-                                    onCreateFileClick = { showCreateFileDialog = true },
-                                    onRefreshClick = { viewModel.reload() },
-                                    onBackClick = { viewModel.navigateUp() },
-                                    canNavigateUp = viewModel.canNavigateUp(),
-                                    onImportClick = { showFilePicker = true }
-                                )
-                            }
+                            FileManagerToolbar(
+                                onCreateDirectoryClick = { showCreateDirDialog = true },
+                                onCreateFileClick = { showCreateFileDialog = true },
+                                onRefreshClick = { viewModel.reload() },
+                                onBackClick = { viewModel.navigateUp() },
+                                canNavigateUp = viewModel.canNavigateUp(),
+                                onImportClick = { showFilePicker = true },
+                                onSortTypeChange = { sortType -> viewModel.setSortType(sortType) },
+                                currentSortType = viewModel.sortType.collectAsState().value
+                            )
                         }
                     }
 
@@ -395,9 +400,7 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                         ) {
                             FloatingActionButton(
                                 onClick = {
-                                    scope.launch {
-                                        listState.animateScrollToItem(0)
-                                    }
+                                    resetScroll()
                                 },
                                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer

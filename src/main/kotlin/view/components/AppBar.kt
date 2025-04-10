@@ -7,10 +7,8 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.rounded.*
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.LightMode
-import androidx.compose.material.icons.outlined.Brightness6
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import view.theme.ThemeState
+import viewmodel.SortType
 
 
 /**
@@ -72,7 +71,9 @@ fun FileManagerToolbar(
     onRefreshClick: () -> Unit,
     onBackClick: () -> Unit,
     canNavigateUp: Boolean = false,
-    onImportClick: () -> Unit = {}
+    onImportClick: () -> Unit = {},
+    onSortTypeChange: (SortType) -> Unit = {},
+    currentSortType: SortType = SortType.NAME_ASC
 ) {
     // 获取当前主题模式状态
     val isSystemDark = isSystemInDarkTheme()
@@ -88,6 +89,8 @@ fun FileManagerToolbar(
     
     // 主题切换菜单状态
     var showThemeMenu by remember { mutableStateOf(false) }
+    // 排序菜单状态
+    var showSortMenu by remember { mutableStateOf(false) }
     
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -149,16 +152,41 @@ fun FileManagerToolbar(
                     text = "导入文件",
                     tint = MaterialTheme.colorScheme.secondary
                 )
-                
+
                 Spacer(modifier = Modifier.width(4.dp))
-                
-                // 刷新按钮
-                ToolbarButton(
-                    onClick = onRefreshClick,
-                    icon = Icons.Rounded.Refresh,
-                    text = "刷新",
-                    tint = MaterialTheme.colorScheme.primary
-                )
+
+                // 排序按钮
+                Box {
+                    ToolbarButton(
+                        onClick = { showSortMenu = true },
+                        icon = Icons.Outlined.Sort,
+                        text = "排序",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    DropdownMenu(
+                        expanded = showSortMenu,
+                        onDismissRequest = { showSortMenu = false }
+                    ) {
+                        SortType.values().forEach { sortType ->
+                            DropdownMenuItem(
+                                text = { Text(sortType.displayName) },
+                                onClick = {
+                                    onSortTypeChange(sortType)
+                                    showSortMenu = false
+                                },
+                                leadingIcon = {
+                                    if (currentSortType == sortType) {
+                                        Icon(
+                                            imageVector = Icons.Outlined.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
             }
             
             // 右侧主题切换按钮

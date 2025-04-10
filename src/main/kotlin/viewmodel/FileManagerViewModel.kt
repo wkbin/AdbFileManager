@@ -51,9 +51,40 @@ class FileManagerViewModel(
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
 
-    // 当前要下载的文件名
-    private val _fileToDownload = MutableStateFlow("")
-    val fileToDownload: StateFlow<String> = _fileToDownload.asStateFlow()
+    // 排序方式
+    private val _sortType = MutableStateFlow(SortType.TYPE_ASC)
+    val sortType: StateFlow<SortType> = _sortType.asStateFlow()
+
+    // 排序触发状态
+    private val _sortTrigger = MutableStateFlow(0)
+    val sortTrigger: StateFlow<Int> = _sortTrigger.asStateFlow()
+
+    /**
+     * 设置排序方式
+     */
+    fun setSortType(type: SortType) {
+        _sortType.value = type
+        sortFiles()
+    }
+
+    /**
+     * 对文件列表进行排序
+     */
+    private fun sortFiles() {
+        val currentFiles = _files.value.toMutableList()
+        when (_sortType.value) {
+            SortType.NAME_ASC -> currentFiles.sortBy { it.fileName.lowercase() }
+            SortType.TYPE_ASC -> currentFiles.sortWith(compareByDescending<FileItem> { it.isDir }.thenBy { it.fileName.lowercase() })
+            SortType.TYPE_DESC -> currentFiles.sortWith(compareBy<FileItem> { it.isDir }.thenByDescending { it.fileName.lowercase() })
+            SortType.DATE_ASC -> currentFiles.sortBy { it.date }
+            SortType.DATE_DESC -> currentFiles.sortByDescending { it.date }
+            SortType.SIZE_ASC -> currentFiles.sortBy { it.size }
+            SortType.SIZE_DESC -> currentFiles.sortByDescending { it.size }
+        }
+        _files.value = currentFiles
+        // 触发排序事件，通知UI重置滚动位置
+        _sortTrigger.value = _sortTrigger.value + 1
+    }
 
     /**
      * Load files from the current directory
@@ -78,6 +109,7 @@ class FileManagerViewModel(
                         _files.value = emptyList()
                     } else {
                         _files.value = FileUtils.parseLsOutput(result)
+                        sortFiles() // 应用当前排序方式
                     }
                     _isLoading.value = false
                 }
@@ -533,11 +565,17 @@ class FileManagerViewModel(
             }
         }
     }
+}
 
-    /**
-     * 设置要下载的文件名
-     */
-    fun setFileToDownload(fileName: String) {
-        _fileToDownload.value = fileName
-    }
+/**
+ * 排序类型枚举
+ */
+enum class SortType(val displayName: String) {
+    TYPE_ASC("类型 (文件夹优先)"),
+    TYPE_DESC("类型 (文件优先)"),
+    NAME_ASC("名称 (A-Z)"),
+    DATE_ASC("日期 (最早)"),
+    DATE_DESC("日期 (最新)"),
+    SIZE_ASC("大小 (最小)"),
+    SIZE_DESC("大小 (最大)")
 } 
