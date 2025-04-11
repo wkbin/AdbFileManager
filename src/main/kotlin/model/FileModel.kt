@@ -12,6 +12,7 @@ data class FileItem(
     val date: String,
     val icon: String,
     val link: String?,
+    val permissions: String
 )
 
 /**
@@ -75,7 +76,8 @@ object FileUtils {
                     size = "",
                     date = "",
                     icon = getIconPath(isDir, name),
-                    link = link
+                    link = link,
+                    permissions = permissions
                 )
             } else {
                 // 标准解析逻辑
@@ -118,7 +120,8 @@ object FileUtils {
                     size = if (isDir) "" else formatSize(decimalFormat, size),
                     date = "${date.replace("-", "/")} $time",
                     icon = getIconPath(isDir, name),
-                    link = link
+                    link = link,
+                    permissions = permissions
                 )
             }
         } catch (e: Exception) {

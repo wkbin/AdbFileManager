@@ -218,6 +218,20 @@ fun FileListItem(
                         }
                     }
 
+                    // 权限标签
+                    Surface(
+                        modifier = Modifier.padding(end = 8.dp),
+                        shape = RoundedCornerShape(4.dp),
+                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
+                    ) {
+                        Text(
+                            text = file.permissions,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+
                     // 文件大小
                     Text(
                         text = file.size,
