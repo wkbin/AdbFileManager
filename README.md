@@ -33,6 +33,7 @@ ADB File Manager is a desktop application that allows you to remotely browse and
 - 📄 **File Creation** - Create new text files with custom content directly on the device
 - 🔍 **File Search** - Search for files and directories within the current directory
 - 🔄 **Advanced Sorting** - Sort files by name, type (folders first or files first), date, and size in ascending or descending order
+- 📁 **Folder Import** - Import entire folders from local system to device with a single click
 
 ## 🔧 Technology Stack
 
@@ -89,16 +90,22 @@ ADB File Manager is a desktop application that allows you to remotely browse and
    - Enter a file name and optional content
    - Confirm to create the file in the current directory
 
-6. **Toggle theme**:
+6. **Import files and folders**:
+   - Click the "Import File" button to upload a single file
+   - Click the "Import Folder" button to upload an entire folder
+   - Select the file or folder from your local system
+   - The content will be automatically uploaded to the current directory
+
+7. **Toggle theme**:
    - Click the theme icon in the toolbar
    - Select between system default, light theme, or dark theme
 
-7. **Search files**:
+8. **Search files**:
    - Click the search icon in the toolbar
    - Enter your search query
    - Results will be displayed in real-time
 
-8. **Sort files**:
+9. **Sort files**:
    - Click the sort icon in the toolbar
    - Choose from various sorting options:
      - Type (folders first or files first)
