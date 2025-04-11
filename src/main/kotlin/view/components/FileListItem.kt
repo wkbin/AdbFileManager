@@ -44,7 +44,7 @@ fun isEditableFile(fileName: String): Boolean {
         "txt", "md", "json", "xml", "html", "css", "js", "ts",
         "jsx", "tsx", "java", "kt", "py", "sh", "bat", "c", "cpp",
         "h", "hpp", "gradle", "properties", "yaml", "yml", "toml",
-        "ini", "conf", "csv", "log", "sql", "php", "rb"
+        "ini", "conf", "csv", "log", "sql", "php", "rb", "cfg"
     )
 
     return extension in editableExtensions
