@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import model.FileItem
 import model.FileUtils
 import runtime.adb.AdbDevicePoller
+import java.io.File
 
 /**
  * ViewModel for file manager operations
@@ -482,6 +483,35 @@ class FileManagerViewModel(
                 }
             } catch (e: Exception) {
                 setError("导入文件失败: ${e.message}")
+                _isLoading.value = false
+            }
+        }
+    }
+    
+    /**
+     * Import a folder from local system to current directory
+     */
+    fun importFolder(folderPath: String, onSuccess: () -> Unit) {
+        _isLoading.value = true
+        _error.value = null
+        
+        coroutineScope.launch {
+            try {
+                val dirPath = _directoryPath.joinToString("/")
+                val folderName = File(folderPath).name
+                
+                // 先在目标目录创建同名文件夹
+                adbDevicePoller.exec("push \"$folderPath\" \"/${dirPath}/${folderName}/\"") { pushResult ->
+                    if (pushResult.any { it.contains("error") || it.contains("failed") }) {
+                        setError("导入文件夹失败: ${pushResult.joinToString("\n")}")
+                    } else {
+                        setSuccess("文件夹导入成功")
+                        onSuccess()
+                    }
+                    _isLoading.value = false
+                }
+            } catch (e: Exception) {
+                setError("导入文件夹失败: ${e.message}")
                 _isLoading.value = false
             }
         }

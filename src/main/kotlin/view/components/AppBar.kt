@@ -72,6 +72,7 @@ fun FileManagerToolbar(
     onBackClick: () -> Unit,
     canNavigateUp: Boolean = false,
     onImportClick: () -> Unit = {},
+    onImportFolderClick: () -> Unit = {},
     onSortTypeChange: (SortType) -> Unit = {},
     currentSortType: SortType = SortType.NAME_ASC
 ) {
@@ -151,6 +152,16 @@ fun FileManagerToolbar(
                     icon = Icons.Rounded.Upload,
                     text = "导入文件",
                     tint = MaterialTheme.colorScheme.secondary
+                )
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // 导入文件夹按钮
+                ToolbarButton(
+                    onClick = onImportFolderClick,
+                    icon = Icons.Rounded.Folder,
+                    text = "导入文件夹",
+                    tint = MaterialTheme.colorScheme.tertiary
                 )
 
                 Spacer(modifier = Modifier.width(4.dp))

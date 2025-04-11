@@ -48,6 +48,7 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
     var showCreateFileDialog by remember { mutableStateOf(false) }
     var showFileEditDialog by remember { mutableStateOf(false) }
     var showFilePicker by remember { mutableStateOf(false) }
+    var showFolderPicker by remember { mutableStateOf(false) }
     var showSearch by remember { mutableStateOf(false) }
 
     // 列表状态，用于滚动相关功能
@@ -173,6 +174,7 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                 onBackClick = { viewModel.navigateUp() },
                                 canNavigateUp = viewModel.canNavigateUp(),
                                 onImportClick = { showFilePicker = true },
+                                onImportFolderClick = { showFolderPicker = true },
                                 onSortTypeChange = { sortType -> viewModel.setSortType(sortType) },
                                 currentSortType = viewModel.sortType.collectAsState().value
                             )
@@ -491,6 +493,17 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                     path?.let {
                         val file = File(it.path)
                         viewModel.importFile(file) {
+                            // 刷新文件列表
+                            viewModel.reload()
+                        }
+                    }
+                }
+
+                // 文件夹选择器
+                DirectoryPicker(showFolderPicker) { path ->
+                    showFolderPicker = false
+                    path?.let {
+                        viewModel.importFolder(it) {
                             // 刷新文件列表
                             viewModel.reload()
                         }
