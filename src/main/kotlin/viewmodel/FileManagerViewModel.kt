@@ -502,7 +502,7 @@ class FileManagerViewModel(
     }
 
     // 设置错误消息并自动清除
-    private fun setError(message: String) {
+    fun setError(message: String) {
         _error.value = message
         coroutineScope.launch {
             kotlinx.coroutines.delay(3000) // 3秒后自动清除错误消息

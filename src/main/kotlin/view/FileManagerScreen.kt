@@ -112,8 +112,34 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
                                     PathNavigator(
                                         currentPath = viewModel.directoryPath,
                                         onPathClick = { index ->
-                                            // 跳转到指定路径
-                                            viewModel.navigateToPathIndex(index)
+                                            if (index == -1) {
+                                                // 点击根目录
+                                                viewModel.directoryPath.clear()
+                                                viewModel.loadFiles()
+                                            } else {
+                                                // 点击路径项
+                                                viewModel.navigateToPathIndex(index)
+                                            }
+                                        },
+                                        onPathInput = { path ->
+                                            // 处理路径输入
+                                            try {
+                                                val newPath = path.trim()
+                                                if (newPath.isNotEmpty()) {
+                                                    // 将输入的路径转换为路径列表
+                                                    val pathSegments = newPath.split("/").filter { it.isNotEmpty() }
+                                                    if (pathSegments.isNotEmpty()) {
+                                                        // 更新当前路径
+                                                        viewModel.directoryPath.clear()
+                                                        viewModel.directoryPath.addAll(pathSegments)
+                                                        // 刷新文件列表
+                                                        viewModel.loadFiles()
+                                                    }
+                                                }
+                                            } catch (e: Exception) {
+                                                // 处理路径输入错误
+                                                viewModel.setError("无效的路径")
+                                            }
                                         },
                                         modifier = Modifier.weight(1f)
                                     )
