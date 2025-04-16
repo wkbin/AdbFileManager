@@ -20,6 +20,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import view.theme.ThemeState
+import viewmodel.DeviceViewModel
+import viewmodel.FileManagerViewModel
 import viewmodel.SortType
 
 
@@ -66,6 +68,8 @@ fun ToolbarButton(
  */
 @Composable
 fun FileManagerToolbar(
+    deviceViewModel: DeviceViewModel,
+    viewModel: FileManagerViewModel,
     onCreateDirectoryClick: () -> Unit,
     onCreateFileClick: () -> Unit,
     onRefreshClick: () -> Unit,
@@ -90,6 +94,8 @@ fun FileManagerToolbar(
     
     // 主题切换菜单状态
     var showThemeMenu by remember { mutableStateOf(false) }
+    // 设备切换菜单状态
+    var showDevicesMenu by remember { mutableStateOf(false) }
     // 排序菜单状态
     var showSortMenu by remember { mutableStateOf(false) }
     
@@ -199,95 +205,148 @@ fun FileManagerToolbar(
                     }
                 }
             }
-            
-            // 右侧主题切换按钮
-            Box {
-                IconButton(
-                    onClick = { showThemeMenu = true }
-                ) {
-                    Icon(
-                        imageVector = themeIcon,
-                        contentDescription = "切换主题",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+
+            Row {
+
+                // 右侧设备切换按钮
+                Box {
+                    IconButton(
+                        onClick = { showDevicesMenu = true }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.ElectricalServices,
+                            contentDescription = "切换设备",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // 设备切换菜单
+                    DropdownMenu(
+                        expanded = showDevicesMenu,
+                        onDismissRequest = { showDevicesMenu = false }
+                    ) {
+                        deviceViewModel.connectedDevices.value.forEach { device ->
+                            DropdownMenuItem(
+                                text = { Text(device.deviceId) },
+                                onClick = {
+                                    // 断开当前设备连接
+                                    deviceViewModel.disconnect()
+                                    // 连接到新设备
+                                    deviceViewModel.connectToDevice(device)
+                                    // 重新加载文件
+                                    viewModel.directoryPath.clear()
+                                    viewModel.loadFiles()
+                                    showDevicesMenu = false
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Smartphone,
+                                        contentDescription = null
+                                    )
+                                },
+                                trailingIcon = if (device.deviceId == deviceViewModel.selectedDeviceId.value) {
+                                    {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Check,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                } else null
+                            )
+                        }
+                    }
                 }
-                
-                // 主题切换菜单
-                DropdownMenu(
-                    expanded = showThemeMenu,
-                    onDismissRequest = { showThemeMenu = false }
-                ) {
-                    // 跟随系统选项
-                    DropdownMenuItem(
-                        text = { Text("跟随系统") },
-                        onClick = { 
-                            ThemeState.useSystemTheme()
-                            showThemeMenu = false 
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.Brightness6,
-                                contentDescription = null
-                            )
-                        },
-                        trailingIcon = if (isDarkValue == null) {
-                            {
+
+                // 右侧主题切换按钮
+                Box {
+                    IconButton(
+                        onClick = { showThemeMenu = true }
+                    ) {
+                        Icon(
+                            imageVector = themeIcon,
+                            contentDescription = "切换主题",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // 主题切换菜单
+                    DropdownMenu(
+                        expanded = showThemeMenu,
+                        onDismissRequest = { showThemeMenu = false }
+                    ) {
+                        // 跟随系统选项
+                        DropdownMenuItem(
+                            text = { Text("跟随系统") },
+                            onClick = {
+                                ThemeState.useSystemTheme()
+                                showThemeMenu = false
+                            },
+                            leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
+                                    imageVector = Icons.Outlined.Brightness6,
+                                    contentDescription = null
                                 )
-                            }
-                        } else null
-                    )
-                    
-                    // 亮色模式选项
-                    DropdownMenuItem(
-                        text = { Text("亮色模式") },
-                        onClick = { 
-                            ThemeState.isDarkMode.value = false
-                            showThemeMenu = false 
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.LightMode,
-                                contentDescription = null
-                            )
-                        },
-                        trailingIcon = if (isDarkValue == false) {
-                            {
+                            },
+                            trailingIcon = if (isDarkValue == null) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            } else null
+                        )
+
+                        // 亮色模式选项
+                        DropdownMenuItem(
+                            text = { Text("亮色模式") },
+                            onClick = {
+                                ThemeState.isDarkMode.value = false
+                                showThemeMenu = false
+                            },
+                            leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
+                                    imageVector = Icons.Outlined.LightMode,
+                                    contentDescription = null
                                 )
-                            }
-                        } else null
-                    )
-                    
-                    // 暗色模式选项
-                    DropdownMenuItem(
-                        text = { Text("暗色模式") },
-                        onClick = { 
-                            ThemeState.isDarkMode.value = true
-                            showThemeMenu = false 
-                        },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = Icons.Outlined.DarkMode,
-                                contentDescription = null
-                            )
-                        },
-                        trailingIcon = if (isDarkValue == true) {
-                            {
+                            },
+                            trailingIcon = if (isDarkValue == false) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            } else null
+                        )
+
+                        // 暗色模式选项
+                        DropdownMenuItem(
+                            text = { Text("暗色模式") },
+                            onClick = {
+                                ThemeState.isDarkMode.value = true
+                                showThemeMenu = false
+                            },
+                            leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Rounded.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
+                                    imageVector = Icons.Outlined.DarkMode,
+                                    contentDescription = null
                                 )
-                            }
-                        } else null
-                    )
+                            },
+                            trailingIcon = if (isDarkValue == true) {
+                                {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                }
+                            } else null
+                        )
+                    }
                 }
             }
         }

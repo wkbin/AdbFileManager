@@ -90,7 +90,7 @@ private fun AppContent() {
     if (connectedDevices.isEmpty()) {
         NoDeviceScreen()
     } else {
-        FileManagerScreen(fileManagerViewModel)
+        FileManagerScreen(deviceViewModel, fileManagerViewModel)
     }
 }
 
