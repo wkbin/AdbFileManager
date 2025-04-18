@@ -29,6 +29,7 @@ import com.darkrockstudios.libraries.mpfilepicker.FilePicker
 import kotlinx.coroutines.launch
 import view.components.*
 import view.theme.AdbFileManagerTheme
+import viewmodel.DeviceViewModel
 import viewmodel.FileManagerViewModel
 import java.io.File
 
@@ -36,7 +37,7 @@ import java.io.File
  * 文件管理器主屏幕
  */
 @Composable
-fun FileManagerScreen(viewModel: FileManagerViewModel) {
+fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerViewModel) {
     val scope = rememberCoroutineScope()
     val files by viewModel.files.collectAsState(initial = emptyList())
     val isLoading by viewModel.isLoading.collectAsState(initial = false)
@@ -168,6 +169,8 @@ fun FileManagerScreen(viewModel: FileManagerViewModel) {
 
                             // 工具栏
                             FileManagerToolbar(
+                                deviceViewModel = deviceViewModel,
+                                viewModel = viewModel,
                                 onCreateDirectoryClick = { showCreateDirDialog = true },
                                 onCreateFileClick = { showCreateFileDialog = true },
                                 onRefreshClick = { viewModel.reload() },
