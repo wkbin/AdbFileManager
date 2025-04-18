@@ -18,6 +18,8 @@ import view.theme.AdbFileManagerTheme
 import viewmodel.DeviceViewModel
 import viewmodel.FileManagerViewModel
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 // Composition locals
 val LocalWindow = compositionLocalOf<ComposeWindow> { error("Window not provided") }
@@ -106,6 +108,34 @@ private fun initAdbRuntime(adbStore: AdbStore, onInitialized: () -> Unit) {
             resource(adbStore.resourceName).readBytes(),
             adbStore.adbHostFile.absolutePath
         )
+        
+        // 检查并修复 ADB 执行权限（针对 Linux/Mac 系统）
+        try {
+            val osName = System.getProperty("os.name").lowercase()
+            if (osName.contains("linux") || osName.contains("mac") || osName.contains("unix")) {
+                val adbExecutable = File(adbStore.adbHostFile, "adb")
+                if (adbExecutable.exists() && !adbExecutable.canExecute()) {
+                    // 尝试设置可执行权限
+                    withContext(Dispatchers.IO) {
+                        val result = Runtime.getRuntime().exec(
+                            arrayOf("chmod", "755", adbExecutable.absolutePath)
+                        ).waitFor()
+                        
+                        if (result != 0) {
+                            // 如果 chmod 命令失败，尝试使用 ProcessBuilder
+                            val processBuilder = ProcessBuilder("chmod", "755", adbExecutable.absolutePath)
+                            processBuilder.start().waitFor()
+                        }
+                        
+                        println("已自动设置 ADB 可执行权限: ${adbExecutable.absolutePath}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            println("设置 ADB 可执行权限时出错: ${e.message}")
+            e.printStackTrace()
+        }
+        
         onInitialized()
     }
 }
