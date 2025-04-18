@@ -13,7 +13,7 @@ import runtime.adb.AdbDevicePoller
 import runtime.adb.Terminal
 import view.FileManagerScreen
 import view.components.CustomWindowFrame
-import view.components.NoDeviceScreen
+import view.components.DeviceConnectionWizard
 import view.theme.AdbFileManagerTheme
 import viewmodel.DeviceViewModel
 import viewmodel.FileManagerViewModel
@@ -84,11 +84,12 @@ private fun AppContent() {
     
     // 已连接设备状态
     val connectedDevices by deviceViewModel.connectedDevices.collectAsState(initial = emptyList())
-    val selectedDeviceId by deviceViewModel.selectedDeviceId
     
     // 根据设备连接状态显示适当的屏幕
     if (connectedDevices.isEmpty()) {
-        NoDeviceScreen()
+        DeviceConnectionWizard(deviceViewModel){
+            deviceViewModel.loadVirtualDevices()
+        }
     } else {
         FileManagerScreen(deviceViewModel, fileManagerViewModel)
     }

@@ -57,11 +57,15 @@ class Adb(
     /**
      * Connect to a device via Wi-Fi
      */
-    suspend fun connect(deviceId: String, ipAddress: String): AdbWifiState {
-        val port = "5555"
-        val commandConnect = "$adbPath -s $deviceId connect $ipAddress"
+    suspend fun connect(ipAddress: String, port: String): AdbWifiState {
+        val commandConnect = "$adbPath connect $ipAddress:$port"
         terminal.run(commandConnect)
         return AdbWifiState(false, ipAddress, port)
+    }
+
+    suspend fun pair(ipAddress: String,port: String,code:String): List<String>{
+        val commandConnect = "$adbPath pair $ipAddress:$port $code"
+        return terminal.run(commandConnect)
     }
 
     /**
@@ -73,7 +77,7 @@ class Adb(
         } catch (tr: Throwable) {
             null
         } ?: return emptyList()
-        
+
         val cmd = "$androidHome/emulator/emulator -list-avds"
         return try {
             terminal.run(cmd).map { name -> AndroidVirtualDevice(name) }

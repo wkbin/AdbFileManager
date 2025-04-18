@@ -78,7 +78,16 @@ class AdbDevicePoller(
             }
         }
     }
-    
+
+    suspend fun connect(ipAddress: String, port: String) {
+        adb.connect(ipAddress, port)
+    }
+
+    suspend fun pair(ipAddress: String, port: String, code: String, onResult: (List<String>) -> Unit = {}) {
+        val result = adb.pair(ipAddress, port, code)
+        onResult.invoke(result)
+    }
+
     /**
      * Execute an ADB command on the current device
      * @param cmd The ADB command to execute
