@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.rounded.*
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,6 +24,7 @@ import view.theme.ThemeState
 import viewmodel.DeviceViewModel
 import viewmodel.FileManagerViewModel
 import viewmodel.SortType
+import viewmodel.ViewMode
 
 
 /**
@@ -78,27 +80,29 @@ fun FileManagerToolbar(
     onImportClick: () -> Unit = {},
     onImportFolderClick: () -> Unit = {},
     onSortTypeChange: (SortType) -> Unit = {},
-    currentSortType: SortType = SortType.NAME_ASC
+    currentSortType: SortType = SortType.NAME_ASC,
+    onViewModeChange: (ViewMode) -> Unit = {},
+    currentViewMode: ViewMode = ViewMode.LIST
 ) {
     // 获取当前主题模式状态
     val isSystemDark = isSystemInDarkTheme()
     val isDarkValue = ThemeState.isDarkMode.value
     val isDark = isDarkValue ?: isSystemDark
-    
+
     // 确定主题图标
     val themeIcon = when {
         isDarkValue == null -> Icons.Outlined.Brightness6 // 跟随系统
         isDark -> Icons.Outlined.DarkMode // 暗色模式
         else -> Icons.Outlined.LightMode // 亮色模式
     }
-    
+
     // 主题切换菜单状态
     var showThemeMenu by remember { mutableStateOf(false) }
     // 设备切换菜单状态
     var showDevicesMenu by remember { mutableStateOf(false) }
     // 排序菜单状态
     var showSortMenu by remember { mutableStateOf(false) }
-    
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surface,
@@ -128,10 +132,10 @@ fun FileManagerToolbar(
                         text = "返回",
                         tint = MaterialTheme.colorScheme.primary
                     )
-                    
+
                     Spacer(modifier = Modifier.width(4.dp))
                 }
-                
+
                 // 创建文件夹按钮
                 ToolbarButton(
                     onClick = onCreateDirectoryClick,
@@ -139,9 +143,9 @@ fun FileManagerToolbar(
                     text = "新建文件夹",
                     tint = MaterialTheme.colorScheme.secondary
                 )
-                
+
                 Spacer(modifier = Modifier.width(4.dp))
-                
+
                 // 创建文件按钮
                 ToolbarButton(
                     onClick = onCreateFileClick,
@@ -149,9 +153,9 @@ fun FileManagerToolbar(
                     text = "新建文件",
                     tint = MaterialTheme.colorScheme.tertiary
                 )
-                
+
                 Spacer(modifier = Modifier.width(4.dp))
-                
+
                 // 导入文件按钮
                 ToolbarButton(
                     onClick = onImportClick,
@@ -204,6 +208,20 @@ fun FileManagerToolbar(
                         }
                     }
                 }
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // 视图模式切换按钮
+                ToolbarButton(
+                    onClick = {
+                        onViewModeChange(
+                            if (currentViewMode == ViewMode.LIST) ViewMode.GRID else ViewMode.LIST
+                        )
+                    },
+                    icon = if (currentViewMode == ViewMode.LIST) Icons.Filled.ViewList else Icons.Filled.GridView,
+                    text = if (currentViewMode == ViewMode.LIST) "列表" else "平铺",
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
 
             Row {

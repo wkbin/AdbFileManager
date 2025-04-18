@@ -1,19 +1,24 @@
 package view
 
 import androidx.compose.animation.*
-import androidx.compose.foundation.background
+import androidx.compose.foundation.*
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.onDrag
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Sort
-import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -23,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
 import com.darkrockstudios.libraries.mpfilepicker.FilePicker
@@ -31,7 +37,12 @@ import view.components.*
 import view.theme.AdbFileManagerTheme
 import viewmodel.DeviceViewModel
 import viewmodel.FileManagerViewModel
+import viewmodel.ViewMode
 import java.io.File
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.*
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.DpOffset
 
 /**
  * 文件管理器主屏幕
@@ -43,6 +54,7 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
     val isLoading by viewModel.isLoading.collectAsState(initial = false)
     val searchResults by viewModel.searchResults.collectAsState(initial = emptyList())
     val isSearching by viewModel.isSearching.collectAsState(initial = false)
+    val viewMode = viewModel.viewMode.value
 
     // 本地UI状态
     var showCreateDirDialog by remember { mutableStateOf(false) }
@@ -54,14 +66,25 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
 
     // 列表状态，用于滚动相关功能
     val listState = rememberLazyListState()
+    val gridState = rememberLazyGridState()
     val showScrollToTop by remember {
-        derivedStateOf { listState.firstVisibleItemIndex > 5 }
+        derivedStateOf {
+            if (viewMode == ViewMode.LIST) {
+                listState.firstVisibleItemIndex > 5
+            } else {
+                gridState.firstVisibleItemIndex > 5
+            }
+        }
     }
 
     // 重置滚动位置
     fun resetScroll() {
         scope.launch {
-            listState.animateScrollToItem(0)
+            if (viewMode == ViewMode.LIST) {
+                listState.animateScrollToItem(0)
+            } else {
+                gridState.animateScrollToItem(0)
+            }
         }
     }
 
@@ -179,7 +202,9 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                                 onImportClick = { showFilePicker = true },
                                 onImportFolderClick = { showFolderPicker = true },
                                 onSortTypeChange = { sortType -> viewModel.setSortType(sortType) },
-                                currentSortType = viewModel.sortType.collectAsState().value
+                                currentSortType = viewModel.sortType.collectAsState().value,
+                                onViewModeChange = { mode -> viewModel.setViewMode(mode) },
+                                currentViewMode = viewMode
                             )
                         }
                     }
@@ -307,73 +332,149 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                                 )
                             }
                         } else {
-                            // 文件列表
-                            LazyColumn(
-                                state = listState,
-                                modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
-                                contentPadding = PaddingValues(
-                                    top = 8.dp,
-                                    bottom = 80.dp, // 预留底部空间，避免被FAB遮挡
-                                    start = 4.dp,
-                                    end = 4.dp
-                                )
-                            ) {
-                                items(
-                                    items = files,
-                                    key = { it.fileName }
-                                ) { file ->
-                                    var showDirectoryPicker by remember { mutableStateOf(false) }
-                                    DirectoryPicker(showDirectoryPicker) { path ->
-                                        showDirectoryPicker = false
-                                        path?.let {
-                                            viewModel.pullFile(file.fileName, it) {
-                                                // 拉取完成
+                            // 根据视图模式选择不同的布局
+                            when (viewMode) {
+                                ViewMode.LIST -> {
+                                    // 列表视图
+                                    LazyColumn(
+                                        state = listState,
+                                        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                        contentPadding = PaddingValues(
+                                            top = 8.dp,
+                                            bottom = 80.dp,
+                                            start = 4.dp,
+                                            end = 4.dp
+                                        )
+                                    ) {
+                                        items(
+                                            items = files,
+                                            key = { it.fileName }
+                                        ) { file ->
+                                            var showDirectoryPicker by remember { mutableStateOf(false) }
+                                            DirectoryPicker(showDirectoryPicker) { path ->
+                                                showDirectoryPicker = false
+                                                path?.let {
+                                                    viewModel.pullFile(file.fileName, it) {
+                                                        // 拉取完成
+                                                    }
+                                                }
                                             }
-                                        }
-                                    }
 
-                                    // 使用带动画的包装器
-                                    Box {
-                                        androidx.compose.animation.AnimatedVisibility(
-                                            visible = true,
-                                            enter = fadeIn() + expandVertically(),
-                                            exit = fadeOut() + shrinkVertically()
-                                        ) {
-                                            FileListItem(
-                                                file = file,
-                                                onFileClick = {
-                                                    if (file.isDir) {
-                                                        // 如果是目录，则导航到该目录
-                                                        // 对于软链接目录，使用link属性作为导航目标（如果有）
-                                                        if (file.link != null) {
-                                                            viewModel.navigateTo(file.link)
-                                                        } else {
-                                                            viewModel.navigateTo(file.fileName)
-                                                        }
-                                                    } else {
-                                                        // 如果是文件且可编辑，加载文件内容
-                                                        if (isEditableFile(file.fileName)) {
+                                            // 使用带动画的包装器
+                                            Box {
+                                                androidx.compose.animation.AnimatedVisibility(
+                                                    visible = true,
+                                                    enter = fadeIn() + expandVertically(),
+                                                    exit = fadeOut() + shrinkVertically()
+                                                ) {
+                                                    FileListItem(
+                                                        file = file,
+                                                        onFileClick = {
+                                                            if (file.isDir) {
+                                                                // 如果是目录，则导航到该目录
+                                                                // 对于软链接目录，使用link属性作为导航目标（如果有）
+                                                                if (file.link != null) {
+                                                                    viewModel.navigateTo(file.link)
+                                                                } else {
+                                                                    viewModel.navigateTo(file.fileName)
+                                                                }
+                                                            } else {
+                                                                // 如果是文件且可编辑，加载文件内容
+                                                                if (isEditableFile(file.fileName)) {
+                                                                    viewModel.loadFileContent(file.fileName) {
+                                                                        showFileEditDialog = true
+                                                                    }
+                                                                }
+                                                            }
+                                                        },
+                                                        onEditFile = {
                                                             viewModel.loadFileContent(file.fileName) {
                                                                 showFileEditDialog = true
                                                             }
+                                                        },
+                                                        onDeleteFile = {
+                                                            viewModel.deleteFile(file.fileName) {
+                                                                viewModel.loadFiles()
+                                                            }
+                                                        },
+                                                        onDownloadFile = {
+                                                            showDirectoryPicker = true
                                                         }
-                                                    }
-                                                },
-                                                onEditFile = {
-                                                    viewModel.loadFileContent(file.fileName) {
-                                                        showFileEditDialog = true
-                                                    }
-                                                },
-                                                onDeleteFile = {
-                                                    viewModel.deleteFile(file.fileName) {
-                                                        viewModel.loadFiles()
-                                                    }
-                                                },
-                                                onDownloadFile = {
-                                                    showDirectoryPicker = true
+                                                    )
                                                 }
-                                            )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                ViewMode.GRID -> {
+                                    // 网格视图
+                                    LazyVerticalGrid(
+                                        columns = GridCells.Adaptive(minSize = 120.dp),
+                                        state = gridState,
+                                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        contentPadding = PaddingValues(
+                                            top = 16.dp,
+                                            bottom = 80.dp,
+                                            start = 8.dp,
+                                            end = 8.dp
+                                        )
+                                    ) {
+                                        items(
+                                            items = files,
+                                            key = { it.fileName }
+                                        ) { file ->
+                                            var showDirectoryPicker by remember { mutableStateOf(false) }
+                                            DirectoryPicker(showDirectoryPicker) { path ->
+                                                showDirectoryPicker = false
+                                                path?.let {
+                                                    viewModel.pullFile(file.fileName, it) {
+                                                        // 拉取完成
+                                                    }
+                                                }
+                                            }
+
+                                            // 使用带动画的包装器
+                                            Box {
+                                                androidx.compose.animation.AnimatedVisibility(
+                                                    visible = true,
+                                                    enter = fadeIn() + expandVertically(),
+                                                    exit = fadeOut() + shrinkVertically()
+                                                ) {
+                                                    GridFileItem(
+                                                        file = file,
+                                                        onFileClick = {
+                                                            if (file.isDir) {
+                                                                if (file.link != null) {
+                                                                    viewModel.navigateTo(file.link)
+                                                                } else {
+                                                                    viewModel.navigateTo(file.fileName)
+                                                                }
+                                                            } else if (isEditableFile(file.fileName)) {
+                                                                viewModel.loadFileContent(file.fileName) {
+                                                                    showFileEditDialog = true
+                                                                }
+                                                            }
+                                                        },
+                                                        onEditFile = {
+                                                            viewModel.loadFileContent(file.fileName) {
+                                                                showFileEditDialog = true
+                                                            }
+                                                        },
+                                                        onDeleteFile = {
+                                                            viewModel.deleteFile(file.fileName) {
+                                                                viewModel.loadFiles()
+                                                            }
+                                                        },
+                                                        onDownloadFile = {
+                                                            showDirectoryPicker = true
+                                                        }
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -549,4 +650,106 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
             }
         }
     }
-} 
+}
+
+@Composable
+fun GridFileItem(
+    file: model.FileItem,
+    onFileClick: () -> Unit,
+    onEditFile: () -> Unit,
+    onDeleteFile: () -> Unit,
+    onDownloadFile: () -> Unit
+) {
+    var showContextMenu by remember { mutableStateOf(false) }
+    Box {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .onPointerEvent(PointerEventType.Press) {
+                    when {
+                        it.buttons.isPrimaryPressed -> onFileClick.invoke()
+                        it.buttons.isSecondaryPressed -> {
+                            showContextMenu = true
+                        }
+                    }
+                }
+                .padding(vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = if (file.isDir) Icons.Filled.Folder else Icons.Filled.InsertDriveFile,
+                contentDescription = null,
+                tint = if (file.isDir) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = file.fileName,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+        // 右键菜单
+        if (showContextMenu) {
+            DropdownMenu(
+                expanded = true,
+                onDismissRequest = { showContextMenu = false },
+                offset = DpOffset(
+                    x = 0.dp,
+                    y = 0.dp
+                )
+            ) {
+                if (!file.isDir && isEditableFile(file.fileName)) {
+                    DropdownMenuItem(
+                        text = { Text("编辑") },
+                        onClick = {
+                            onEditFile()
+                            showContextMenu = false
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    )
+                }
+
+                DropdownMenuItem(
+                    text = { Text("下载") },
+                    onClick = {
+                        onDownloadFile()
+                        showContextMenu = false
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Download,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                )
+
+                DropdownMenuItem(
+                    text = { Text("删除") },
+                    onClick = {
+                        onDeleteFile()
+                        showContextMenu = false
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Filled.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                )
+            }
+        }
+    }
+}

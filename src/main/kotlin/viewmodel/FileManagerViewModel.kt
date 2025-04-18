@@ -1,7 +1,6 @@
 package viewmodel
 
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,6 +58,10 @@ class FileManagerViewModel(
     // 排序触发状态
     private val _sortTrigger = MutableStateFlow(0)
     val sortTrigger: StateFlow<Int> = _sortTrigger.asStateFlow()
+
+    // 视图模式
+    private val _viewMode = mutableStateOf(ViewMode.LIST)
+    val viewMode: State<ViewMode> = _viewMode
 
     /**
      * 设置排序方式
@@ -595,6 +598,10 @@ class FileManagerViewModel(
             }
         }
     }
+
+    fun setViewMode(mode: ViewMode) {
+        _viewMode.value = mode
+    }
 }
 
 /**
@@ -608,4 +615,11 @@ enum class SortType(val displayName: String) {
     DATE_DESC("日期 (最新)"),
     SIZE_ASC("大小 (最小)"),
     SIZE_DESC("大小 (最大)")
+}
+
+/**
+ * 文件视图模式
+ */
+enum class ViewMode {
+    LIST, GRID
 } 
