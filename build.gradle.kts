@@ -69,8 +69,26 @@ compose.desktop {
             copyright = "Copyright 2023 Kebin Wang. All rights reserved."
             vendor = "Kebin Wang"
             modules("jdk.unsupported")
-            windows{
+
+            // 自定义打包输出配置
+            macOS {
+                // macOS 特定配置
+                packageName = "AdbFileManager-mac"
+                // 不设置 dmgPackageVersion，避免重复添加版本号
+            }
+
+            windows {
+                // Windows 特定配置
+                packageName = "AdbFileManager-win"
+                // 不设置 msiPackageVersion，避免重复添加版本号
                 shortcut = true
+                dirChooser = true
+            }
+
+            linux {
+                // Linux 特定配置
+                packageName = "AdbFileManager-linux"
+                // 不设置 debPackageVersion，避免重复添加版本号
             }
         }
     }
