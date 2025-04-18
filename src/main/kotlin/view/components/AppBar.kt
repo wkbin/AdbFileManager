@@ -14,11 +14,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import view.theme.ThemeState
 import viewmodel.DeviceViewModel
@@ -102,6 +99,9 @@ fun FileManagerToolbar(
     var showDevicesMenu by remember { mutableStateOf(false) }
     // 排序菜单状态
     var showSortMenu by remember { mutableStateOf(false) }
+    // 书签菜单状态
+    var showBookmarkMenu by remember { mutableStateOf(false) }
+    var showAddBookmarkDialog by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -173,6 +173,74 @@ fun FileManagerToolbar(
                     text = "导入文件夹",
                     tint = MaterialTheme.colorScheme.tertiary
                 )
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // 书签按钮
+                Box {
+                    ToolbarButton(
+                        onClick = { showBookmarkMenu = true },
+                        icon = Icons.Filled.Bookmark,
+                        text = "书签",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    
+                    DropdownMenu(
+                        expanded = showBookmarkMenu,
+                        onDismissRequest = { showBookmarkMenu = false }
+                    ) {
+                        // 添加书签选项
+                        DropdownMenuItem(
+                            text = { Text("添加书签") },
+                            onClick = {
+                                showAddBookmarkDialog = true
+                                showBookmarkMenu = false
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Filled.Add,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        )
+                        
+                        Divider()
+                        
+                        // 书签列表
+                        if (viewModel.bookmarks.isEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("暂无书签") },
+                                onClick = { showBookmarkMenu = false }
+                            )
+                        } else {
+                            viewModel.bookmarks.forEach { bookmark ->
+                                DropdownMenuItem(
+                                    text = { Text(bookmark.name) },
+                                    onClick = {
+                                        viewModel.navigateToBookmark(bookmark)
+                                        showBookmarkMenu = false
+                                    },
+                                    trailingIcon = {
+                                        IconButton(
+                                            onClick = {
+                                                viewModel.removeBookmark(bookmark)
+                                                showBookmarkMenu = false
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Filled.Delete,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.error,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.width(4.dp))
 
@@ -368,5 +436,43 @@ fun FileManagerToolbar(
                 }
             }
         }
+    }
+    
+    // 添加书签对话框
+    if (showAddBookmarkDialog) {
+        // 生成默认书签名称
+        val defaultBookmarkName = if (viewModel.directoryPath.isEmpty()) "根目录" else viewModel.directoryPath.last()
+        var bookmarkName by remember { mutableStateOf(defaultBookmarkName) }
+        
+        AlertDialog(
+            onDismissRequest = { showAddBookmarkDialog = false },
+            title = { Text("添加书签") },
+            text = {
+                TextField(
+                    value = bookmarkName,
+                    onValueChange = { bookmarkName = it },
+                    label = { Text("书签名称") },
+                    singleLine = true,
+                    placeholder = { Text(defaultBookmarkName) }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (bookmarkName.isNotBlank()) {
+                            viewModel.addBookmark(bookmarkName)
+                            showAddBookmarkDialog = false
+                        }
+                    }
+                ) {
+                    Text("确定")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddBookmarkDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 } 

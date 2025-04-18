@@ -7,10 +7,20 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import model.FileItem
 import model.FileUtils
 import runtime.adb.AdbDevicePoller
 import java.io.File
+
+@Serializable
+data class Bookmark(
+    val name: String,
+    val path: String,
+    val timestamp: Long = System.currentTimeMillis()
+)
 
 /**
  * ViewModel for file manager operations
@@ -62,6 +72,53 @@ class FileManagerViewModel(
     // 视图模式
     private val _viewMode = mutableStateOf(ViewMode.LIST)
     val viewMode: State<ViewMode> = _viewMode
+
+    // 书签相关
+    private val _bookmarks = mutableStateListOf<Bookmark>()
+    val bookmarks: List<Bookmark> = _bookmarks
+    
+    private val bookmarksFile: File by lazy {
+        val userHome = System.getProperty("user.home")
+        val appDir = File(userHome, ".adbfilemanager")
+        if (!appDir.exists()) {
+            appDir.mkdirs()
+        }
+        File(appDir, "bookmarks.json")
+    }
+
+    init {
+        loadBookmarks()
+    }
+
+    /**
+     * 从JSON文件加载书签
+     */
+    private fun loadBookmarks() {
+        try {
+            if (bookmarksFile.exists()) {
+                val format = Json { ignoreUnknownKeys = true; isLenient = true }
+                val json = bookmarksFile.readText()
+                val loadedBookmarks = format.decodeFromString<List<Bookmark>>(json)
+                _bookmarks.clear()
+                _bookmarks.addAll(loadedBookmarks)
+            }
+        } catch (e: Exception) {
+            println("加载书签失败: ${e.message}")
+        }
+    }
+
+    /**
+     * 将书签保存到JSON文件
+     */
+    private fun saveBookmarks() {
+        try {
+            val format = Json { prettyPrint = true; encodeDefaults = true }
+            val json = format.encodeToString(_bookmarks.toList())
+            bookmarksFile.writeText(json)
+        } catch (e: Exception) {
+            println("保存书签失败: ${e.message}")
+        }
+    }
 
     /**
      * 设置排序方式
@@ -601,6 +658,47 @@ class FileManagerViewModel(
 
     fun setViewMode(mode: ViewMode) {
         _viewMode.value = mode
+    }
+
+    /**
+     * 添加书签并持久化保存
+     * @param name 书签名称，如果为空或空白字符串，则使用当前路径最后一个组件作为名称
+     */
+    fun addBookmark(name: String? = null) {
+        val currentPath = directoryPath.joinToString("/")
+        // 如果未提供名称或名称为空，使用当前路径最后一个组件作为书签名
+        val bookmarkName = if (name.isNullOrBlank()) {
+            // 如果路径为空，使用"根目录"作为名称
+            if (directoryPath.isEmpty()) {
+                "根目录"
+            } else {
+                // 否则使用路径的最后一个组件
+                directoryPath.last()
+            }
+        } else {
+            name
+        }
+        
+        val bookmark = Bookmark(bookmarkName, currentPath)
+        _bookmarks.add(bookmark)
+        saveBookmarks()
+    }
+    
+    /**
+     * 删除书签并持久化保存
+     */
+    fun removeBookmark(bookmark: Bookmark) {
+        _bookmarks.remove(bookmark)
+        saveBookmarks()
+    }
+    
+    /**
+     * 导航到书签的路径
+     */
+    fun navigateToBookmark(bookmark: Bookmark) {
+        directoryPath.clear()
+        directoryPath.addAll(bookmark.path.split("/").filter { it.isNotEmpty() })
+        loadFiles()
     }
 }
 
