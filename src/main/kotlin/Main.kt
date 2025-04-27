@@ -1,16 +1,27 @@
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.awt.ComposeWindow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.ExperimentalResourceApi
-import org.jetbrains.compose.resources.resource
 import runtime.AdbStore
 import runtime.ContextStore
 import runtime.adb.Adb
 import runtime.adb.AdbDevicePoller
 import runtime.adb.Terminal
+import top.wkbin.filemanager.generated.resources.Res
 import view.FileManagerScreen
 import view.components.CustomWindowFrame
 import view.components.DeviceConnectionWizard
@@ -18,8 +29,6 @@ import view.theme.AdbFileManagerTheme
 import viewmodel.DeviceViewModel
 import viewmodel.FileManagerViewModel
 import java.io.File
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 // Composition locals
 val LocalWindow = compositionLocalOf<ComposeWindow> { error("Window not provided") }
@@ -105,7 +114,7 @@ private fun AppContent() {
 private fun initAdbRuntime(adbStore: AdbStore, onInitialized: () -> Unit) {
     LaunchedEffect(Unit) {
         adbStore.installRuntime(
-            resource(adbStore.resourceName).readBytes(),
+            Res.readBytes(adbStore.resourceName),
             adbStore.adbHostFile.absolutePath
         )
         

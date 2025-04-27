@@ -67,10 +67,11 @@ class AdbStore(runtimeDir: File) : Runtime() {
     }
 
     val resourceName by lazy {
-        when {
-            hostOs.isWindows -> R.raw.adbWindows
-            hostOs.isMacOS -> R.raw.adbMacOs
-            else -> R.raw.adbLinux
+        val hostName = when {
+            hostOs.isWindows -> "windows"
+            hostOs.isMacOS -> "macOS"
+            else -> "linux"
         }
+        "files/$hostName/adb.zip"
     }
 }
