@@ -11,6 +11,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import org.jetbrains.compose.resources.painterResource
+import top.wkbin.filemanager.generated.resources.Res
+import top.wkbin.filemanager.generated.resources.ic_adb_disconnect
 import viewmodel.DeviceViewModel
 
 /**
@@ -53,7 +56,7 @@ fun DeviceConnectionWizard(
             )
 
             Icon(
-                painter = androidx.compose.ui.res.painterResource("res/icons/ic_adb_disconnect.png"),
+                painter = painterResource(Res.drawable.ic_adb_disconnect),
                 contentDescription = null,
                 modifier = Modifier.size(150.dp),
                 tint = MaterialTheme.colorScheme.primary.copy(alpha = iconAlpha)

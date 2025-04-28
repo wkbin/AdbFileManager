@@ -1,5 +1,14 @@
 package model
 
+import org.jetbrains.compose.resources.DrawableResource
+import top.wkbin.filemanager.generated.resources.Res
+import top.wkbin.filemanager.generated.resources.icon_apk
+import top.wkbin.filemanager.generated.resources.icon_file
+import top.wkbin.filemanager.generated.resources.icon_files
+import top.wkbin.filemanager.generated.resources.icon_image
+import top.wkbin.filemanager.generated.resources.icon_json
+import top.wkbin.filemanager.generated.resources.icon_txt
+import top.wkbin.filemanager.generated.resources.icon_xml
 import java.text.DecimalFormat
 
 /**
@@ -10,7 +19,7 @@ data class FileItem(
     val fileName: String,
     val size: String,
     val date: String,
-    val icon: String,
+    val icon: DrawableResource,
     val link: String?,
     val permissions: String
 )
@@ -160,21 +169,21 @@ object FileUtils {
     /**
      * Get the appropriate icon path for a file based on its extension
      */
-    fun getIconPath(isDir: Boolean, name: String): String {
+    fun getIconPath(isDir: Boolean, name: String): DrawableResource {
         if (isDir) {
-            return "res/icons/icon_files.png"
+            return Res.drawable.icon_files
         }
         val index = name.lastIndexOf(".")
         if (index == -1) {
-            return "res/icons/icon_file.png"
+            return Res.drawable.icon_file
         }
         return when (name.substring(index + 1)) {
-            "apk" -> "res/icons/icon_apk.png"
-            "json" -> "res/icons/icon_json.png"
-            "png", "jpg", "jpeg" -> "res/icons/icon_image.png"
-            "txt" -> "res/icons/icon_txt.png"
-            "xml" -> "res/icons/icon_xml.png"
-            else -> "res/icons/icon_file.png"
+            "apk" -> Res.drawable.icon_apk
+            "json" -> Res.drawable.icon_json
+            "png", "jpg", "jpeg" -> Res.drawable.icon_image
+            "txt" -> Res.drawable.icon_txt
+            "xml" -> Res.drawable.icon_xml
+            else -> Res.drawable.icon_file
         }
     }
     
