@@ -1,7 +1,7 @@
 [versions]
-kotlin = "2.0.10"
-compose-plugin = "1.7.3"
-kotlinx-serialization = "1.6.3"
+kotlin = "2.1.20"
+compose-plugin = "1.8.0-rc01"
+kotlinx-serialization = "1.8.0"
 mpfilepicker = "3.1.0"
 
 [libraries]
