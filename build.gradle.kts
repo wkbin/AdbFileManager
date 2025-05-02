@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.kotlinx.serialization)
     alias(libs.plugins.jetbrainsCompose)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.gradle.download.task)
 }
 
 group = "top.wkbin"
@@ -51,6 +52,45 @@ dependencies {
     implementation(compose.materialIconsExtended)
     implementation(libs.mpfilepicker)
     implementation(libs.kotlinx.serialization)
+}
+
+tasks.register<Copy>("copyComposeResources") {
+    from(layout.projectDirectory.dir("src/main/composeResources"))
+    into(layout.buildDirectory.dir("copiedComposeResources"))
+}
+
+tasks.register<de.undercouch.gradle.tasks.download.Download>("downloadAdbZip") {
+    dependsOn("copyComposeResources")
+
+    // 下载地址可以在这个url找到 https://dl.google.com/android/repository/repository2-2.xml
+    val windowsUrl = "platform-tools_r36.0.0-win.zip"
+    val linuxUrl = "platform-tools_r36.0.0-linux.zip"
+    val macOSUrl = "platform-tools_r36.0.0-darwin.zip"
+
+    val os = org.gradle.nativeplatform.platform.internal.DefaultNativePlatform.getCurrentOperatingSystem()
+
+    val (url, targetDir) = when {
+        os.isWindows -> windowsUrl to "windows"
+        os.isLinux -> linuxUrl to "linux"
+        os.isMacOsX -> macOSUrl to "macos"
+        else -> throw GradleException("Unsupported System.")
+    }
+
+    src("https://dl.google.com/android/repository/$url")
+    dest(layout.buildDirectory.file("copiedComposeResources/files/$targetDir/adb.zip"))
+    overwrite(false)
+}
+
+afterEvaluate {
+    tasks.getByName("convertXmlValueResourcesForMain").dependsOn("downloadAdbZip")
+    tasks.getByName("copyNonXmlValueResourcesForMain").dependsOn("downloadAdbZip")
+    tasks.getByName("prepareComposeResourcesTaskForMain").dependsOn("downloadAdbZip")
+}
+
+compose.resources {
+    customDirectory(sourceSetName = "main", directoryProvider =
+        layout.buildDirectory.dir("copiedComposeResources")
+    )
 }
 
 compose.desktop {

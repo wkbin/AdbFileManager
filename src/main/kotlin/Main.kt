@@ -56,7 +56,7 @@ fun main() = application {
     ) {
         if (isRuntimeInitialized) {
             // 设置依赖项
-            val adb = Adb("${adbStore.adbHostFile.absolutePath}${File.separator}adb", Terminal())
+            val adb = Adb("${adbStore.adbHostFile.absolutePath}${File.separator}platform-tools${File.separator}adb", Terminal())
             
             // 提供Composition locals
             CompositionLocalProvider(
@@ -122,7 +122,7 @@ private fun initAdbRuntime(adbStore: AdbStore, onInitialized: () -> Unit) {
         try {
             val osName = System.getProperty("os.name").lowercase()
             if (osName.contains("linux") || osName.contains("mac") || osName.contains("unix")) {
-                val adbExecutable = File(adbStore.adbHostFile, "adb")
+                val adbExecutable = File(adbStore.adbHostFile, "platform-tools/adb")
                 if (adbExecutable.exists() && !adbExecutable.canExecute()) {
                     // 尝试设置可执行权限
                     withContext(Dispatchers.IO) {
