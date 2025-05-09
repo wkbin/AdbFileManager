@@ -104,7 +104,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "AdbFileManager"
-            packageVersion = "2.4.0"
+            packageVersion = "2.4.1"
             description = "FileManager For Desktop"
             copyright = "Copyright 2023 Kebin Wang. All rights reserved."
             vendor = "Kebin Wang"
