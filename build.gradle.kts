@@ -52,6 +52,7 @@ dependencies {
     implementation(compose.materialIconsExtended)
     implementation(libs.mpfilepicker)
     implementation(libs.kotlinx.serialization)
+    implementation (libs.juniversalchardet)
 }
 
 tasks.register<Copy>("copyComposeResources") {

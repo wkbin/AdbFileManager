@@ -15,6 +15,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Create
 import androidx.compose.material.icons.outlined.FolderOpen
@@ -215,7 +216,9 @@ fun FileEditDialog(
     fileName: String,
     initialContent: String,
     onDismiss: () -> Unit,
-    onSave: (content: String) -> Unit
+    onSave: (content: String) -> Unit,
+    fileEncoding: String,
+    onEncodingChange: (String) -> Unit
 ) {
     if (!visible) return
     
@@ -237,6 +240,24 @@ fun FileEditDialog(
     
     // 窗口状态，用于控制窗口位置
     val windowState = rememberWindowState(width = 900.dp, height = 700.dp)
+    
+    // 常用编码列表
+    val commonEncodings = listOf(
+        "UTF-8",
+        "GBK",
+        "GB18030",
+        "GB2312",
+        "UTF-16",
+        "UTF-32",
+        "ISO-8859-1",
+        "BIG5",
+        "Shift-JIS",
+        "EUC-JP",
+        "EUC-KR"
+    )
+    
+    // 编码选择下拉菜单状态
+    var showEncodingMenu by remember { mutableStateOf(false) }
     
     Window(
         state = windowState,
@@ -309,6 +330,43 @@ fun FileEditDialog(
                         )
                         
                         Spacer(modifier = Modifier.weight(1f))
+                        
+                        // 编码选择下拉菜单
+                        Box {
+                            OutlinedButton(
+                                onClick = { showEncodingMenu = true },
+                                modifier = Modifier.padding(end = 16.dp)
+                            ) {
+                                Text(
+                                    text = "编码: $fileEncoding",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                            }
+                            
+                            DropdownMenu(
+                                expanded = showEncodingMenu,
+                                onDismissRequest = { showEncodingMenu = false }
+                            ) {
+                                commonEncodings.forEach { encoding ->
+                                    DropdownMenuItem(
+                                        text = { Text(encoding) },
+                                        onClick = {
+                                            onEncodingChange(encoding)
+                                            showEncodingMenu = false
+                                        },
+                                        leadingIcon = {
+                                            if (encoding == fileEncoding) {
+                                                Icon(
+                                                    imageVector = Icons.Outlined.CheckCircle,
+                                                    contentDescription = null,
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
                         
                         // 状态指示
                         AnimatedVisibility(

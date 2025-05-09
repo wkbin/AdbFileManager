@@ -39,9 +39,7 @@ import viewmodel.DeviceViewModel
 import viewmodel.FileManagerViewModel
 import viewmodel.ViewMode
 import java.io.File
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.*
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.DpOffset
 
 /**
@@ -587,6 +585,17 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                     onSave = { content ->
                         viewModel.saveFileContent(content) {
                             showFileEditDialog = false
+                        }
+                    },
+                    fileEncoding = viewModel.currentFileEncoding.value,
+                    onEncodingChange = { encoding ->
+                        viewModel.currentFileEncoding.value = encoding
+                        // 重新加载文件内容，但不使用自动检测的编码
+                        viewModel.loadFileContent(
+                            fileName = viewModel.currentFileName.value,
+                            useDetectedEncoding = false
+                        ) {
+                            // 重新加载完成后不需要关闭对话框
                         }
                     }
                 )

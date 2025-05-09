@@ -8,12 +8,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import model.FileItem
 import model.FileUtils
 import runtime.adb.AdbDevicePoller
 import java.io.File
+import org.mozilla.universalchardet.UniversalDetector
+import java.nio.charset.Charset
 
 @Serializable
 data class Bookmark(
@@ -32,15 +33,15 @@ class FileManagerViewModel(
     // Current directory path components
     private val _directoryPath = mutableStateListOf<String>()
     val directoryPath: SnapshotStateList<String> = _directoryPath
-    
+
     // Current list of files
     private val _files = MutableStateFlow<List<FileItem>>(emptyList())
     val files: StateFlow<List<FileItem>> = _files.asStateFlow()
-    
+
     // Loading state
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
-    
+
     // Error state
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
@@ -52,7 +53,8 @@ class FileManagerViewModel(
     // Current file being edited
     val currentFileName = mutableStateOf("")
     val currentFileContent = mutableStateOf("")
-    
+    val currentFileEncoding = mutableStateOf("UTF-8")
+
     // 搜索结果
     private val _searchResults = MutableStateFlow<List<FileItem>>(emptyList())
     val searchResults: StateFlow<List<FileItem>> = _searchResults.asStateFlow()
@@ -76,7 +78,7 @@ class FileManagerViewModel(
     // 书签相关
     private val _bookmarks = mutableStateListOf<Bookmark>()
     val bookmarks: List<Bookmark> = _bookmarks
-    
+
     private val bookmarksFile: File by lazy {
         val userHome = System.getProperty("user.home")
         val appDir = File(userHome, ".adbfilemanager")
@@ -153,7 +155,7 @@ class FileManagerViewModel(
     fun loadFiles() {
         _isLoading.value = true
         _error.value = null
-        
+
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
@@ -180,7 +182,7 @@ class FileManagerViewModel(
             }
         }
     }
-    
+
     /**
      * Navigate to a directory
      * 支持普通目录和软链接目录（绝对路径和相对路径）
@@ -188,10 +190,10 @@ class FileManagerViewModel(
     fun navigateTo(directoryName: String) {
         // 保存当前路径列表的副本，以便在出错时恢复
         val previousPath = _directoryPath.toList()
-        
+
         // 检查是否为软链接路径
         val isSymlink = directoryName.contains("/") || directoryName.contains("\\")
-        
+
         // 处理目录路径
         if (isSymlink) {
             // 软链接可能是指向绝对路径或相对路径
@@ -204,7 +206,7 @@ class FileManagerViewModel(
             } else {
                 // 相对路径 - 相对于当前目录
                 val pathComponents = directoryName.split("/").filter { it.isNotEmpty() }
-                
+
                 // 处理特殊情况如 "../../path"
                 for (component in pathComponents) {
                     when (component) {
@@ -215,6 +217,7 @@ class FileManagerViewModel(
                                 _directoryPath.removeLast()
                             }
                         }
+
                         else -> _directoryPath.add(component) // 正常目录名，添加
                     }
                 }
@@ -223,7 +226,7 @@ class FileManagerViewModel(
             // 普通目录，直接添加
             _directoryPath.add(directoryName)
         }
-        
+
         // 验证目录是否可访问
         coroutineScope.launch {
             try {
@@ -248,7 +251,7 @@ class FileManagerViewModel(
             }
         }
     }
-    
+
     /**
      * Navigate up one directory
      */
@@ -258,7 +261,7 @@ class FileManagerViewModel(
             loadFiles()
         }
     }
-    
+
     /**
      * Delete a file or directory
      */
@@ -290,7 +293,7 @@ class FileManagerViewModel(
             }
         }
     }
-    
+
     /**
      * Create a new file
      */
@@ -322,7 +325,7 @@ class FileManagerViewModel(
             }
         }
     }
-    
+
     /**
      * Create a new directory
      */
@@ -355,11 +358,15 @@ class FileManagerViewModel(
             }
         }
     }
-    
+
     /**
      * Load file content for editing
      */
-    fun loadFileContent(fileName: String, onSuccess: () -> Unit) {
+    fun loadFileContent(
+        fileName: String,
+        useDetectedEncoding: Boolean = true,
+        onSuccess: () -> Unit
+    ) {
         _isLoading.value = true
         _error.value = null
         coroutineScope.launch {
@@ -371,7 +378,12 @@ class FileManagerViewModel(
                         setError("拉取文件失败: ${result.joinToString("\n")}")
                         tempFile.delete()
                     } else {
-                        val content = tempFile.readText(Charsets.UTF_8)
+                        // 只在首次加载时检测编码
+                        if (useDetectedEncoding) {
+                            val encoding = detectEncoding(tempFile)
+                            currentFileEncoding.value = encoding
+                        }
+                        val content = tempFile.readText(Charset.forName(currentFileEncoding.value))
                         currentFileContent.value = content
                         currentFileName.value = fileName
                         tempFile.delete()
@@ -385,7 +397,7 @@ class FileManagerViewModel(
             }
         }
     }
-    
+
     /**
      * Save edited file content
      */
@@ -396,16 +408,16 @@ class FileManagerViewModel(
             try {
                 val fileName = currentFileName.value ?: return@launch
                 val dirPath = _directoryPath.joinToString("/")
-                
-                // 将内容写入临时文件，指定UTF-8编码并统一换行符
+
+                // 将内容写入临时文件，使用检测到的编码
                 val tempFile = File.createTempFile("temp_", ".txt")
-                tempFile.writeText(content.replace("\r\n", "\n"), Charsets.UTF_8)
-                
+                tempFile.writeText(content.replace("\r\n", "\n"), Charset.forName(currentFileEncoding.value))
+
                 // 使用adb push命令将临时文件推送到设备
                 adbDevicePoller.exec("push \"${tempFile.absolutePath}\" \"/${dirPath}/${fileName}\"") { result ->
                     // 删除临时文件
                     tempFile.delete()
-                    
+
                     if (result.any { it.contains("error") || it.contains("failed") }) {
                         setError("保存文件失败: ${result.joinToString("\n")}")
                     } else {
@@ -420,7 +432,7 @@ class FileManagerViewModel(
             }
         }
     }
-    
+
     /**
      * Pull file to local device
      */
@@ -444,7 +456,7 @@ class FileManagerViewModel(
             }
         }
     }
-    
+
     /**
      * Push file to device
      */
@@ -468,17 +480,17 @@ class FileManagerViewModel(
             }
         }
     }
-    
+
     /**
      * Navigate to a specific path index
      * @param index the index to navigate to (-1 for root)
      */
     fun navigateToPathIndex(index: Int) {
         if (index < -1 || index >= _directoryPath.size) return
-        
+
         // 保存当前路径的副本，以便在出错时恢复
         val previousPath = _directoryPath.toList()
-        
+
         // 如果是根目录
         if (index == -1) {
             _directoryPath.clear()
@@ -490,7 +502,7 @@ class FileManagerViewModel(
                 _directoryPath.removeLast()
             }
         }
-        
+
         // 检查目录权限
         coroutineScope.launch {
             try {
@@ -515,19 +527,19 @@ class FileManagerViewModel(
             }
         }
     }
-    
+
     /**
      * Import a file from local system to current directory
      */
     fun importFile(file: java.io.File, onSuccess: () -> Unit) {
         _isLoading.value = true
         _error.value = null
-        
+
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
                 val localFilePath = file.absolutePath
-                
+
                 adbDevicePoller.exec("push \"$localFilePath\" \"/${dirPath}/\"") { result ->
                     if (result.any { it.contains("error") || it.contains("failed") }) {
                         setError("导入文件失败: ${result.joinToString("\n")}")
@@ -543,19 +555,19 @@ class FileManagerViewModel(
             }
         }
     }
-    
+
     /**
      * Import a folder from local system to current directory
      */
     fun importFolder(folderPath: String, onSuccess: () -> Unit) {
         _isLoading.value = true
         _error.value = null
-        
+
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
                 val folderName = File(folderPath).name
-                
+
                 // 先在目标目录创建同名文件夹
                 adbDevicePoller.exec("push \"$folderPath\" \"/${dirPath}/${folderName}/\"") { pushResult ->
                     if (pushResult.any { it.contains("error") || it.contains("failed") }) {
@@ -572,14 +584,14 @@ class FileManagerViewModel(
             }
         }
     }
-    
+
     /**
      * 刷新当前目录内容
      */
     fun reload() {
         loadFiles()
     }
-    
+
     /**
      * 检查是否可以向上导航
      */
@@ -625,7 +637,7 @@ class FileManagerViewModel(
         }
 
         _isSearching.value = true
-        
+
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
@@ -674,12 +686,12 @@ class FileManagerViewModel(
         } else {
             name
         }
-        
+
         val bookmark = Bookmark(bookmarkName, currentPath)
         _bookmarks.add(bookmark)
         saveBookmarks()
     }
-    
+
     /**
      * 删除书签并持久化保存
      */
@@ -687,7 +699,7 @@ class FileManagerViewModel(
         _bookmarks.remove(bookmark)
         saveBookmarks()
     }
-    
+
     /**
      * 导航到书签的路径
      */
@@ -695,6 +707,20 @@ class FileManagerViewModel(
         directoryPath.clear()
         directoryPath.addAll(bookmark.path.split("/").filter { it.isNotEmpty() })
         loadFiles()
+    }
+
+    // 自动检测文件编码
+    private fun detectEncoding(file: File): String {
+        val detector = UniversalDetector(null)
+        file.inputStream().use { input ->
+            val buffer = ByteArray(4096)
+            var nread: Int
+            while (input.read(buffer).also { nread = it } > 0) {
+                detector.handleData(buffer, 0, nread)
+            }
+        }
+        detector.dataEnd()
+        return detector.detectedCharset ?: "UTF-8"
     }
 }
 

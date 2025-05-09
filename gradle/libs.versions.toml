@@ -4,10 +4,12 @@ compose-plugin = "1.8.0-rc01"
 kotlinx-serialization = "1.8.0"
 mpfilepicker = "3.1.0"
 gradle-download = "5.6.0"
+juniversalchardet = "2.5.0"
 
 [libraries]
 kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 mpfilepicker = { module = "com.darkrockstudios:mpfilepicker", version.ref = "mpfilepicker" }
+juniversalchardet = { module = "com.github.albfernandez:juniversalchardet" , version.ref = "juniversalchardet"}
 
 [plugins]
 kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
