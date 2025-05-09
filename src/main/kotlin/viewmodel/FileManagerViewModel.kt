@@ -365,20 +365,16 @@ class FileManagerViewModel(
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
-                adbDevicePoller.exec("shell cat /${dirPath}/${fileName}") { result ->
-                    if (result.any { it.contains("unknown command") }) {
-                        setError("ADB命令执行失败：未知命令")
-                    } else if (result.any { it.contains("Permission denied") }) {
-                        setError("权限不足，无法读取文件")
-                    } else if (result.any { it.contains("No such file") }) {
-                        setError("文件不存在")
-                    } else if (result.any { it.contains("Is a directory") }) {
-                        setError("无法读取目录内容")
-                    } else if (result.any { it.contains("Error:") }) {
-                        setError(result.first { it.contains("Error:") })
+                val tempFile = File.createTempFile("pull_", ".tmp")
+                adbDevicePoller.exec("pull /${dirPath}/${fileName} \"${tempFile.absolutePath}\"") { result ->
+                    if (result.any { it.contains("error") || it.contains("failed") }) {
+                        setError("拉取文件失败: ${result.joinToString("\n")}")
+                        tempFile.delete()
                     } else {
-                        currentFileContent.value = result.joinToString("\n")
+                        val content = tempFile.readText(Charsets.UTF_8)
+                        currentFileContent.value = content
                         currentFileName.value = fileName
+                        tempFile.delete()
                         onSuccess()
                     }
                     _isLoading.value = false
@@ -401,9 +397,9 @@ class FileManagerViewModel(
                 val fileName = currentFileName.value ?: return@launch
                 val dirPath = _directoryPath.joinToString("/")
                 
-                // 将内容写入临时文件
-                val tempFile = java.io.File.createTempFile("temp_", ".txt")
-                tempFile.writeText(content)
+                // 将内容写入临时文件，指定UTF-8编码并统一换行符
+                val tempFile = File.createTempFile("temp_", ".txt")
+                tempFile.writeText(content.replace("\r\n", "\n"), Charsets.UTF_8)
                 
                 // 使用adb push命令将临时文件推送到设备
                 adbDevicePoller.exec("push \"${tempFile.absolutePath}\" \"/${dirPath}/${fileName}\"") { result ->
