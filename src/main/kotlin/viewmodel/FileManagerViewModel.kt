@@ -30,6 +30,11 @@ class FileManagerViewModel(
     private val adbDevicePoller: AdbDevicePoller,
     private val coroutineScope: CoroutineScope
 ) {
+    companion object {
+        const val GITHUB_URL = "https://github.com/wkbin/AdbFileManager"
+        const val VERSION = "2.4.2"
+    }
+
     // Current directory path components
     private val _directoryPath = mutableStateListOf<String>()
     val directoryPath: SnapshotStateList<String> = _directoryPath

@@ -5,8 +5,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Minimize
+import androidx.compose.material.icons.filled.Code
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -27,6 +28,9 @@ fun FrameWindowScope.CustomWindowFrame(
 ) {
     // 检测当前是否为暗色模式
     val isDarkMode = ThemeState.isDark()
+    
+    // 关于对话框状态
+    var showAboutDialog by remember { mutableStateOf(false) }
     
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -71,6 +75,20 @@ fun FrameWindowScope.CustomWindowFrame(
                         )
                         
                         Spacer(modifier = Modifier.weight(1f))
+                        
+                        // GitHub 图标按钮
+                        IconButton(
+                            onClick = { showAboutDialog = true },
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Code,
+                                contentDescription = "关于",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(4.dp))
                         
                         // 窗口控制按钮区域
                         Row(
@@ -119,6 +137,12 @@ fun FrameWindowScope.CustomWindowFrame(
             ) {
                 content()
             }
+            
+            // 关于对话框
+            AboutDialog(
+                visible = showAboutDialog,
+                onDismiss = { showAboutDialog = false }
+            )
         }
     }
 } 
