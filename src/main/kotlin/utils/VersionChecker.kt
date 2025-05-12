@@ -4,13 +4,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 import viewmodel.FileManagerViewModel
 import java.io.File
-import kotlinx.serialization.encodeToString
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
 /**
  * 版本检查工具类
@@ -80,20 +77,18 @@ object VersionChecker {
                 return@withContext null
             }
             
-            val client = HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build()
-
-            val request = HttpRequest.newBuilder()
-                .uri(URI(GITHUB_API_URL))
+            // 使用 OkHttp 替代 HttpClient
+            val client = OkHttpClient()
+            val request = Request.Builder()
+                .url(GITHUB_API_URL)
                 .header("Accept", "application/vnd.github.v3+json")
-                .GET()
                 .build()
-
-            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+                
+            val response = client.newCall(request).execute()
             
-            if (response.statusCode() == 200) {
-                val release = json.decodeFromString<GitHubRelease>(response.body())
+            if (response.isSuccessful) {
+                val responseBody = response.body?.string() ?: return@withContext null
+                val release = json.decodeFromString<GitHubRelease>(responseBody)
                 val currentVersion = FileManagerViewModel.VERSION
                 val latestVersion = release.tag_name.removePrefix("v")
                 
@@ -113,10 +108,12 @@ object VersionChecker {
                     null
                 }
             } else {
+                println("检查更新失败，HTTP状态码: ${response.code}")
                 null
             }
         } catch (e: Exception) {
             println("检查更新失败: ${e.message}")
+            e.printStackTrace()
             null
         }
     }

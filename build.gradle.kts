@@ -53,6 +53,7 @@ dependencies {
     implementation(libs.mpfilepicker)
     implementation(libs.kotlinx.serialization)
     implementation (libs.juniversalchardet)
+    implementation("com.squareup.okhttp3:okhttp:4.11.0")
 }
 
 tasks.register<Copy>("copyComposeResources") {
