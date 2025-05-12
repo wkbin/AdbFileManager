@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -41,6 +42,8 @@ import view.theme.ThemeState
 import viewmodel.FileManagerViewModel
 import java.awt.Desktop
 import java.net.URI
+import utils.UpdateInfo
+import utils.VersionChecker
 
 /**
  * 创建目录对话框
@@ -617,6 +620,13 @@ fun AboutDialog(
 ) {
     if (!visible) return
 
+    // 检查更新状态
+    var isCheckingUpdate by remember { mutableStateOf(false) }
+    var updateAvailable by remember { mutableStateOf<UpdateInfo?>(null) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    
+    val coroutineScope = rememberCoroutineScope()
+
     Dialog(
         onDismissRequest = onDismiss
     ) {
@@ -656,7 +666,7 @@ fun AboutDialog(
 
                 // 版本信息
                 Text(
-                    text = "版本： ${FileManagerViewModel.VERSION}",
+                    text = "版本 ${FileManagerViewModel.VERSION}",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -673,27 +683,78 @@ fun AboutDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // GitHub 链接
-                Button(
-                    onClick = {
-                        try {
-                            Desktop.getDesktop().browse(URI(FileManagerViewModel.GITHUB_URL))
-                        } catch (e: Exception) {
-                            // 处理打开链接失败的情况
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
+                // 按钮区域
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.Code,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("在 GitHub 上查看")
+                    // GitHub 链接
+                    Button(
+                        onClick = {
+                            try {
+                                Desktop.getDesktop().browse(URI(FileManagerViewModel.GITHUB_URL))
+                            } catch (e: Exception) {
+                                // 处理打开链接失败的情况
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        ),
+                        modifier = Modifier.width(200.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Code,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("在 GitHub 上查看")
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    // 检查更新按钮
+                    Button(
+                        onClick = {
+                            isCheckingUpdate = true
+                            coroutineScope.launch {
+                                val update = VersionChecker.checkForUpdates(forceCheck = true)
+                                isCheckingUpdate = false
+                                if (update != null) {
+                                    updateAvailable = update
+                                    showUpdateDialog = true
+                                } else {
+                                    // 显示已是最新版本的提示
+                                    // 可以使用 SnackBar 或者其他方式提示
+                                }
+                            }
+                        },
+                        enabled = !isCheckingUpdate,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
+                        modifier = Modifier.width(200.dp)
+                    ) {
+                        if (isCheckingUpdate) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("检查中...")
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.Update,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("检查更新")
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -706,6 +767,184 @@ fun AboutDialog(
                     )
                 ) {
                     Text("关闭")
+                }
+            }
+        }
+    }
+    
+    // 显示更新对话框
+    updateAvailable?.let { info ->
+        UpdateDialog(
+            visible = showUpdateDialog,
+            updateInfo = info,
+            onDismiss = { showUpdateDialog = false }
+        )
+    }
+}
+
+/**
+ * 更新提示对话框
+ */
+@Composable
+fun UpdateDialog(
+    visible: Boolean,
+    updateInfo: UpdateInfo,
+    onDismiss: () -> Unit
+) {
+    if (!visible) return
+
+    var neverShowUpdates by remember { mutableStateOf(false) }
+
+    Dialog(
+        onDismissRequest = onDismiss
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp,
+            shadowElevation = 8.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(24.dp)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // 更新图标
+                Icon(
+                    imageVector = Icons.Filled.Update,
+                    contentDescription = null,
+                    modifier = Modifier.size(48.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 标题
+                Text(
+                    text = "发现新版本",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 版本信息
+                Text(
+                    text = "新版本 ${updateInfo.version} 已发布",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // 更新说明
+                Text(
+                    text = "更新内容：",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 更新说明内容
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, false)
+                        .heightIn(max = 200.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        Text(
+                            text = updateInfo.releaseNotes,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 永不提示选项
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Checkbox(
+                        checked = neverShowUpdates,
+                        onCheckedChange = { neverShowUpdates = it },
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                    Text(
+                        text = "不再提示版本更新",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 按钮区域
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
+                ) {
+                    // 稍后再说按钮
+                    TextButton(
+                        onClick = {
+                            // 如果选择了永不提示，保存配置
+                            if (neverShowUpdates) {
+                                VersionChecker.saveUpdateConfig(neverShowUpdates = true)
+                            } else {
+                                // 否则只忽略当前版本
+                                VersionChecker.saveUpdateConfig(ignoredVersion = updateInfo.version)
+                            }
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    ) {
+                        Text("稍后再说")
+                    }
+
+                    // 立即更新按钮
+                    Button(
+                        onClick = {
+                            try {
+                                Desktop.getDesktop().browse(URI(updateInfo.downloadUrl))
+                                // 如果选择了永不提示，保存配置
+                                if (neverShowUpdates) {
+                                    VersionChecker.saveUpdateConfig(neverShowUpdates = true)
+                                }
+                            } catch (e: Exception) {
+                                // 处理打开链接失败的情况
+                            }
+                            onDismiss()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Download,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("立即更新")
+                    }
                 }
             }
         }

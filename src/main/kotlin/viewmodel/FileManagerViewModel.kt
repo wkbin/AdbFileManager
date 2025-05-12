@@ -15,12 +15,23 @@ import runtime.adb.AdbDevicePoller
 import java.io.File
 import org.mozilla.universalchardet.UniversalDetector
 import java.nio.charset.Charset
+import utils.UpdateInfo
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.URL
 
 @Serializable
 data class Bookmark(
     val name: String,
     val path: String,
     val timestamp: Long = System.currentTimeMillis()
+)
+
+@Serializable
+data class GitHubRelease(
+    val tag_name: String,
+    val body: String,
+    val html_url: String
 )
 
 /**
@@ -32,7 +43,7 @@ class FileManagerViewModel(
 ) {
     companion object {
         const val GITHUB_URL = "https://github.com/wkbin/AdbFileManager"
-        const val VERSION = "2.4.2"
+        const val VERSION = "2.3.2"
     }
 
     // Current directory path components
@@ -93,8 +104,15 @@ class FileManagerViewModel(
         File(appDir, "bookmarks.json")
     }
 
+    private val _updateInfo = MutableStateFlow<UpdateInfo?>(null)
+    val updateInfo: StateFlow<UpdateInfo?> = _updateInfo.asStateFlow()
+
+    private val _showUpdateDialog = MutableStateFlow(false)
+    val showUpdateDialog: StateFlow<Boolean> = _showUpdateDialog.asStateFlow()
+
     init {
         loadBookmarks()
+        checkForUpdates()
     }
 
     /**
@@ -726,6 +744,48 @@ class FileManagerViewModel(
         }
         detector.dataEnd()
         return detector.detectedCharset ?: "UTF-8"
+    }
+
+    private fun checkForUpdates() {
+        coroutineScope.launch {
+            try {
+                val latestRelease = withContext(Dispatchers.IO) {
+                    val response = URL("https://api.github.com/repos/$GITHUB_URL/releases/latest").readText()
+                    Json.decodeFromString<GitHubRelease>(response)
+                }
+
+                // 比较版本号
+                val currentVersion = VERSION.replace("v", "")
+                val latestVersion = latestRelease.tag_name.replace("v", "")
+                
+                if (isNewerVersion(latestVersion, currentVersion)) {
+                    _updateInfo.value = UpdateInfo(
+                        version = latestRelease.tag_name,
+                        releaseNotes = latestRelease.body,
+                        downloadUrl = latestRelease.html_url
+                    )
+                    _showUpdateDialog.value = true
+                }
+            } catch (e: Exception) {
+                // 处理检查更新失败的情况
+            }
+        }
+    }
+
+    private fun isNewerVersion(latest: String, current: String): Boolean {
+        val latestParts = latest.split(".").map { it.toInt() }
+        val currentParts = current.split(".").map { it.toInt() }
+        
+        for (i in 0 until minOf(latestParts.size, currentParts.size)) {
+            if (latestParts[i] > currentParts[i]) return true
+            if (latestParts[i] < currentParts[i]) return false
+        }
+        
+        return latestParts.size > currentParts.size
+    }
+
+    fun dismissUpdateDialog() {
+        _showUpdateDialog.value = false
     }
 }
 

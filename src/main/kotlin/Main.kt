@@ -14,6 +14,7 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import runtime.AdbStore
@@ -22,9 +23,12 @@ import runtime.adb.Adb
 import runtime.adb.AdbDevicePoller
 import runtime.adb.Terminal
 import top.wkbin.filemanager.generated.resources.Res
+import utils.UpdateInfo
+import utils.VersionChecker
 import view.FileManagerScreen
 import view.components.CustomWindowFrame
 import view.components.DeviceConnectionWizard
+import view.components.UpdateDialog
 import view.theme.AdbFileManagerTheme
 import viewmodel.DeviceViewModel
 import viewmodel.FileManagerViewModel
@@ -96,6 +100,25 @@ private fun AppContent() {
     // 已连接设备状态
     val connectedDevices by deviceViewModel.connectedDevices.collectAsState(initial = emptyList())
     
+    // 更新检查状态
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+    
+    // 检查更新
+    LaunchedEffect(Unit) {
+        coroutineScope.launch {
+            try {
+                val newUpdate = VersionChecker.checkForUpdates()
+                if (newUpdate != null) {
+                    updateInfo = newUpdate
+                    showUpdateDialog = true
+                }
+            } catch (e: Exception) {
+                println("检查更新失败: ${e.message}")
+            }
+        }
+    }
+    
     // 根据设备连接状态显示适当的屏幕
     if (connectedDevices.isEmpty()) {
         DeviceConnectionWizard(deviceViewModel){
@@ -103,6 +126,15 @@ private fun AppContent() {
         }
     } else {
         FileManagerScreen(deviceViewModel, fileManagerViewModel)
+    }
+    
+    // 显示更新对话框
+    updateInfo?.let { info ->
+        UpdateDialog(
+            visible = showUpdateDialog,
+            updateInfo = info,
+            onDismiss = { showUpdateDialog = false }
+        )
     }
 }
 

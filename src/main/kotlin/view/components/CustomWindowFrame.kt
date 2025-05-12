@@ -16,6 +16,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.FrameWindowScope
 import view.theme.ThemeState
+import utils.UpdateInfo
+import kotlinx.coroutines.flow.collectLatest
 
 /**
  * 自定义窗口框架，提供自定义标题栏和内容区域
@@ -31,6 +33,10 @@ fun FrameWindowScope.CustomWindowFrame(
     
     // 关于对话框状态
     var showAboutDialog by remember { mutableStateOf(false) }
+    
+    // 更新对话框状态
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
     
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -143,6 +149,15 @@ fun FrameWindowScope.CustomWindowFrame(
                 visible = showAboutDialog,
                 onDismiss = { showAboutDialog = false }
             )
+            
+            // 更新对话框
+            updateInfo?.let { info ->
+                UpdateDialog(
+                    visible = showUpdateDialog,
+                    updateInfo = info,
+                    onDismiss = { showUpdateDialog = false }
+                )
+            }
         }
     }
 } 
