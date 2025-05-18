@@ -106,6 +106,17 @@ class AdbDevicePoller(
             onResult(listOf("Error: ${e.message}"))
         }
     }
+
+    suspend fun execSuspend(cmd: String): List<String> {
+        if (currentDevice == null) {
+            return (listOf("No device connected"))
+        }
+        return try {
+            adb.exec(currentDevice!!, cmd)
+        } catch (e: Exception) {
+            listOf("Error: ${e.message}")
+        }
+    }
     
     companion object {
         private const val POLLING_INTERVAL_MS = 3000L

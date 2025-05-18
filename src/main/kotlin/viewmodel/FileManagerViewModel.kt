@@ -19,6 +19,7 @@ import utils.UpdateInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.URL
+import kotlin.coroutines.suspendCoroutine
 
 @Serializable
 data class Bookmark(
@@ -95,9 +96,13 @@ class FileManagerViewModel(
     private val _bookmarks = mutableStateListOf<Bookmark>()
     val bookmarks: List<Bookmark> = _bookmarks
 
-    private val bookmarksFile: File by lazy {
+    val appDir by lazy {
         val userHome = System.getProperty("user.home")
-        val appDir = File(userHome, ".adbfilemanager")
+        File(userHome, ".adbfilemanager")
+    }
+
+    private val bookmarksFile: File by lazy {
+        val appDir = appDir
         if (!appDir.exists()) {
             appDir.mkdirs()
         }
@@ -606,6 +611,37 @@ class FileManagerViewModel(
                 _isLoading.value = false
             }
         }
+    }
+
+    fun importFiles(files: List<File>, onSuccess: () -> Unit) {
+        _isLoading.value = true
+        _error.value = null
+
+        coroutineScope.launch {
+            val dirPath = _directoryPath.joinToString("/")
+
+            for (file in files) {
+                val command = if (file.isDirectory) {
+                    val folderName = file.name
+                    "push \"${file.canonicalPath}\" \"/${dirPath}/${folderName}/\""
+                } else {
+                    "push \"${file.canonicalPath}\" \"/${dirPath}/\""
+                }
+                val pushResult = runCatching { adbDevicePoller.execSuspend(command) }
+                    .onFailure { it.printStackTrace() }
+                    .getOrNull() ?: listOf("Unknown error")
+                if (pushResult.any { it.lowercase().contains("error") || it.contains("failed") }) {
+                    setError("批量导入文件失败: ${pushResult.joinToString("\n")}")
+                    break
+                }
+            }
+
+            _isLoading.value = false
+            if (_error.value == null) {
+                onSuccess()
+            }
+        }
+
     }
 
     /**

@@ -1,46 +1,95 @@
 package view
 
-import androidx.compose.animation.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.onDrag
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.expandIn
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.FolderOff
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.isPrimaryPressed
+import androidx.compose.ui.input.pointer.isSecondaryPressed
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
 import com.darkrockstudios.libraries.mpfilepicker.FilePicker
 import kotlinx.coroutines.launch
-import view.components.*
+import view.components.CreateDirectoryDialog
+import view.components.CreateFileDialog
+import view.components.FileEditDialog
+import view.components.FileListItem
+import view.components.FileManagerToolbar
+import view.components.PathNavigator
+import view.components.SearchDialog
+import view.components.dnd.adbDndSource
+import view.components.dnd.adbDndTarget
+import view.components.isEditableFile
 import view.theme.AdbFileManagerTheme
 import viewmodel.DeviceViewModel
 import viewmodel.FileManagerViewModel
 import viewmodel.ViewMode
 import java.io.File
-import androidx.compose.ui.input.pointer.*
-import androidx.compose.ui.unit.DpOffset
 
 /**
  * 文件管理器主屏幕
@@ -303,7 +352,14 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                     }
 
                     // 文件列表
-                    Box(modifier = Modifier.fillMaxSize()) {
+                    Box(modifier = Modifier
+                        .fillMaxSize()
+                        .adbDndTarget { files ->
+                            viewModel.importFiles(files) {
+                                viewModel.reload()
+                            }
+                        }
+                    ) {
                         if (files.isEmpty() && !isLoading) {
                             // 空状态
                             Column(
@@ -398,7 +454,8 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                                                         },
                                                         onDownloadFile = {
                                                             showDirectoryPicker = true
-                                                        }
+                                                        },
+                                                        modifier = Modifier.adbDndSource("/${viewModel.directoryPath.joinToString("/")}/${file.fileName}")
                                                     )
                                                 }
                                             }
@@ -469,7 +526,8 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                                                         },
                                                         onDownloadFile = {
                                                             showDirectoryPicker = true
-                                                        }
+                                                        },
+                                                        modifier = Modifier.adbDndSource("/${viewModel.directoryPath.joinToString("/")}/${file.fileName}")
                                                     )
                                                 }
                                             }
@@ -667,20 +725,40 @@ fun GridFileItem(
     onFileClick: () -> Unit,
     onEditFile: () -> Unit,
     onDeleteFile: () -> Unit,
-    onDownloadFile: () -> Unit
+    onDownloadFile: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var showContextMenu by remember { mutableStateOf(false) }
-    Box {
+    var startPosition by remember { mutableStateOf(Offset.Zero) }
+    var pendingEvent by remember { mutableStateOf({}) }
+    Box(modifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .onPointerEvent(PointerEventType.Press) {
-                    when {
-                        it.buttons.isPrimaryPressed -> onFileClick.invoke()
+                    startPosition = it.changes.first().position
+                    pendingEvent = when {
+                        it.buttons.isPrimaryPressed -> onFileClick
                         it.buttons.isSecondaryPressed -> {
-                            showContextMenu = true
+                            { showContextMenu = true }
                         }
+                        else -> {{}}
                     }
+                }
+                .onPointerEvent(PointerEventType.Release) {
+                    val currentPosition = it.changes.first().position
+                    val diffX = startPosition.x - currentPosition.x
+                    val diffY = startPosition.y - currentPosition.y
+
+                    if (diffX * diffX + diffY * diffY > 5 * 5) {
+                        println("pointer moved")
+                        startPosition = Offset.Zero
+                        pendingEvent = {}
+                        return@onPointerEvent
+                    }
+                    pendingEvent()
+                    startPosition = Offset.Zero
+                    pendingEvent = {}
                 }
                 .padding(vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
