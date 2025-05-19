@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
+import org.jetbrains.skiko.hostOs
+import java.io.File
 
 class Terminal {
     suspend fun run(command: String): List<String> = withContext(Dispatchers.IO) {
@@ -14,20 +16,18 @@ class Terminal {
             println("Command is null or empty.")
             return@withContext emptyList()
         }
-
-
-        val process = ProcessBuilder(*command.split(" ").toTypedArray())
+        val commandArray = if (hostOs.isWindows) {
+            command.split(" ").toTypedArray()
+        } else {
+            val shell = System.getenv("SHELL")
+            arrayOf(shell, "-c", command)
+        }
+        val process = ProcessBuilder(*commandArray)
             .redirectErrorStream(true)
             .start()
 
         val output = process.inputStream.bufferedReader().readLines()
-        val errors = process.errorStream.bufferedReader().readLines()
-
-        if (errors.isNotEmpty()) {
-            emptyList()
-        } else {
-            output
-        }.also {
+        output.also {
             println(
                 """$command $it """.trimIndent()
             )

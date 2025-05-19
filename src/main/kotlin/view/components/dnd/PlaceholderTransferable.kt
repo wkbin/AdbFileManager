@@ -6,6 +6,10 @@ import java.awt.datatransfer.Transferable
 import java.io.File
 
 class PlaceholderTransferable(adbFile: String, selectionFile: String): Transferable {
+    companion object {
+        val PLACEHOLDER_FLAVOR = DataFlavor("adb/placeholder")
+    }
+
     private val placeholderFileUnix by lazy {
         File.createTempFile("下载文件", ".sh").also {
             it.writeText(
@@ -39,7 +43,7 @@ class PlaceholderTransferable(adbFile: String, selectionFile: String): Transfera
     }
 
     override fun isDataFlavorSupported(flavor: DataFlavor?): Boolean {
-        return DataFlavor.javaFileListFlavor.isMimeTypeEqual(flavor)
+        return DataFlavor.javaFileListFlavor.isMimeTypeEqual(flavor) || PLACEHOLDER_FLAVOR.mimeType == flavor?.mimeType
     }
 
     override fun getTransferData(flavor: DataFlavor?): Any {
