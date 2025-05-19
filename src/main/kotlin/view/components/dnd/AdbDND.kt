@@ -43,9 +43,11 @@ fun Modifier.adbDndTarget(onDropAction: (List<File>) -> Unit): Modifier {
 
                 val transferable = event.awtTransferable
                 if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
+                    val isPlaceholder = transferable.isDataFlavorSupported(PlaceholderTransferable.PLACEHOLDER_FLAVOR)
                     val data = transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<File>
-                    if (data != null && data.isNotEmpty()) {
+                    if (data != null && data.isNotEmpty() && !isPlaceholder) {
                         onDropAction(data)
+                        return true
                     }
                 }
 
