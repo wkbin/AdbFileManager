@@ -7,7 +7,7 @@ import java.io.IOException
  * Class handling ADB command execution and device management
  */
 class Adb(
-    private val adbPath: String,
+    val adbPath: String,
     private val terminal: Terminal
 ) {
     /**
