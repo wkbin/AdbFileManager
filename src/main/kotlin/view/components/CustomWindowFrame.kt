@@ -39,7 +39,10 @@ fun FrameWindowScope.CustomWindowFrame(
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
     
     Surface(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(4.dp),
+        shadowElevation = 4.dp,
         color = MaterialTheme.colorScheme.background
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
