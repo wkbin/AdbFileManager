@@ -40,17 +40,14 @@ fun Modifier.adbDndTarget(onDropAction: (List<File>) -> Unit): Modifier {
             }
 
             override fun onDrop(event: DragAndDropEvent): Boolean {
-
                 val transferable = event.awtTransferable
                 if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                    val isPlaceholder = transferable.isDataFlavorSupported(PlaceholderTransferable.PLACEHOLDER_FLAVOR)
                     val data = transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<File>
-                    if (data != null && data.isNotEmpty() && !isPlaceholder) {
+                    if (!data.isNullOrEmpty()) {
                         onDropAction(data)
                         return true
                     }
                 }
-
                 return false
             }
         }

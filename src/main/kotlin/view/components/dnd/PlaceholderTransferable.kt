@@ -1,41 +1,27 @@
 package view.components.dnd
 
-import org.jetbrains.skiko.hostOs
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.Transferable
 import java.io.File
 
 class PlaceholderTransferable(adbFile: String, selectionFile: String): Transferable {
-    companion object {
-        val PLACEHOLDER_FLAVOR = DataFlavor("adb/placeholder")
-    }
 
-    private val placeholderFileUnix by lazy {
-        File.createTempFile("下载文件", ".sh").also {
-            it.writeText(
-                """
-                #!/usr/bin/sh
-                $adbFile pull "$selectionFile"
-                rm -- "$0"
-            """.trimIndent())
-            it.setExecutable(true)
-        }
-    }
-    private val placeholderFileWindows by lazy {
-        File.createTempFile("下载文件", ".bat").also {
-            it.writeText("""
-                $adbFile pull "$selectionFile"
-                del %0
-            """.trimIndent())
-        }
-    }
 
-    private val placeholderFile by lazy {
-        if (hostOs.isWindows) {
-            placeholderFileWindows
-        } else {
-            placeholderFileUnix
-        }.also(File::deleteOnExit)
+    private val tempFile: File by lazy {
+        // 获取原始文件名
+        val fileName = selectionFile.substringAfterLast("/")
+        // 创建临时目录
+        val tempDir = File(System.getProperty("java.io.tmpdir"), "adb_drag_${System.currentTimeMillis()}")
+        tempDir.mkdirs()
+        // 在临时目录中创建文件，保持原始文件名
+        val file = File(tempDir, fileName)
+        // 执行 adb pull 命令
+        val process = ProcessBuilder(adbFile, "pull", selectionFile, file.path)
+            .start()
+        process.waitFor()
+        // 确保临时目录在程序退出时被删除
+        tempDir.deleteOnExit()
+        file
     }
 
     override fun getTransferDataFlavors(): Array<out DataFlavor?>? {
@@ -43,10 +29,10 @@ class PlaceholderTransferable(adbFile: String, selectionFile: String): Transfera
     }
 
     override fun isDataFlavorSupported(flavor: DataFlavor?): Boolean {
-        return DataFlavor.javaFileListFlavor.isMimeTypeEqual(flavor) || PLACEHOLDER_FLAVOR.mimeType == flavor?.mimeType
+        return DataFlavor.javaFileListFlavor.isMimeTypeEqual(flavor)
     }
 
     override fun getTransferData(flavor: DataFlavor?): Any {
-        return listOf(placeholderFile)
+        return listOf(tempFile)
     }
 }
