@@ -10,14 +10,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.FrameWindowScope
 import view.theme.ThemeState
 import utils.UpdateInfo
-import kotlinx.coroutines.flow.collectLatest
 
 /**
  * 自定义窗口框架，提供自定义标题栏和内容区域
@@ -36,12 +34,11 @@ fun FrameWindowScope.CustomWindowFrame(
     
     // 更新对话框状态
     var showUpdateDialog by remember { mutableStateOf(false) }
-    var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
+    val updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
     
     Surface(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(4.dp),
+            .fillMaxSize(),
         shadowElevation = 4.dp,
         color = MaterialTheme.colorScheme.background
     ) {
