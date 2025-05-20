@@ -1,11 +1,12 @@
 package view.components.dnd
 
+import runtime.adb.env.AppContext
 import java.awt.datatransfer.DataFlavor
 import java.awt.datatransfer.Transferable
 import java.io.File
 import java.util.concurrent.TimeUnit
 
-class PlaceholderTransferable(adbFile: String, selectionFile: String): Transferable {
+class PlaceholderTransferable(adbFile: String, selectionFile: String) : Transferable {
 
     private val tempFile: File by lazy {
         // 获取原始文件名
@@ -17,18 +18,21 @@ class PlaceholderTransferable(adbFile: String, selectionFile: String): Transfera
         val file = File(tempDir, fileName)
         try {
             // 执行 adb pull 命令
-            val process = ProcessBuilder(adbFile, "pull", selectionFile, file.path)
-                .start()
-            
+            val process =
+                ProcessBuilder(adbFile, "-s", AppContext.adbDevice?.deviceId!!, "pull", selectionFile, file.path)
+                    .redirectErrorStream(true)
+                    .start()
+
             // 添加超时机制，最多等待5秒
             if (!process.waitFor(5, TimeUnit.SECONDS)) {
                 process.destroyForcibly()
                 throw RuntimeException("ADB pull operation timed out")
             }
-            
+
             // 检查进程退出值
             if (process.exitValue() != 0) {
-                throw RuntimeException("ADB pull failed with exit code: ${process.exitValue()}")
+                val errorOutput = process.inputStream.bufferedReader().use { it.readText() }
+                throw RuntimeException("ADB pull failed with exit code: ${process.exitValue()}\nError: $errorOutput")
             }
         } catch (e: Exception) {
             // 清理临时目录
