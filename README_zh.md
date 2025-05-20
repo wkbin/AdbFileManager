@@ -6,6 +6,7 @@
 
 ![Kotlin](https://img.shields.io/badge/kotlin-1.9.21-blue.svg)
 ![Compose](https://img.shields.io/badge/compose-1.5.11-green.svg)
+![Version](https://img.shields.io/badge/version-v2.6.0-orange.svg)
 
 ## 📖 简介
 
@@ -16,7 +17,7 @@ ADB File Manager是一款桌面应用程序，允许你通过ADB连接远程浏�
 <div align="center">
   <img src="docs/images/1.png" alt="ADB文件管理器主页预览" width="800">
   <img src="docs/images/2.png" alt="ADB文件管理器编辑内容预览" width="800">
-<img src="docs/images/3.png" alt="ADB文件管理器深色模式搜索预览" width="800">
+  <img src="docs/images/3.png" alt="ADB文件管理器深色模式搜索预览" width="800">
 </div>
 
 ## ✨ 特点
@@ -36,6 +37,7 @@ ADB File Manager是一款桌面应用程序，允许你通过ADB连接远程浏�
 - 📁 **文件夹导入** - 一键导入本地文件夹到设备
 - 🔖 **书签功能** - 将常用目录保存为书签，实现快速导航
 - 📊 **平铺视图** - 支持列表和网格两种查看模式，更直观地显示文件
+- 🖼️ **拖放上传与下载** - 通过拖放文件到应用程序中轻松上传文件，同时支持拖放下载文件
 
 ## 🔧 技术栈
 
@@ -118,7 +120,6 @@ ADB File Manager是一款桌面应用程序，允许你通过ADB连接远程浏�
 ## 📋 待实现功能
 
 - [ ] 文件权限修改
-- [ ] 拖放上传文件
 - [ ] 文件预览功能
 - [ ] 多文件选择批量操作
 

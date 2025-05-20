@@ -6,6 +6,7 @@ A Material You designed Android device file manager that enables remote file ope
 
 ![Kotlin](https://img.shields.io/badge/kotlin-1.9.21-blue.svg)
 ![Compose](https://img.shields.io/badge/compose-1.5.11-green.svg)
+![Version](https://img.shields.io/badge/version-v2.6.0-orange.svg)
 
 ## 📖 Introduction
 
@@ -36,6 +37,7 @@ ADB File Manager is a desktop application that allows you to remotely browse and
 - 📁 **Folder Import** - Import entire folders from local system to device with a single click
 - 🔖 **Bookmarks** - Save frequently accessed directories as bookmarks for quick navigation
 - 📊 **Grid View** - Toggle between list and grid view modes for better visual representation of files
+- 🖼️ **Drag and Drop File Upload/Download** - Easily upload files by dragging and dropping them into the application, and download files by dragging them out
 
 ## 🔧 Technology Stack
 
@@ -118,7 +120,6 @@ ADB File Manager is a desktop application that allows you to remotely browse and
 ## 📋 Upcoming Features
 
 - [ ] File permission modification
-- [ ] Drag and drop file upload
 - [ ] File preview functionality
 - [ ] Multiple files selection for batch operations
 
