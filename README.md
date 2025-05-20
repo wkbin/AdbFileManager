@@ -4,8 +4,8 @@
 
 A Material You designed Android device file manager that enables remote file operations via ADB connection.
 
-![Kotlin](https://img.shields.io/badge/kotlin-1.9.21-blue.svg)
-![Compose](https://img.shields.io/badge/compose-1.5.11-green.svg)
+![Kotlin](https://img.shields.io/badge/kotlin-2.1.20-blue.svg)
+![Compose](https://img.shields.io/badge/compose-1.8.0-green.svg)
 ![Version](https://img.shields.io/badge/version-v2.6.0-orange.svg)
 
 ## 📖 Introduction
