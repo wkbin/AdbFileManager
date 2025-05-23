@@ -177,6 +177,9 @@ class FileManagerViewModel(
         _sortTrigger.value = _sortTrigger.value + 1
     }
 
+
+
+
     /**
      * Load files from the current directory
      */
@@ -187,21 +190,12 @@ class FileManagerViewModel(
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
-                adbDevicePoller.exec("shell ls -l -p /${dirPath} | sort") { result ->
-                    // 检查权限错误
-                    if (result.any { it.contains("Permission denied") }) {
-                        setError("权限不足：无法访问该目录")
-                        _files.value = emptyList()
-                    } else if (
-                        result.firstOrNull()?.startsWith("ls") == true ||
-                        result.lastOrNull()?.contains("Permission") == true ||
-                        result.lastOrNull()?.contains("directory") == true
-                    ) {
-                        _files.value = emptyList()
-                    } else {
-                        _files.value = FileUtils.parseLsOutput(result)
-                        sortFiles() // 应用当前排序方式
-                    }
+                val cmd = "shell cd /${dirPath} && stat -c '%F|%A|%h|%U|%G|%s|%Y|%n|%N' * 2>/dev/null"
+                println("cmd: $cmd")
+                adbDevicePoller.exec(cmd) { result ->
+                    println("result: $result")
+                    _files.value = FileUtils.parseStatOutput(result)
+                    sortFiles()
                     _isLoading.value = false
                 }
             } catch (e: Exception) {
@@ -700,20 +694,11 @@ class FileManagerViewModel(
         coroutineScope.launch {
             try {
                 val dirPath = _directoryPath.joinToString("/")
-                adbDevicePoller.exec("shell ls -l -p /${dirPath} | grep -i \"${query}\" | sort") { result ->
-                    // 检查权限错误
-                    if (result.any { it.contains("Permission denied") }) {
-                        setError("权限不足：无法搜索该目录")
-                        _searchResults.value = emptyList()
-                    } else if (
-                        result.firstOrNull()?.startsWith("ls") == true ||
-                        result.lastOrNull()?.contains("Permission") == true ||
-                        result.lastOrNull()?.contains("directory") == true
-                    ) {
-                        _searchResults.value = emptyList()
-                    } else {
-                        _searchResults.value = FileUtils.parseLsOutput(result)
-                    }
+                val cmd = "shell cd /${dirPath} && stat -c '%F|%A|%h|%U|%G|%s|%Y|%n|%N' * 2>/dev/null | awk -F'|' -v query=\"$query\" 'tolower(\$8) ~ tolower(query)'"
+                println("cmd: $cmd")
+                adbDevicePoller.exec(cmd) { result ->
+                    println("result: $result")
+                    _searchResults.value = FileUtils.parseStatOutput(result)
                     _isSearching.value = false
                 }
             } catch (e: Exception) {
@@ -793,7 +778,7 @@ class FileManagerViewModel(
                 // 比较版本号
                 val currentVersion = VERSION.replace("v", "")
                 val latestVersion = latestRelease.tag_name.replace("v", "")
-                
+
                 if (isNewerVersion(latestVersion, currentVersion)) {
                     _updateInfo.value = UpdateInfo(
                         version = latestRelease.tag_name,
@@ -811,12 +796,12 @@ class FileManagerViewModel(
     private fun isNewerVersion(latest: String, current: String): Boolean {
         val latestParts = latest.split(".").map { it.toInt() }
         val currentParts = current.split(".").map { it.toInt() }
-        
+
         for (i in 0 until minOf(latestParts.size, currentParts.size)) {
             if (latestParts[i] > currentParts[i]) return true
             if (latestParts[i] < currentParts[i]) return false
         }
-        
+
         return latestParts.size > currentParts.size
     }
 
