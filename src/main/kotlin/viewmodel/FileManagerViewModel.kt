@@ -44,7 +44,7 @@ class FileManagerViewModel(
 ) {
     companion object {
         const val GITHUB_URL = "https://github.com/wkbin/AdbFileManager"
-        const val VERSION = "2.6.0"
+        const val VERSION = "2.6.1"
     }
 
     // Current directory path components
