@@ -135,7 +135,7 @@ ADB File Manager是一款桌面应用程序，允许你通过ADB连接远程浏�
 
 ## 📈 Star 趋势
 
-[![Star History Chart](https://api.star-history.com/svg?repos=AdbFileManager/AdbFileManager&type=Date)](https://star-history.com/#AdbFileManager/AdbFileManager&Date)
+[![Star History Chart](https://starchart.cc/wkbin/AdbFileManager.svg)](https://starchart.cc/wkbin/AdbFileManager)
 
 ## 📄 许可证
 

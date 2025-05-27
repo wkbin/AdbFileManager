@@ -135,7 +135,7 @@ Contributions, issue reports, and feature suggestions are welcome! See [CONTRIBU
 
 ## 📈 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=AdbFileManager/AdbFileManager&type=Date)](https://star-history.com/#AdbFileManager/AdbFileManager&Date)
+[![Star History Chart](https://starchart.cc/wkbin/AdbFileManager.svg)](https://starchart.cc/wkbin/AdbFileManager)
 
 ## 📄 License
 
