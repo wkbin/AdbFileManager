@@ -133,6 +133,10 @@ ADB File Manager是一款桌面应用程序，允许你通过ADB连接远程浏�
 4. 推送到分支 (`git push origin feature/amazing-feature`)
 5. 提交Pull Request
 
+## 📈 Star 趋势
+
+[![Star History Chart](https://api.star-history.com/svg?repos=AdbFileManager/AdbFileManager&type=Date)](https://star-history.com/#AdbFileManager/AdbFileManager&Date)
+
 ## 📄 许可证
 
 本项目基于MIT许可证发布 - 详情请查看[LICENSE](LICENSE)文件。 

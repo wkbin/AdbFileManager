@@ -133,6 +133,10 @@ Contributions, issue reports, and feature suggestions are welcome! See [CONTRIBU
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Submit a Pull Request
 
+## 📈 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=AdbFileManager/AdbFileManager&type=Date)](https://star-history.com/#AdbFileManager/AdbFileManager&Date)
+
 ## 📄 License
 
 This project is released under the MIT License - see the [LICENSE](LICENSE) file for details.
