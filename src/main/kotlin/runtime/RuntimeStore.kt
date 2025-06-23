@@ -4,23 +4,32 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.skiko.hostOs
 import utils.ZipUtils
-import java.awt.Desktop
 import java.io.ByteArrayInputStream
 import java.io.File
-import java.net.URI
 import java.nio.file.Paths
 
 
 abstract class Runtime {
     suspend fun installRuntime(byteArray: ByteArray, installPath: String) {
-        val inputStream = ByteArrayInputStream(byteArray)
-        try {
-            ZipUtils.unzip(inputStream, installPath)
-            withContext(Dispatchers.IO) {
-                inputStream.close()
+        withContext(Dispatchers.IO) {
+            if (hostOs.isWindows) {
+                ZipUtils.unzip(ByteArrayInputStream(byteArray), installPath)
+                return@withContext
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
+            try {
+                val adbOutputFile = File(installPath, "adb")
+                if (!adbOutputFile.exists()) {
+                    adbOutputFile.createNewFile()
+                }
+                ByteArrayInputStream(byteArray).use { inputStream ->
+                    adbOutputFile.outputStream().use { outputStream ->
+                        inputStream.copyTo(outputStream)
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                // 添加具体错误处理
+            }
         }
     }
 }
@@ -28,7 +37,6 @@ abstract class Runtime {
 
 class ContextStore {
     private val rootPath: String = ".fileManager"
-
 
     //缓存目录
     private val rootDir by lazy {
@@ -39,7 +47,9 @@ class ContextStore {
                 "Local"
             ).toString()
 
-            hostOs.isMacOS -> Paths.get(System.getProperty("user.home"), "Library", "Caches").toString()
+            hostOs.isMacOS -> Paths.get(System.getProperty("user.home"), "Library", "Caches")
+                .toString()
+
             else -> Paths.get(System.getProperty("user.home"), ".cache").toString()
         }
         val file = File(path, rootPath)
@@ -58,13 +68,7 @@ class ContextStore {
 
 
 class AdbStore(runtimeDir: File) : Runtime() {
-    val adbHostFile by lazy {
-        File(runtimeDir, "adb").apply {
-            if (!exists()) {
-                mkdirs()
-            }
-        }
-    }
+    val adbHostFile = runtimeDir
 
     val resourceName by lazy {
         val hostName = when {
@@ -72,6 +76,7 @@ class AdbStore(runtimeDir: File) : Runtime() {
             hostOs.isMacOS -> "macos"
             else -> "linux"
         }
-        "files/$hostName/adb.zip"
+        val adb = if (hostOs.isWindows) "adb.zip" else "adb"
+        "files/$hostName/$adb"
     }
 }
