@@ -42,7 +42,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
@@ -100,12 +99,6 @@ fun FileListItem(
         label = "elevationAnimation"
     )
 
-    val scale by animateFloatAsState(
-        targetValue = if (isHovered) 1.02f else 1f,
-        animationSpec = tween(durationMillis = 150),
-        label = "scaleAnimation"
-    )
-
     val backgroundColor = if (isHovered) {
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     } else {
@@ -122,7 +115,6 @@ fun FileListItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 4.dp)
-            .scale(scale)
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
