@@ -32,7 +32,10 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
-import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.dialogs.openDirectoryPicker
+import io.github.vinceglb.filekit.path
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import viewmodel.FileManagerViewModel
 
@@ -52,6 +55,7 @@ fun SearchDialog(
     isLoading: Boolean
 ) {
     if (visible) {
+        val scope = rememberCoroutineScope()
         Dialog(onDismissRequest = onDismiss) {
             Surface(
                 modifier = Modifier
@@ -145,10 +149,12 @@ fun SearchDialog(
                         ) {
                             items(searchResults) { file ->
                                 var showDirectoryPicker by remember { mutableStateOf(false) }
-                                DirectoryPicker(showDirectoryPicker) { path ->
-                                    showDirectoryPicker = false
-                                    path?.let {
-                                        viewModel.pullFile(file.fileName, it) {
+                                if (showDirectoryPicker){
+                                    scope.launch {
+                                        val directory = FileKit.openDirectoryPicker()
+                                        showDirectoryPicker = false
+                                        directory?:return@launch
+                                        viewModel.pullFile(file.fileName, directory.path) {
                                             // 拉取完成
                                         }
                                     }

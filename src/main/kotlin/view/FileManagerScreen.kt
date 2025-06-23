@@ -72,8 +72,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import com.darkrockstudios.libraries.mpfilepicker.DirectoryPicker
-import com.darkrockstudios.libraries.mpfilepicker.FilePicker
+import io.github.vinceglb.filekit.FileKit
+import io.github.vinceglb.filekit.dialogs.openDirectoryPicker
+import io.github.vinceglb.filekit.dialogs.openFilePicker
+import io.github.vinceglb.filekit.path
 import kotlinx.coroutines.launch
 import view.components.CreateDirectoryDialog
 import view.components.CreateFileDialog
@@ -89,7 +91,6 @@ import view.theme.AdbFileManagerTheme
 import viewmodel.DeviceViewModel
 import viewmodel.FileManagerViewModel
 import viewmodel.ViewMode
-import java.io.File
 
 /**
  * 文件管理器主屏幕
@@ -199,7 +200,8 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                                                 val newPath = path.trim()
                                                 if (newPath.isNotEmpty()) {
                                                     // 将输入的路径转换为路径列表
-                                                    val pathSegments = newPath.split("/").filter { it.isNotEmpty() }
+                                                    val pathSegments = newPath.split("/")
+                                                        .filter { it.isNotEmpty() }
                                                     if (pathSegments.isNotEmpty()) {
                                                         // 更新当前路径
                                                         viewModel.directoryPath.clear()
@@ -352,13 +354,14 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                     }
 
                     // 文件列表
-                    Box(modifier = Modifier
-                        .fillMaxSize()
-                        .adbDndTarget { files ->
-                            viewModel.importFiles(files) {
-                                viewModel.reload()
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .adbDndTarget { files ->
+                                viewModel.importFiles(files) {
+                                    viewModel.reload()
+                                }
                             }
-                        }
                     ) {
                         if (files.isEmpty() && !isLoading) {
                             // 空状态
@@ -392,7 +395,8 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                                     // 列表视图
                                     LazyColumn(
                                         state = listState,
-                                        modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp),
+                                        modifier = Modifier.fillMaxSize()
+                                            .padding(horizontal = 8.dp),
                                         verticalArrangement = Arrangement.spacedBy(4.dp),
                                         contentPadding = PaddingValues(
                                             top = 8.dp,
@@ -405,14 +409,25 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                                             items = files,
                                             key = { it.fileName }
                                         ) { file ->
-                                            var showDirectoryPicker by remember { mutableStateOf(false) }
-                                            DirectoryPicker(showDirectoryPicker) { path ->
-                                                showDirectoryPicker = false
-                                                path?.let {
-                                                    viewModel.pullFile(file.fileName, it) {
-                                                        // 拉取完成
+                                            var showDirectoryPicker by remember {
+                                                mutableStateOf(
+                                                    false
+                                                )
+                                            }
+                                            if (showDirectoryPicker) {
+                                                scope.launch {
+                                                    val directory = FileKit.openDirectoryPicker()
+                                                    showDirectoryPicker = false
+                                                    directory ?: return@launch
+                                                    viewModel.pullFile(
+                                                        file.fileName,
+                                                        directory.path
+                                                    ) {
+                                                        // Ignore
                                                     }
+
                                                 }
+
                                             }
 
                                             // 使用带动画的包装器
@@ -455,7 +470,13 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                                                         onDownloadFile = {
                                                             showDirectoryPicker = true
                                                         },
-                                                        modifier = Modifier.adbDndSource("/${viewModel.directoryPath.joinToString("/")}/${file.fileName}")
+                                                        modifier = Modifier.adbDndSource(
+                                                            "/${
+                                                                viewModel.directoryPath.joinToString(
+                                                                    "/"
+                                                                )
+                                                            }/${file.fileName}"
+                                                        )
                                                     )
                                                 }
                                             }
@@ -468,7 +489,8 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                                     LazyVerticalGrid(
                                         columns = GridCells.Adaptive(minSize = 120.dp),
                                         state = gridState,
-                                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
+                                        modifier = Modifier.fillMaxSize()
+                                            .padding(horizontal = 16.dp),
                                         verticalArrangement = Arrangement.spacedBy(16.dp),
                                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                                         contentPadding = PaddingValues(
@@ -482,13 +504,23 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                                             items = files,
                                             key = { it.fileName }
                                         ) { file ->
-                                            var showDirectoryPicker by remember { mutableStateOf(false) }
-                                            DirectoryPicker(showDirectoryPicker) { path ->
-                                                showDirectoryPicker = false
-                                                path?.let {
-                                                    viewModel.pullFile(file.fileName, it) {
+                                            var showDirectoryPicker by remember {
+                                                mutableStateOf(
+                                                    false
+                                                )
+                                            }
+                                            if (showDirectoryPicker) {
+                                                scope.launch {
+                                                    val directory = FileKit.openDirectoryPicker()
+                                                    showDirectoryPicker = false
+                                                    directory ?: return@launch
+                                                    viewModel.pullFile(
+                                                        file.fileName,
+                                                        directory.path
+                                                    ) {
                                                         // 拉取完成
                                                     }
+
                                                 }
                                             }
 
@@ -527,7 +559,13 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                                                         onDownloadFile = {
                                                             showDirectoryPicker = true
                                                         },
-                                                        modifier = Modifier.adbDndSource("/${viewModel.directoryPath.joinToString("/")}/${file.fileName}")
+                                                        modifier = Modifier.adbDndSource(
+                                                            "/${
+                                                                viewModel.directoryPath.joinToString(
+                                                                    "/"
+                                                                )
+                                                            }/${file.fileName}"
+                                                        )
                                                     )
                                                 }
                                             }
@@ -658,26 +696,26 @@ fun FileManagerScreen(deviceViewModel: DeviceViewModel, viewModel: FileManagerVi
                     }
                 )
 
-                // 文件选择器
-                FilePicker(showFilePicker) { path ->
-                    showFilePicker = false
-                    path?.let {
-                        val file = File(it.path)
-                        viewModel.importFile(file) {
-                            // 刷新文件列表
+                if (showFilePicker) {
+                    scope.launch {
+                        val file = FileKit.openFilePicker()
+                        showFilePicker = false
+                        file ?: return@launch
+                        viewModel.importFile(file.file) {
                             viewModel.reload()
                         }
                     }
                 }
 
-                // 文件夹选择器
-                DirectoryPicker(showFolderPicker) { path ->
-                    showFolderPicker = false
-                    path?.let {
-                        viewModel.importFolder(it) {
-                            // 刷新文件列表
+                if (showFolderPicker) {
+                    scope.launch {
+                        val directory = FileKit.openDirectoryPicker()
+                        showFolderPicker = false
+                        directory ?: return@launch
+                        viewModel.importFolder(directory.path) {
                             viewModel.reload()
                         }
+
                     }
                 }
 
@@ -742,7 +780,10 @@ fun GridFileItem(
                         it.buttons.isSecondaryPressed -> {
                             { showContextMenu = true }
                         }
-                        else -> {{}}
+
+                        else -> {
+                            {}
+                        }
                     }
                 }
                 .onPointerEvent(PointerEventType.Release) {

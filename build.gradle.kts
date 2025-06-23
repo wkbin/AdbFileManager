@@ -41,18 +41,15 @@ tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach 
 }
 
 dependencies {
-    // Note, if you develop a library, you should use compose.desktop.common.
-    // compose.desktop.currentOs should be used in launcher-sourceSet
-    // (in a separate module for demo project and in testMain).
-    // With compose.desktop.common you will also lose @Preview functionality
     implementation(compose.desktop.currentOs)
     implementation(compose.components.resources)
     implementation(compose.material3)
     implementation(compose.materialIconsExtended)
-    implementation(libs.mpfilepicker)
+    implementation(libs.filekit.core)
+    implementation(libs.filekit.dialogs.compose)
     implementation(libs.kotlinx.serialization)
-    implementation (libs.juniversalchardet)
-    implementation("com.squareup.okhttp3:okhttp:4.11.0")
+    implementation(libs.juniversalchardet)
+    implementation(libs.okhttp)
 }
 
 compose.desktop {

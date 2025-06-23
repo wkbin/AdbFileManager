@@ -2,13 +2,16 @@
 kotlin = "2.1.20"
 compose-plugin = "1.8.0-rc01"
 kotlinx-serialization = "1.8.0"
-mpfilepicker = "3.1.0"
 juniversalchardet = "2.5.0"
+filekit = "0.10.0-beta04"
+okhttp = "4.11.0"
 
 [libraries]
 kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
-mpfilepicker = { module = "com.darkrockstudios:mpfilepicker", version.ref = "mpfilepicker" }
 juniversalchardet = { module = "com.github.albfernandez:juniversalchardet" , version.ref = "juniversalchardet"}
+filekit-core = { module = "io.github.vinceglb:filekit-core", version.ref = "filekit"}
+filekit-dialogs-compose = { module = "io.github.vinceglb:filekit-dialogs-compose", version.ref = "filekit"}
+okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp"}
 
 [plugins]
 kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
