@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.ExperimentalResourceApi
+import org.jetbrains.skiko.hostOs
 import runtime.AdbStore
 import runtime.ContextStore
 import runtime.adb.Adb
@@ -45,12 +46,12 @@ val LocalAdbStore = compositionLocalOf<AdbStore> { error("AdbStore not provided"
 fun main() = application {
     val adbStore = AdbStore(ContextStore().fileDir)
     var isRuntimeInitialized by remember { mutableStateOf(false) }
-    
+
     // 初始化ADB运行时
     initAdbRuntime(adbStore) {
         isRuntimeInitialized = true
     }
-    
+
     // 主应用程序窗口
     Window(
         title = "ADB 文件管理器",
@@ -59,9 +60,12 @@ fun main() = application {
         undecorated = true  // 移除默认窗口装饰
     ) {
         if (isRuntimeInitialized) {
+            val adbFile =
+                File(adbStore.adbHostFile.absolutePath, if (hostOs.isWindows) "adb.exe" else "adb")
             // 设置依赖项
-            val adb = Adb("${adbStore.adbHostFile.absolutePath}${File.separator}platform-tools${File.separator}adb", Terminal())
-            
+            val adb = Adb(adbFile.absolutePath, Terminal())
+            println("adbPath: ${adb.adbPath}")
+
             // 提供Composition locals
             CompositionLocalProvider(
                 LocalWindow provides window,
@@ -89,21 +93,21 @@ fun main() = application {
 private fun AppContent() {
     val adb = LocalAdb.current
     val coroutineScope = rememberCoroutineScope()
-    
+
     // 创建设备轮询器
     val adbDevicePoller = remember { AdbDevicePoller(adb, coroutineScope) }
-    
+
     // 创建视图模型
     val deviceViewModel = remember { DeviceViewModel(adbDevicePoller, coroutineScope) }
     val fileManagerViewModel = remember { FileManagerViewModel(adbDevicePoller, coroutineScope) }
-    
+
     // 已连接设备状态
     val connectedDevices by deviceViewModel.connectedDevices.collectAsState(initial = emptyList())
-    
+
     // 更新检查状态
     var showUpdateDialog by remember { mutableStateOf(false) }
     var updateInfo by remember { mutableStateOf<UpdateInfo?>(null) }
-    
+
     // 检查更新
     LaunchedEffect(Unit) {
         coroutineScope.launch {
@@ -118,16 +122,16 @@ private fun AppContent() {
             }
         }
     }
-    
+
     // 根据设备连接状态显示适当的屏幕
     if (connectedDevices.isEmpty()) {
-        DeviceConnectionWizard(deviceViewModel){
+        DeviceConnectionWizard(deviceViewModel) {
             deviceViewModel.loadVirtualDevices()
         }
     } else {
         FileManagerScreen(deviceViewModel, fileManagerViewModel)
     }
-    
+
     // 显示更新对话框
     updateInfo?.let { info ->
         UpdateDialog(
@@ -149,25 +153,25 @@ private fun initAdbRuntime(adbStore: AdbStore, onInitialized: () -> Unit) {
             Res.readBytes(adbStore.resourceName),
             adbStore.adbHostFile.absolutePath
         )
-        
+
         // 检查并修复 ADB 执行权限（针对 Linux/Mac 系统）
         try {
-            val osName = System.getProperty("os.name").lowercase()
-            if (osName.contains("linux") || osName.contains("mac") || osName.contains("unix")) {
-                val adbExecutable = File(adbStore.adbHostFile, "platform-tools/adb")
+            if (!hostOs.isWindows) {
+                val adbExecutable = File(adbStore.adbHostFile, "adb")
                 if (adbExecutable.exists() && !adbExecutable.canExecute()) {
                     // 尝试设置可执行权限
                     withContext(Dispatchers.IO) {
                         val result = Runtime.getRuntime().exec(
                             arrayOf("chmod", "755", adbExecutable.absolutePath)
                         ).waitFor()
-                        
+
                         if (result != 0) {
                             // 如果 chmod 命令失败，尝试使用 ProcessBuilder
-                            val processBuilder = ProcessBuilder("chmod", "755", adbExecutable.absolutePath)
+                            val processBuilder =
+                                ProcessBuilder("chmod", "755", adbExecutable.absolutePath)
                             processBuilder.start().waitFor()
                         }
-                        
+
                         println("已自动设置 ADB 可执行权限: ${adbExecutable.absolutePath}")
                     }
                 }
@@ -176,7 +180,7 @@ private fun initAdbRuntime(adbStore: AdbStore, onInitialized: () -> Unit) {
             println("设置 ADB 可执行权限时出错: ${e.message}")
             e.printStackTrace()
         }
-        
+
         onInitialized()
     }
 }
