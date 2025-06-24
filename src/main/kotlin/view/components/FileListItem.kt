@@ -89,15 +89,6 @@ fun FileListItem(
     var isHovered by remember { mutableStateOf(false) }
     var isExpanded by remember { mutableStateOf(false) }
 
-    // 动画
-    val elevation by animateDpAsState(
-        targetValue = if (isHovered) 2.dp else 0.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
-        ),
-        label = "elevationAnimation"
-    )
 
     val backgroundColor = if (isHovered) {
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -114,7 +105,6 @@ fun FileListItem(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 4.dp)
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     while (true) {
@@ -144,9 +134,6 @@ fun FileListItem(
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         ),
-        elevation = CardDefaults.cardElevation(
-            defaultElevation = elevation
-        ),
         shape = RoundedCornerShape(12.dp)
     ) {
 
@@ -171,6 +158,7 @@ fun FileListItem(
                 contentAlignment = Alignment.Center
             ) {
                 Image(
+                    modifier = Modifier.size(30.dp),
                     painter = painterResource(file.icon),
                     contentDescription = null,
                     colorFilter = ColorFilter.tint(
