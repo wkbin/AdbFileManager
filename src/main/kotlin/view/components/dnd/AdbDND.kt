@@ -5,6 +5,7 @@ import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draganddrop.DragAndDropEvent
 import androidx.compose.ui.draganddrop.DragAndDropTarget
@@ -15,6 +16,7 @@ import androidx.compose.ui.draganddrop.awtTransferable
 import java.awt.datatransfer.DataFlavor
 import java.io.File
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun Modifier.adbDndSource(selectedFile: String): Modifier {
     val adbFile = LocalAdb.current.adbPath
@@ -29,6 +31,7 @@ fun Modifier.adbDndSource(selectedFile: String): Modifier {
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun Modifier.adbDndTarget(onDropAction: (List<File>) -> Unit): Modifier {
     val dropTarget = remember {

@@ -1,10 +1,10 @@
 [versions]
-kotlin = "2.1.20"
-compose-plugin = "1.8.0-rc01"
-kotlinx-serialization = "1.8.0"
+kotlin = "2.2.20"
+compose-plugin = "1.9.0"
+kotlinx-serialization = "1.9.0"
 juniversalchardet = "2.5.0"
-filekit = "0.10.0-beta04"
-okhttp = "4.11.0"
+filekit = "0.11.0"
+okhttp = "5.1.0"
 
 [libraries]
 kotlinx-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }

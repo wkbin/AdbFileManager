@@ -27,19 +27,6 @@ kotlin {
     }
 }
 
-// Add compiler options for experimental OptIn
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-    kotlinOptions {
-        jvmTarget = "17"
-        freeCompilerArgs = listOf(
-            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
-            "-opt-in=androidx.compose.ui.ExperimentalComposeUiApi",
-            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
-            "-opt-in=androidx.compose.animation.ExperimentalAnimationApi"
-        )
-    }
-}
-
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.components.resources)
