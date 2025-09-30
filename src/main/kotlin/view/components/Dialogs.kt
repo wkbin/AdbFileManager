@@ -34,12 +34,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import model.StringsManager
 import view.theme.ThemeState
-import viewmodel.FileManagerViewModel
 import java.awt.Desktop
 import java.net.URI
 import utils.UpdateInfo
@@ -56,7 +55,7 @@ fun CreateDirectoryDialog(
     onConfirm: (dirName: String) -> Unit
 ) {
     if (!visible) return
-    
+    val strings by StringsManager.strings.collectAsState()
     var dirName by remember { mutableStateOf("") }
     val isInputValid = dirName.isNotEmpty() && !dirName.contains("/") && !dirName.contains("\\")
     val focusRequester = remember { FocusRequester() }
@@ -100,7 +99,7 @@ fun CreateDirectoryDialog(
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
-                        text = "创建新文件夹",
+                        text = strings.fileNewFolder,
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
@@ -110,7 +109,7 @@ fun CreateDirectoryDialog(
                     IconButton(onClick = onDismissRequest) {
                         Icon(
                             imageVector = Icons.Outlined.Close,
-                            contentDescription = "关闭",
+                            contentDescription = strings.editorClose,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -123,11 +122,11 @@ fun CreateDirectoryDialog(
                     value = dirName,
                     onValueChange = { dirName = it },
                     label = { 
-                        Text("文件夹名称") 
+                        Text(strings.fileFolderName) 
                     },
                     placeholder = {
                         Text(
-                            "输入新文件夹名称",
+                            strings.fileFolderNameInput,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                         )
                     },
@@ -156,7 +155,7 @@ fun CreateDirectoryDialog(
                     supportingText = {
                         if (dirName.isNotEmpty() && !isInputValid) {
                             Text(
-                                "文件夹名称不能包含特殊字符如: / 或 \\",
+                                strings.fileFolderNameErrorInvalid,
                                 color = MaterialTheme.colorScheme.error
                             )
                         }
@@ -182,7 +181,7 @@ fun CreateDirectoryDialog(
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {
-                        Text("取消")
+                        Text(strings.fileCancel)
                     }
                     Spacer(Modifier.width(16.dp))
                     Button(
@@ -197,7 +196,7 @@ fun CreateDirectoryDialog(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
-                        Text("创建")
+                        Text(strings.fileCreate)
                     }
                 }
             }
@@ -223,7 +222,7 @@ fun FileEditDialog(
     
     var content by remember(initialContent) { mutableStateOf(initialContent) }
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
-    val scrollState = androidx.compose.foundation.rememberScrollState()
+    val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val hasChanges = remember(initialContent) { 
         mutableStateOf(false)
@@ -257,10 +256,10 @@ fun FileEditDialog(
     
     // 编码选择下拉菜单状态
     var showEncodingMenu by remember { mutableStateOf(false) }
-    
+    val strings by StringsManager.strings.collectAsState()
     Window(
         state = windowState,
-        title = "编辑 - $fileName",
+        title = strings.editorTitleWithName(fileName),
         onCloseRequest = onDismiss,
         undecorated = true // 移除默认窗口装饰
     ) {
@@ -273,9 +272,9 @@ fun FileEditDialog(
             ) {
                 // 自定义标题栏 - 可拖动
                 Surface(
-                    color = if (isDarkMode) 
-                               MaterialTheme.colorScheme.surfaceVariant 
-                           else 
+                    color = if (isDarkMode)
+                               MaterialTheme.colorScheme.surfaceVariant
+                           else
                                MaterialTheme.colorScheme.surface,
                     tonalElevation = 2.dp,
                     modifier = Modifier.fillMaxWidth()
@@ -294,23 +293,23 @@ fun FileEditDialog(
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            
+
                             Spacer(modifier = Modifier.weight(1f))
-                            
+
                             // 窗口控制按钮
                             IconButton(
                                 onClick = onDismiss
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.Close,
-                                    contentDescription = "关闭",
+                            contentDescription = strings.editorClose,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
                     }
                 }
-                
+
                 // 内容区域
                 Column(
                     modifier = Modifier
@@ -323,13 +322,13 @@ fun FileEditDialog(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "编辑文件内容",
+                            text = strings.editorFileContent,
                             style = MaterialTheme.typography.titleLarge,
                             color = MaterialTheme.colorScheme.onBackground
                         )
-                        
+
                         Spacer(modifier = Modifier.weight(1f))
-                        
+
                         // 编码选择下拉菜单
                         Box {
                             OutlinedButton(
@@ -337,11 +336,11 @@ fun FileEditDialog(
                                 modifier = Modifier.padding(end = 16.dp)
                             ) {
                                 Text(
-                                    text = "编码: $fileEncoding",
+                                    text = strings.editorEncoding(fileEncoding),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                             }
-                            
+
                             DropdownMenu(
                                 expanded = showEncodingMenu,
                                 onDismissRequest = { showEncodingMenu = false }
@@ -366,7 +365,7 @@ fun FileEditDialog(
                                 }
                             }
                         }
-                        
+
                         // 状态指示
                         AnimatedVisibility(
                             visible = hasChanges.value,
@@ -379,7 +378,7 @@ fun FileEditDialog(
                                 modifier = Modifier.padding(end = 16.dp)
                             ) {
                                 Text(
-                                    text = "已修改",
+                                    text = strings.editorModified,
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -387,7 +386,7 @@ fun FileEditDialog(
                             }
                         }
                     }
-                    
+
                     // 编辑器
                     Surface(
                         modifier = Modifier.weight(1f),
@@ -419,7 +418,7 @@ fun FileEditDialog(
                                     )
                                 }
                             }
-                            
+
                             // 编辑区域
                             Box(
                                 modifier = Modifier
@@ -451,9 +450,9 @@ fun FileEditDialog(
                             }
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     // 底部按钮区域
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -462,12 +461,12 @@ fun FileEditDialog(
                     ) {
                         // 文件信息
                         Text(
-                            text = "${content.length} 字符, ${content.split("\n").size} 行",
+                            text = strings.fileCharactersLines(content.length, content.split("\n").size),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             modifier = Modifier.weight(1f)
                         )
-                        
+
                         // 取消按钮
                         OutlinedButton(
                             onClick = onDismiss,
@@ -475,9 +474,9 @@ fun FileEditDialog(
                                 contentColor = MaterialTheme.colorScheme.onSurface
                             )
                         ) {
-                            Text("取消")
+                            Text(strings.fileCancel)
                         }
-                        
+
                         // 保存按钮
                         Button(
                             onClick = { onSave(content) },
@@ -493,7 +492,7 @@ fun FileEditDialog(
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("保存")
+                            Text(strings.fileSave)
                         }
                     }
                 }
@@ -512,6 +511,7 @@ fun CreateFileDialog(
     onDismissRequest: () -> Unit = onDismiss,
     onConfirm: (fileName: String, content: String) -> Unit
 ) {
+    val strings by StringsManager.strings.collectAsState()
     if (visible) {
         var fileName by remember { mutableStateOf("") }
         var fileContent by remember { mutableStateOf("") }
@@ -523,12 +523,12 @@ fun CreateFileDialog(
             when {
                 fileName.isBlank() -> {
                     isError = true
-                    errorMessage = "文件名不能为空"
+                    errorMessage = strings.fileNameEmptyError
                     false
                 }
                 fileName.contains("/") || fileName.contains("\\") -> {
                     isError = true
-                    errorMessage = "文件名不能包含特殊字符"
+                    errorMessage = strings.fileNameInvalidError
                     false
                 }
                 else -> {
@@ -543,7 +543,7 @@ fun CreateFileDialog(
             onDismissRequest = onDismissRequest,
             title = {
                 Text(
-                    text = "创建新文件",
+                    text = strings.fileNewFile,
                     style = MaterialTheme.typography.headlineSmall
                 )
             },
@@ -560,8 +560,8 @@ fun CreateFileDialog(
                             fileName = it
                             if (isError) validateFileName()
                         },
-                        label = { Text("文件名") },
-                        placeholder = { Text("输入文件名 (例如: note.txt)") },
+                        label = { Text(strings.fileName) },
+                        placeholder = { Text(strings.fileNameInput) },
                         singleLine = true,
                         isError = isError,
                         supportingText = {
@@ -581,8 +581,8 @@ fun CreateFileDialog(
                     OutlinedTextField(
                         value = fileContent,
                         onValueChange = { fileContent = it },
-                        label = { Text("文件内容") },
-                        placeholder = { Text("输入文件内容 (可选)") },
+                        label = { Text(strings.fileContent) },
+                        placeholder = { Text(strings.fileContentInput) },
                         minLines = 4,
                         maxLines = 8,
                         modifier = Modifier.fillMaxWidth()
@@ -598,12 +598,12 @@ fun CreateFileDialog(
                     },
                     enabled = fileName.isNotBlank()
                 ) {
-                    Text("创建")
+                    Text(strings.fileCreate)
                 }
             },
             dismissButton = {
                 TextButton(onClick = onDismissRequest) {
-                    Text("取消")
+                    Text(strings.fileCancel)
                 }
             }
         )
@@ -615,18 +615,15 @@ fun CreateFileDialog(
  */
 @Composable
 fun AboutDialog(
-    visible: Boolean,
     onDismiss: () -> Unit
 ) {
-    if (!visible) return
-
     // 检查更新状态
     var isCheckingUpdate by remember { mutableStateOf(false) }
     var updateAvailable by remember { mutableStateOf<UpdateInfo?>(null) }
     var showUpdateDialog by remember { mutableStateOf(false) }
     
     val coroutineScope = rememberCoroutineScope()
-
+    val strings by StringsManager.strings.collectAsState()
     Dialog(
         onDismissRequest = onDismiss
     ) {
@@ -657,7 +654,7 @@ fun AboutDialog(
 
                 // 应用名称
                 Text(
-                    text = "ADB 文件管理器",
+                    text = strings.appTitle,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -666,7 +663,7 @@ fun AboutDialog(
 
                 // 版本信息
                 Text(
-                    text = "版本 ${FileManagerViewModel.VERSION}",
+                    text = strings.appVersion(Constants.VERSION),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -675,7 +672,7 @@ fun AboutDialog(
 
                 // 描述
                 Text(
-                    text = "一个简单易用的 ADB 文件管理工具，支持文件传输、编辑和管理。",
+                    text = strings.aboutDescription,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -692,7 +689,7 @@ fun AboutDialog(
                     Button(
                         onClick = {
                             try {
-                                Desktop.getDesktop().browse(URI(FileManagerViewModel.GITHUB_URL))
+                                Desktop.getDesktop().browse(URI(Constants.GITHUB_URL))
                             } catch (e: Exception) {
                                 // 处理打开链接失败的情况
                             }
@@ -709,7 +706,7 @@ fun AboutDialog(
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("在 GitHub 上查看")
+                        Text(strings.aboutViewOnGithub)
                     }
                     
                     Spacer(modifier = Modifier.height(12.dp))
@@ -744,7 +741,7 @@ fun AboutDialog(
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("检查中...")
+                            Text(strings.aboutChecking)
                         } else {
                             Icon(
                                 imageVector = Icons.Filled.Update,
@@ -752,7 +749,7 @@ fun AboutDialog(
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("检查更新")
+                            Text(strings.aboutCheckUpdate)
                         }
                     }
                 }
@@ -766,19 +763,20 @@ fun AboutDialog(
                         contentColor = MaterialTheme.colorScheme.primary
                     )
                 ) {
-                    Text("关闭")
+                    Text(strings.aboutClose)
                 }
             }
         }
     }
-    
-    // 显示更新对话框
-    updateAvailable?.let { info ->
-        UpdateDialog(
-            visible = showUpdateDialog,
-            updateInfo = info,
-            onDismiss = { showUpdateDialog = false }
-        )
+
+    if (showUpdateDialog){
+        // 显示更新对话框
+        updateAvailable?.let { info ->
+            UpdateDialog(
+                updateInfo = info,
+                onDismiss = { showUpdateDialog = false }
+            )
+        }
     }
 }
 
@@ -787,14 +785,11 @@ fun AboutDialog(
  */
 @Composable
 fun UpdateDialog(
-    visible: Boolean,
     updateInfo: UpdateInfo,
     onDismiss: () -> Unit
 ) {
-    if (!visible) return
-
     var neverShowUpdates by remember { mutableStateOf(false) }
-
+    val strings by StringsManager.strings.collectAsState()
     Dialog(
         onDismissRequest = onDismiss
     ) {
@@ -825,7 +820,7 @@ fun UpdateDialog(
 
                 // 标题
                 Text(
-                    text = "发现新版本",
+                    text = strings.appNewVersion,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -834,7 +829,7 @@ fun UpdateDialog(
 
                 // 版本信息
                 Text(
-                    text = "新版本 ${updateInfo.version} 已发布",
+                    text = strings.appNewVersionDetail(updateInfo.version),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -843,7 +838,7 @@ fun UpdateDialog(
 
                 // 更新说明
                 Text(
-                    text = "更新内容：",
+                    text = strings.appUpdateContent,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.primary
                 )
@@ -887,7 +882,7 @@ fun UpdateDialog(
                         )
                     )
                     Text(
-                        text = "不再提示版本更新",
+                        text = strings.appDontPromptAgain,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -916,7 +911,7 @@ fun UpdateDialog(
                             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     ) {
-                        Text("稍后再说")
+                        Text(strings.appLater)
                     }
 
                     // 立即更新按钮
@@ -943,7 +938,7 @@ fun UpdateDialog(
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("立即更新")
+                        Text(strings.appUpdateNow)
                     }
                 }
             }

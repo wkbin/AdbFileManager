@@ -1,5 +1,4 @@
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
-
 plugins {
     alias(libs.plugins.kotlin)
     alias(libs.plugins.kotlinx.serialization)
@@ -27,6 +26,7 @@ kotlin {
     }
 }
 
+
 dependencies {
     implementation(compose.desktop.currentOs)
     implementation(compose.components.resources)
@@ -35,8 +35,15 @@ dependencies {
     implementation(libs.filekit.core)
     implementation(libs.filekit.dialogs.compose)
     implementation(libs.kotlinx.serialization)
+    implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.juniversalchardet)
     implementation(libs.okhttp)
+
+    implementation(platform(libs.koin.bom))
+    implementation(libs.koin.core)
+    implementation(libs.koin.compose)
+    implementation(libs.koin.compose.viewmodel)
+    implementation(libs.navigation.compose)
 }
 
 compose.desktop {

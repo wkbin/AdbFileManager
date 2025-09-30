@@ -1,4 +1,4 @@
-package runtime.adb.env
+package data.remote.adb.env
 
 object Environment {
     private val resolver = EnvironmentResolver()

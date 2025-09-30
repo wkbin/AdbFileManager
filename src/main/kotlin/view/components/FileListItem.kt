@@ -1,10 +1,5 @@
 package view.components
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Edit
@@ -33,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,13 +40,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import model.FileItem
+import model.StringsManager
 import org.jetbrains.compose.resources.painterResource
 
 /**
@@ -81,6 +79,7 @@ fun FileListItem(
     onEditFile: () -> Unit,
     onDeleteFile: () -> Unit,
     onDownloadFile: () -> Unit,
+    onChangePermissions: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -89,6 +88,7 @@ fun FileListItem(
     var isHovered by remember { mutableStateOf(false) }
     var isExpanded by remember { mutableStateOf(false) }
 
+    val strings by StringsManager.strings.collectAsState()
 
     val backgroundColor = if (isHovered) {
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -148,25 +148,13 @@ fun FileListItem(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (file.isDir)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.secondaryContainer
-                    )
-                    .padding(8.dp),
+                    .padding(4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Image(
-                    modifier = Modifier.size(30.dp),
+                    modifier = Modifier.fillMaxSize(),
                     painter = painterResource(file.icon),
                     contentDescription = null,
-                    colorFilter = ColorFilter.tint(
-                        if (file.isDir)
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSecondaryContainer
-                    )
                 )
             }
 
@@ -199,7 +187,7 @@ fun FileListItem(
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                         ) {
                             Text(
-                                text = if (file.link != null) "链接目录" else "目录",
+                                text = if (file.link != null) strings.fileLinkDirectory else strings.fileDirectory,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -212,7 +200,7 @@ fun FileListItem(
                             color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
                         ) {
                             Text(
-                                text = "链接",
+                                text = strings.fileLink,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -277,10 +265,22 @@ fun FileListItem(
                     ) {
                         Icon(
                             imageVector = Icons.Rounded.Edit,
-                            contentDescription = "编辑",
+                            contentDescription = strings.fileEdit,
                             tint = MaterialTheme.colorScheme.tertiary
                         )
                     }
+                }
+
+                // 修改权限按钮
+                IconButton(
+                    onClick = onChangePermissions,
+                    enabled = isHovered
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Lock,
+                        contentDescription = strings.changePermissions,
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
                 }
 
                 // 下载按钮
@@ -290,7 +290,7 @@ fun FileListItem(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Download,
-                        contentDescription = "下载",
+                        contentDescription = strings.fileDownload,
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -302,7 +302,7 @@ fun FileListItem(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Delete,
-                        contentDescription = "删除",
+                        contentDescription = strings.fileDelete,
                         tint = MaterialTheme.colorScheme.error
                     )
                 }

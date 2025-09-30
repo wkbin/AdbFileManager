@@ -1,40 +1,29 @@
 package view.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import model.StringsManager
 
 /**
  * 路径导航组件
@@ -50,6 +39,7 @@ fun PathNavigator(
     onPathInput: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val strings by StringsManager.strings.collectAsState()
     // 是否应显示完整路径
     var showFullPath by remember { mutableStateOf(false) }
     // 是否显示路径输入对话框
@@ -65,7 +55,7 @@ fun PathNavigator(
         ) {
             // 根目录按钮
             PathItem(
-                text = "根目录",
+                text = strings.navRoot,
                 onClick = { onPathClick(-1) },
                 isLast = currentPath.isEmpty()
             )
@@ -100,7 +90,11 @@ fun PathNavigator(
 
                     // 添加分隔符（除了最后一项）
                     if (index < currentPath.size - 1) {
-                        Text(modifier = Modifier.padding(horizontal = 10.dp), text = "/", fontSize = 12.sp)
+                        Text(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            text = "/",
+                            fontSize = 12.sp
+                        )
                     }
                 }
             } else {
@@ -115,7 +109,11 @@ fun PathNavigator(
 
                     // 添加分隔符（除了最后一项）
                     if (index < currentPath.size - 1) {
-                        Text(modifier = Modifier.padding(horizontal = 10.dp), text = "/", fontSize = 12.sp)
+                        Text(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            text = "/",
+                            fontSize = 12.sp
+                        )
                     }
                 }
 
@@ -127,7 +125,7 @@ fun PathNavigator(
                         modifier = Modifier.height(28.dp)
                     ) {
                         Text(
-                            text = "折叠",
+                            text = strings.pathCollapse,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -142,7 +140,7 @@ fun PathNavigator(
             ) {
                 Icon(
                     imageVector = Icons.Outlined.Edit,
-                    contentDescription = "编辑路径",
+                    contentDescription = strings.pathEdit,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(16.dp)
                 )
@@ -152,12 +150,26 @@ fun PathNavigator(
 
     // 路径输入对话框
     if (showPathInputDialog) {
-        var inputPath by remember { mutableStateOf(currentPath.joinToString("/")) }
         val focusRequester = remember { FocusRequester() }
 
-        Dialog(
-            onDismissRequest = { showPathInputDialog = false }
-        ) {
+        // 使用 rememberUpdatedState 确保获取最新的路径值
+        val currentPathValue by rememberUpdatedState(currentPath.joinToString("/"))
+
+        // 只在对话框首次显示时初始化文本框状态
+        var textFieldValue by remember(showPathInputDialog) {
+            mutableStateOf(TextFieldValue(currentPathValue))
+        }
+
+        // 只在对话框显示时执行一次聚焦和光标定位
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+            val text = textFieldValue.text
+            textFieldValue = textFieldValue.copy(
+                selection = TextRange(text.length)
+            )
+        }
+
+        Dialog(onDismissRequest = { showPathInputDialog = false }) {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -165,61 +177,48 @@ fun PathNavigator(
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.surface
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "输入路径",
+                        text = strings.pathInput,
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
-                        value = inputPath,
-                        onValueChange = { inputPath = it },
+                        value = textFieldValue,
+                        onValueChange = { textFieldValue = it },
                         modifier = Modifier
                             .fillMaxWidth()
                             .focusRequester(focusRequester),
-                        keyboardOptions = KeyboardOptions(
-                            imeAction = ImeAction.Done
-                        ),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         keyboardActions = KeyboardActions(
                             onDone = {
-                                onPathInput(inputPath)
+                                onPathInput(textFieldValue.text)
                                 showPathInputDialog = false
                             }
                         ),
                         singleLine = true,
-                        placeholder = { Text("输入目标路径") }
+                        placeholder = { Text(strings.pathInputPlaceholder) }
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
-                        TextButton(
-                            onClick = { showPathInputDialog = false }
-                        ) {
-                            Text("取消")
+                        TextButton(onClick = { showPathInputDialog = false }) {
+                            Text(strings.fileCancel)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                         TextButton(
                             onClick = {
-                                onPathInput(inputPath)
+                                onPathInput(textFieldValue.text)
                                 showPathInputDialog = false
                             }
                         ) {
-                            Text("确定")
+                            Text(strings.fileSave)
                         }
                     }
                 }
-            }
-        }
-
-        // 自动聚焦到输入框
-        LaunchedEffect(showPathInputDialog) {
-            if (showPathInputDialog) {
-                focusRequester.requestFocus()
             }
         }
     }

@@ -1,6 +1,6 @@
-package runtime.adb.env
+package data.remote.adb.env
 
-import runtime.adb.AdbDevice
+import data.remote.adb.AdbDevice
 
 /**
  * Global application context for sharing state across components

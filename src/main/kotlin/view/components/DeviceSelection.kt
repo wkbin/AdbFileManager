@@ -11,28 +11,26 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import model.StringsManager
 import org.jetbrains.compose.resources.painterResource
 import top.wkbin.filemanager.generated.resources.Res
 import top.wkbin.filemanager.generated.resources.ic_adb_disconnect
-import viewmodel.DeviceViewModel
 
 /**
  * 设备连接向导
  */
 @Composable
 fun DeviceConnectionWizard(
-    deviceViewModel: DeviceViewModel,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onPairAndConnectDevice: (ipAddress: String, port: String, pairingPort: String, pairingCode: String) -> Unit
 ) {
     var showWizard by remember { mutableStateOf(false) }
     var showWirelessDialog by remember { mutableStateOf(false) }
-    var showConnectDialog by remember { mutableStateOf(false) }
     var ipAddress by remember { mutableStateOf("") }
     var port by remember { mutableStateOf("") }
     var pairingCode by remember { mutableStateOf("") }
     var pairingPort by remember { mutableStateOf("") }
-
-
+    val strings by StringsManager.strings.collectAsState()
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -79,7 +77,7 @@ fun DeviceConnectionWizard(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "未找到已连接的设备",
+                        text = strings.deviceNotConnected,
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onErrorContainer,
                         textAlign = TextAlign.Center
@@ -88,7 +86,7 @@ fun DeviceConnectionWizard(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "请选择连接方式",
+                        text = strings.deviceSelectMethod,
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
                         textAlign = TextAlign.Center
@@ -115,7 +113,7 @@ fun DeviceConnectionWizard(
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("USB连接")
+                            Text(strings.deviceConnectUSB)
                         }
 
                         // 无线连接按钮
@@ -132,7 +130,7 @@ fun DeviceConnectionWizard(
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("无线连接")
+                            Text(strings.deviceConnectWireless)
                         }
                     }
                 }
@@ -144,35 +142,35 @@ fun DeviceConnectionWizard(
     if (showWizard) {
         AlertDialog(
             onDismissRequest = { showWizard = false },
-            title = { Text("USB连接向导") },
+            title = { Text(strings.deviceUSBGuide) },
             text = {
                 Column {
-                    Text("1. 在Android设备上启用开发者选项：")
-                    Text("   - 进入设置 > 关于手机")
-                    Text("   - 连续点击\"版本号\"7次")
+                    Text(strings.deviceUSBGuideStep1())
+                    Text("   - Settings > About phone")
+                    Text("   - Tap 'Build number' 7 times")
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Text("2. 启用USB调试：")
-                    Text("   - 进入设置 > 系统 > 开发者选项")
-                    Text("   - 开启\"USB调试\"")
+                    Text(strings.deviceUSBGuideStep2())
+                    Text("   - Settings > System > Developer options")
+                    Text("   - Enable 'USB debugging'")
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Text("3. 连接设备：")
-                    Text("   - 使用USB数据线连接设备")
-                    Text("   - 在设备上允许USB调试")
+                    Text(strings.deviceUSBGuideStep3())
+                    Text("   - Use USB cable to connect device")
+                    Text("   - Allow USB debugging on device")
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Text("4. 点击刷新按钮检查连接")
+                    Text(strings.deviceUSBGuideStep4())
                 }
             },
             confirmButton = {
                 TextButton(onClick = { showWizard = false }) {
-                    Text("关闭")
+                    Text(strings.aboutClose)
                 }
             },
             dismissButton = {
                 TextButton(onClick = onRefresh) {
-                    Text("刷新")
+                    Text(strings.deviceRefresh)
                 }
             }
         )
@@ -182,33 +180,33 @@ fun DeviceConnectionWizard(
     if (showWirelessDialog) {
         AlertDialog(
             onDismissRequest = { showWirelessDialog = false },
-            title = { Text("无线连接") },
+            title = { Text(strings.deviceWirelessGuide) },
             text = {
                 Column {
-                    Text("1. 确保设备和电脑在同一网络下")
+                    Text(strings.deviceWirelessGuideStep1())
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Text("2. 在设备上启用无线调试：")
-                    Text("   - 进入设置 > 系统 > 开发者选项")
-                    Text("   - 开启\"无线调试\"")
+                    Text(strings.deviceWirelessGuideStep2())
+                    Text("   - Settings > System > Developer options")
+                    Text("   - Enable 'Wireless debugging'")
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    Text("3. 连接方式：")
-                    Text("   - 方式：手动输入配对信息（已配对设备可不输入配对端口和配对码）")
+                    Text(strings.deviceWirelessGuideStep3())
+                    Text("   - ${strings.deviceWirelessGuideStep4()}")
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Row {
                         OutlinedTextField(
                             value = ipAddress,
                             onValueChange = { ipAddress = it },
-                            label = { Text("IP地址") },
+                            label = { Text(strings.deviceWirelessGuideIP) },
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         OutlinedTextField(
                             value = port,
                             onValueChange = { port = it },
-                            label = { Text("端口（不填默认：5555）") },
+                            label = { Text(strings.deviceWirelessGuidePort) },
                             modifier = Modifier.wrapContentWidth()
                         )
                     }
@@ -219,14 +217,14 @@ fun DeviceConnectionWizard(
                         OutlinedTextField(
                             value = pairingPort,
                             onValueChange = { pairingPort = it },
-                            label = { Text("配对端口（选填）") },
+                            label = { Text(strings.deviceWirelessGuidePairPort) },
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         OutlinedTextField(
                             value = pairingCode,
                             onValueChange = { pairingCode = it },
-                            label = { Text("配对码（选填）") },
+                            label = { Text(strings.deviceWirelessGuidePairCode) },
                             modifier = Modifier.wrapContentWidth()
                         )
                     }
@@ -235,16 +233,16 @@ fun DeviceConnectionWizard(
             confirmButton = {
                 Button(
                     onClick = {
-                        deviceViewModel.pairAndConnectDevice(ipAddress, port, pairingPort, pairingCode)
+                        onPairAndConnectDevice.invoke(ipAddress, port, pairingPort, pairingCode)
                     },
                     enabled = ipAddress.isNotEmpty()
                 ) {
-                    Text("连接")
+                    Text(strings.deviceConnect)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showWirelessDialog = false }) {
-                    Text("取消")
+                    Text(strings.fileCancel)
                 }
             }
         )

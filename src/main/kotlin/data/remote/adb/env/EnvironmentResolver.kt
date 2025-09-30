@@ -1,4 +1,4 @@
-package runtime.adb.env
+package data.remote.adb.env
 
 import java.io.File
 import java.util.regex.Pattern

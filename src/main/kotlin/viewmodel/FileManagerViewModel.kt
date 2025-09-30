@@ -1,759 +1,253 @@
 package viewmodel
 
-import androidx.compose.runtime.*
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.snapshots.SnapshotStateList
-import kotlinx.coroutines.CoroutineScope
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
+import model.Bookmark
 import model.FileItem
 import model.FileUtils
-import runtime.adb.AdbDevicePoller
-import java.io.File
+import model.SortType
+import model.StringsManager
 import org.mozilla.universalchardet.UniversalDetector
+import data.remote.adb.AdbDevicePoller
+import data.repository.BookmarkRepository
+import view.LoadState
+import view.effect.FileManagerEffect
+import view.intent.FileManagerIntent
+import view.state.FileManagerState
+import java.io.File
 import java.nio.charset.Charset
-import utils.UpdateInfo
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import java.net.URL
-import kotlin.coroutines.suspendCoroutine
 
-@Serializable
-data class Bookmark(
-    val name: String,
-    val path: String,
-    val timestamp: Long = System.currentTimeMillis()
-)
-
-@Serializable
-data class GitHubRelease(
-    val tag_name: String,
-    val body: String,
-    val html_url: String
-)
-
-/**
- * ViewModel for file manager operations
- */
 class FileManagerViewModel(
     private val adbDevicePoller: AdbDevicePoller,
-    private val coroutineScope: CoroutineScope
-) {
-    companion object {
-        const val GITHUB_URL = "https://github.com/wkbin/AdbFileManager"
-        const val VERSION = "2.6.1"
-    }
+    private val bookmarkRepository: BookmarkRepository
+) : ViewModel() {
 
-    // Current directory path components
-    private val _directoryPath = mutableStateListOf<String>()
-    val directoryPath: SnapshotStateList<String> = _directoryPath
+    private val _state = MutableStateFlow(FileManagerState())
+    val state: StateFlow<FileManagerState> = _state.asStateFlow()
 
-    // Current list of files
-    private val _files = MutableStateFlow<List<FileItem>>(emptyList())
-    val files: StateFlow<List<FileItem>> = _files.asStateFlow()
+    private val _effect = MutableSharedFlow<FileManagerEffect>(replay = 1)
+    val effect: SharedFlow<FileManagerEffect> = _effect.asSharedFlow()
 
-    // Loading state
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
+    private val _directoryList = mutableStateListOf<String>()
+    val directoryList: SnapshotStateList<String> = _directoryList
 
-    // Error state
-    private val _error = MutableStateFlow<String?>(null)
-    val error: StateFlow<String?> = _error.asStateFlow()
-
-    // Success state
-    private val _success = MutableStateFlow<String?>(null)
-    val success: StateFlow<String?> = _success.asStateFlow()
-
-    // Current file being edited
-    val currentFileName = mutableStateOf("")
-    val currentFileContent = mutableStateOf("")
-    val currentFileEncoding = mutableStateOf("UTF-8")
-
-    // 搜索结果
-    private val _searchResults = MutableStateFlow<List<FileItem>>(emptyList())
-    val searchResults: StateFlow<List<FileItem>> = _searchResults.asStateFlow()
-
-    // 搜索状态
-    private val _isSearching = MutableStateFlow(false)
-    val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
-
-    // 排序方式
-    private val _sortType = MutableStateFlow(SortType.TYPE_ASC)
-    val sortType: StateFlow<SortType> = _sortType.asStateFlow()
-
-    // 排序触发状态
-    private val _sortTrigger = MutableStateFlow(0)
-    val sortTrigger: StateFlow<Int> = _sortTrigger.asStateFlow()
-
-    // 视图模式
-    private val _viewMode = mutableStateOf(ViewMode.LIST)
-    val viewMode: State<ViewMode> = _viewMode
-
-    // 书签相关
-    private val _bookmarks = mutableStateListOf<Bookmark>()
-    val bookmarks: List<Bookmark> = _bookmarks
-
-    val appDir by lazy {
-        val userHome = System.getProperty("user.home")
-        File(userHome, ".adbfilemanager")
-    }
-
-    private val bookmarksFile: File by lazy {
-        val appDir = appDir
-        if (!appDir.exists()) {
-            appDir.mkdirs()
-        }
-        File(appDir, "bookmarks.json")
-    }
-
-    private val _updateInfo = MutableStateFlow<UpdateInfo?>(null)
-    val updateInfo: StateFlow<UpdateInfo?> = _updateInfo.asStateFlow()
-
-    private val _showUpdateDialog = MutableStateFlow(false)
-    val showUpdateDialog: StateFlow<Boolean> = _showUpdateDialog.asStateFlow()
+    private val directoryPath get() = _directoryList.joinToString("/")
 
     init {
-        loadBookmarks()
-        checkForUpdates()
+        loadFiles()
+        observeBookmarks()
     }
 
-    /**
-     * 从JSON文件加载书签
-     */
-    private fun loadBookmarks() {
-        try {
-            if (bookmarksFile.exists()) {
-                val format = Json { ignoreUnknownKeys = true; isLenient = true }
-                val json = bookmarksFile.readText()
-                val loadedBookmarks = format.decodeFromString<List<Bookmark>>(json)
-                _bookmarks.clear()
-                _bookmarks.addAll(loadedBookmarks)
+    private fun observeBookmarks() {
+        bookmarkRepository.bookmarks.onEach { bookmarks ->
+            _state.update {
+                it.copy(
+                    bookmarks = bookmarks,
+                    currentPathBookmarked = bookmarkRepository.isBookmarked("/$directoryPath")
+                )
             }
-        } catch (e: Exception) {
-            println("加载书签失败: ${e.message}")
+        }.launchIn(viewModelScope)
+    }
+
+    private fun checkCurrentPathBookmarked() {
+        viewModelScope.launch {
+            val isBookmarked = bookmarkRepository.isBookmarked("/$directoryPath")
+            _state.update { it.copy(currentPathBookmarked = isBookmarked) }
         }
     }
 
-    /**
-     * 将书签保存到JSON文件
-     */
-    private fun saveBookmarks() {
-        try {
-            val format = Json { prettyPrint = true; encodeDefaults = true }
-            val json = format.encodeToString(_bookmarks.toList())
-            bookmarksFile.writeText(json)
-        } catch (e: Exception) {
-            println("保存书签失败: ${e.message}")
+    fun dispatch(intent: FileManagerIntent) {
+        when (intent) {
+            is FileManagerIntent.ResetDirectory -> resetDirectory(intent.path)
+            FileManagerIntent.NavigateUp -> navigateUp()
+            is FileManagerIntent.NavigateToPathIndex -> navigateToPathIndex(intent.index)
+            FileManagerIntent.LoadFiles -> loadFiles()
+            is FileManagerIntent.ImportFiles -> importFiles(intent.files)
+            is FileManagerIntent.DeleteFile -> deleteFile(intent.fileName)
+            is FileManagerIntent.RequestDeleteConfirmation -> {
+                _state.update { it.copy(pendingDeleteFile = intent.fileName) }
+            }
+
+            FileManagerIntent.CancelDeleteConfirmation -> {
+                _state.update { it.copy(pendingDeleteFile = null) }
+            }
+
+            is FileManagerIntent.NavigateTo -> navigateTo(intent.directoryName)
+            is FileManagerIntent.ResetSortType -> setSortType(intent.type)
+            is FileManagerIntent.ExportFile -> exportFile(intent.fileName, intent.destinationPath)
+            is FileManagerIntent.LoadFileContent -> loadFileContent(
+                intent.fileName,
+                intent.useDetectedEncoding
+            )
+
+            is FileManagerIntent.ChangeEncoding -> _state.update { it.copy(fileEncoding = intent.encoding) }
+            FileManagerIntent.CloseEditor -> _state.update { it.copy(fileContent = null, fileName = null) }
+            is FileManagerIntent.SaveFile -> saveFile(intent.newContent)
+            is FileManagerIntent.RequestRename -> {
+                _state.update { it.copy(pendingRenameFile = intent.file) }
+            }
+            FileManagerIntent.DismissRenameDialog -> {
+                _state.update { it.copy(pendingRenameFile = null) }
+            }
+            is FileManagerIntent.RenameFile -> renameFile(intent.oldName, intent.newName)
+            FileManagerIntent.ShowCreateDirectoryDialog -> {
+                _state.update { it.copy(showCreateDirectoryDialog = true) }
+            }
+            FileManagerIntent.ShowCreateFileDialog -> {
+                _state.update { it.copy(showCreateFileDialog = true) }
+            }
+            FileManagerIntent.DismissCreateDialogs -> {
+                _state.update { it.copy(showCreateDirectoryDialog = false, showCreateFileDialog = false) }
+            }
+            is FileManagerIntent.CreateDirectory -> createDirectory(intent.dirName)
+            is FileManagerIntent.CreateFile -> createFile(intent.fileName, intent.content)
+            FileManagerIntent.RequestBookmarkMenu -> {
+                _state.update { it.copy(showBookmarkMenu = true) }
+            }
+            FileManagerIntent.DismissBookmarkMenu -> {
+                _state.update { it.copy(showBookmarkMenu = false) }
+            }
+            FileManagerIntent.RequestAddBookmarkDialog -> {
+                _state.update { it.copy(showAddBookmarkDialog = true) }
+            }
+            FileManagerIntent.DismissAddBookmarkDialog -> {
+                _state.update { it.copy(showAddBookmarkDialog = false) }
+            }
+            is FileManagerIntent.AddBookmark -> addBookmark(intent.name)
+            is FileManagerIntent.RemoveBookmark -> removeBookmark(intent.bookmark)
+            is FileManagerIntent.NavigateToBookmark -> navigateToBookmark(intent.bookmark)
+            is FileManagerIntent.RequestChangePermissions -> {
+                _state.update { it.copy(pendingChangePermissionsFile = intent.file, showChangePermissionsDialog = true) }
+            }
+            FileManagerIntent.DismissChangePermissionsDialog -> {
+                _state.update { it.copy(pendingChangePermissionsFile = null, showChangePermissionsDialog = false) }
+            }
+            is FileManagerIntent.ChangePermissions -> changePermissions(intent.fileName, intent.permissions)
+            is FileManagerIntent.StartTransfer -> {
+                _state.update { it.copy(isTransferring = true, transferringFileName = intent.fileName, showTransferDialog = true) }
+            }
+            FileManagerIntent.EndTransfer -> {
+                _state.update { it.copy(isTransferring = false, transferringFileName = null, showTransferDialog = false) }
+            }
         }
     }
 
-    /**
-     * 设置排序方式
-     */
-    fun setSortType(type: SortType) {
-        _sortType.value = type
-        sortFiles()
-    }
-
-    /**
-     * 对文件列表进行排序
-     */
-    private fun sortFiles() {
-        val currentFiles = _files.value.toMutableList()
-        when (_sortType.value) {
-            SortType.NAME_ASC -> currentFiles.sortBy { it.fileName.lowercase() }
-            SortType.TYPE_ASC -> currentFiles.sortWith(compareByDescending<FileItem> { it.isDir }.thenBy { it.fileName.lowercase() })
-            SortType.TYPE_DESC -> currentFiles.sortWith(compareBy<FileItem> { it.isDir }.thenByDescending { it.fileName.lowercase() })
-            SortType.DATE_ASC -> currentFiles.sortBy { it.date }
-            SortType.DATE_DESC -> currentFiles.sortByDescending { it.date }
-            SortType.SIZE_ASC -> currentFiles.sortBy { it.size }
-            SortType.SIZE_DESC -> currentFiles.sortByDescending { it.size }
-        }
-        _files.value = currentFiles
-        // 触发排序事件，通知UI重置滚动位置
-        _sortTrigger.value = _sortTrigger.value + 1
-    }
-
-
-
-
-    /**
-     * Load files from the current directory
-     */
-    fun loadFiles() {
-        _isLoading.value = true
-        _error.value = null
-
-        coroutineScope.launch {
+    private fun changePermissions(fileName: String, permissions: String) {
+        _state.update { it.copy(operationInProgress = true, showChangePermissionsDialog = false) }
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                val dirPath = _directoryPath.joinToString("/")
-                val cmd = "shell cd /${dirPath} && stat -c '%F|%A|%h|%U|%G|%s|%Y|%n|%N' * 2>/dev/null"
-                println("cmd: $cmd")
-                adbDevicePoller.exec(cmd) { result ->
-                    println("result: $result")
-                    _files.value = FileUtils.parseStatOutput(result)
-                    sortFiles()
-                    _isLoading.value = false
-                }
-            } catch (e: Exception) {
-                setError("加载文件列表失败: ${e.message}")
-                _isLoading.value = false
-            }
-        }
-    }
-
-    /**
-     * Navigate to a directory
-     * 支持普通目录和软链接目录（绝对路径和相对路径）
-     */
-    fun navigateTo(directoryName: String) {
-        // 保存当前路径列表的副本，以便在出错时恢复
-        val previousPath = _directoryPath.toList()
-
-        // 检查是否为软链接路径
-        val isSymlink = directoryName.contains("/") || directoryName.contains("\\")
-
-        // 处理目录路径
-        if (isSymlink) {
-            // 软链接可能是指向绝对路径或相对路径
-            if (directoryName.startsWith("/")) {
-                // 绝对路径 - 重置目录路径并导航到链接目标
-                _directoryPath.clear()
-                // 移除开头的斜杠，分割路径组件，并过滤掉空字符串
-                val pathComponents = directoryName.substring(1).split("/").filter { it.isNotEmpty() }
-                _directoryPath.addAll(pathComponents)
-            } else {
-                // 相对路径 - 相对于当前目录
-                val pathComponents = directoryName.split("/").filter { it.isNotEmpty() }
-
-                // 处理特殊情况如 "../../path"
-                for (component in pathComponents) {
-                    when (component) {
-                        "." -> continue // 当前目录，不操作
-                        ".." -> {
-                            // 上一级目录，如果有目录可以移除则移除
-                            if (_directoryPath.isNotEmpty()) {
-                                _directoryPath.removeLast()
-                            }
-                        }
-
-                        else -> _directoryPath.add(component) // 正常目录名，添加
-                    }
-                }
-            }
-        } else {
-            // 普通目录，直接添加
-            _directoryPath.add(directoryName)
-        }
-
-        // 验证目录是否可访问
-        coroutineScope.launch {
-            try {
-                val dirPath = _directoryPath.joinToString("/")
-                // 先检查目录是否可访问
-                adbDevicePoller.exec("shell cd /${dirPath} && echo SUCCESS || echo FAILURE") { result ->
-                    if (result.any { it.contains("Permission denied") || it.contains("FAILURE") || it.contains("No such file") }) {
-                        // 恢复之前的路径
-                        _directoryPath.clear()
-                        _directoryPath.addAll(previousPath)
-                        _error.value = "无法访问目录: 权限不足或目录不存在"
-                    }
-                    // 无论成功与否，都加载文件列表
-                    loadFiles()
-                }
-            } catch (e: Exception) {
-                // 出现异常时，也恢复路径
-                _directoryPath.clear()
-                _directoryPath.addAll(previousPath)
-                _error.value = "访问目录出错: ${e.message}"
+                adbDevicePoller.changePermissions(directoryPath, fileName, permissions)
+                // 添加延迟，确保权限修改生效
+                kotlinx.coroutines.delay(500)
                 loadFiles()
+                _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.permissionChangeSuccess))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.permissionChangeFailed(e.message ?: "")))
+            } finally {
+                _state.update { it.copy(operationInProgress = false) }
             }
         }
     }
 
-    /**
-     * Navigate up one directory
-     */
-    fun navigateUp() {
-        if (_directoryPath.isNotEmpty()) {
-            _directoryPath.removeLast()
-            loadFiles()
+    private fun addBookmark(name: String) {
+        viewModelScope.launch {
+            try {
+                bookmarkRepository.addBookmark(name, "/$directoryPath")
+                _state.update { it.copy(showAddBookmarkDialog = false) }
+                _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.bookmarkAddedSuccess))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.bookmarkAddedFailed(e.message ?: "")))
+            }
         }
     }
 
-    /**
-     * Delete a file or directory
-     */
-    fun deleteFile(fileName: String, onSuccess: () -> Unit) {
-        _isLoading.value = true
-        _error.value = null
-        coroutineScope.launch {
+    private fun removeBookmark(bookmark: Bookmark) {
+        viewModelScope.launch {
             try {
-                val dirPath = _directoryPath.joinToString("/")
-                currentFileName.value = fileName
-                adbDevicePoller.exec("shell rm -rf /${dirPath}/${fileName}") { result ->
-                    if (result.any { it.contains("Permission denied") }) {
-                        setError("权限不足，无法删除文件")
-                    } else if (result.any { it.contains("No such file") }) {
-                        setError("文件不存在")
-                    } else if (result.any { it.contains("Directory not empty") }) {
-                        setError("目录不为空，无法删除")
-                    } else if (result.any { it.contains("Error:") }) {
-                        setError(result.first { it.contains("Error:") })
-                    } else {
-                        setSuccess("文件删除成功")
-                        onSuccess()
+                bookmarkRepository.removeBookmark(bookmark)
+                _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.bookmarkRemovedSuccess))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.bookmarkRemovedFailed(e.message ?: "")))
+            }
+        }
+    }
+
+    private fun navigateToBookmark(bookmark: Bookmark) {
+        _state.update { it.copy(showBookmarkMenu = false) }
+        resetDirectory(bookmark.path.removePrefix("/"))
+    }
+
+    private fun setSortType(type: SortType) {
+        _state.update { it.copy(sortType = type) }
+        loadFiles()
+    }
+
+
+    private fun resetDirectory(directoryPath: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val newPath = directoryPath.trim()
+                if (newPath.isNotEmpty()) {
+                    if (!adbDevicePoller.checkPermission(newPath)) {
+                        _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.pathInvalid(newPath)))
+                        return@launch
                     }
-                    _isLoading.value = false
+                    val pathSegments = newPath.split("/")
+                        .filter { it.isNotEmpty() }
+
+                    if (pathSegments.isNotEmpty()) {
+                        adbDevicePoller.checkPermission(newPath)
+                        _directoryList.clear()
+                        _directoryList.addAll(pathSegments)
+                        loadFiles()
+                        checkCurrentPathBookmarked()
+                    }
                 }
             } catch (e: Exception) {
-                setError("删除文件时发生错误: ${e.message}")
-                _isLoading.value = false
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.pathInvalid(e.message ?: "")))
             }
         }
     }
 
-    /**
-     * Create a new file
-     */
-    fun createFile(fileName: String, content: String, onSuccess: () -> Unit) {
-        _isLoading.value = true
-        _error.value = null
-        coroutineScope.launch {
-            try {
-                val dirPath = _directoryPath.joinToString("/")
-                val escapedContent = content.replace("\"", "\\\"")
-                adbDevicePoller.exec("shell echo \"$escapedContent\" > /${dirPath}/${fileName}") { result ->
-                    if (result.any { it.contains("Permission denied") }) {
-                        setError("权限不足，无法创建文件")
-                    } else if (result.any { it.contains("Read-only file system") }) {
-                        setError("文件系统为只读，无法创建文件")
-                    } else if (result.any { it.contains("No space left") }) {
-                        setError("设备存储空间不足")
-                    } else if (result.any { it.contains("Error:") }) {
-                        setError(result.first { it.contains("Error:") })
-                    } else {
-                        setSuccess("文件创建成功")
-                        onSuccess()
-                    }
-                    _isLoading.value = false
-                }
-            } catch (e: Exception) {
-                setError("创建文件时发生错误: ${e.message}")
-                _isLoading.value = false
-            }
-        }
-    }
-
-    /**
-     * Create a new directory
-     */
-    fun createDirectory(dirName: String, onSuccess: () -> Unit) {
-        _isLoading.value = true
-        _error.value = null
-        coroutineScope.launch {
-            try {
-                val dirPath = _directoryPath.joinToString("/")
-                adbDevicePoller.exec("shell mkdir /${dirPath}/${dirName}") { result ->
-                    if (result.any { it.contains("Permission denied") }) {
-                        setError("权限不足，无法创建目录")
-                    } else if (result.any { it.contains("Read-only file system") }) {
-                        setError("文件系统为只读，无法创建目录")
-                    } else if (result.any { it.contains("No space left") }) {
-                        setError("设备存储空间不足")
-                    } else if (result.any { it.contains("File exists") }) {
-                        setError("目录已存在")
-                    } else if (result.any { it.contains("Error:") }) {
-                        setError(result.first { it.contains("Error:") })
-                    } else {
-                        setSuccess("目录创建成功")
-                        onSuccess()
-                    }
-                    _isLoading.value = false
-                }
-            } catch (e: Exception) {
-                setError("创建目录时发生错误: ${e.message}")
-                _isLoading.value = false
-            }
-        }
-    }
-
-    /**
-     * Load file content for editing
-     */
     fun loadFileContent(
         fileName: String,
-        useDetectedEncoding: Boolean = true,
-        onSuccess: () -> Unit
+        useDetectedEncoding: Boolean
     ) {
-        _isLoading.value = true
-        _error.value = null
-        coroutineScope.launch {
+        _state.update { it.copy(operationInProgress = true, isTransferring = true, transferringFileName = fileName, showTransferDialog = true) }
+        val tempFile = File.createTempFile("pull_", ".tmp")
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                val dirPath = _directoryPath.joinToString("/")
-                val tempFile = File.createTempFile("pull_", ".tmp")
-                adbDevicePoller.exec("pull /${dirPath}/${fileName} \"${tempFile.absolutePath}\"") { result ->
-                    if (result.any { it.contains("error") || it.contains("failed") }) {
-                        setError("拉取文件失败: ${result.joinToString("\n")}")
-                        tempFile.delete()
-                    } else {
-                        // 只在首次加载时检测编码
-                        if (useDetectedEncoding) {
-                            val encoding = detectEncoding(tempFile)
-                            currentFileEncoding.value = encoding
-                        }
-                        val content = tempFile.readText(Charset.forName(currentFileEncoding.value))
-                        currentFileContent.value = content
-                        currentFileName.value = fileName
-                        tempFile.delete()
-                        onSuccess()
-                    }
-                    _isLoading.value = false
-                }
-            } catch (e: Exception) {
-                setError("读取文件时发生错误: ${e.message}")
-                _isLoading.value = false
-            }
-        }
-    }
-
-    /**
-     * Save edited file content
-     */
-    fun saveFileContent(content: String, onSuccess: () -> Unit) {
-        _isLoading.value = true
-        _error.value = null
-        coroutineScope.launch {
-            try {
-                val fileName = currentFileName.value ?: return@launch
-                val dirPath = _directoryPath.joinToString("/")
-
-                // 将内容写入临时文件，使用检测到的编码
-                val tempFile = File.createTempFile("temp_", ".txt")
-                tempFile.writeText(content.replace("\r\n", "\n"), Charset.forName(currentFileEncoding.value))
-
-                // 使用adb push命令将临时文件推送到设备
-                adbDevicePoller.exec("push \"${tempFile.absolutePath}\" \"/${dirPath}/${fileName}\"") { result ->
-                    // 删除临时文件
-                    tempFile.delete()
-
-                    if (result.any { it.contains("error") || it.contains("failed") }) {
-                        setError("保存文件失败: ${result.joinToString("\n")}")
-                    } else {
-                        setSuccess("文件保存成功")
-                        onSuccess()
-                    }
-                    _isLoading.value = false
-                }
-            } catch (e: Exception) {
-                setError("保存文件时发生错误: ${e.message}")
-                _isLoading.value = false
-            }
-        }
-    }
-
-    /**
-     * Pull file to local device
-     */
-    fun pullFile(fileName: String, destinationPath: String, onSuccess: () -> Unit) {
-        _isLoading.value = true
-        coroutineScope.launch {
-            try {
-                val dirPath = _directoryPath.joinToString("/")
-                adbDevicePoller.exec("pull /${dirPath}/${fileName} $destinationPath") { result ->
-                    if (result.any { it.contains("error") || it.contains("failed") }) {
-                        setError("导出文件失败: ${result.joinToString("\n")}")
-                    } else {
-                        setSuccess("文件导出成功")
-                    }
-                    _isLoading.value = false
-                    onSuccess()
-                }
-            } catch (e: Exception) {
-                setError("导出文件失败: ${e.message}")
-                _isLoading.value = false
-            }
-        }
-    }
-
-    /**
-     * Push file to device
-     */
-    fun pushFile(localFilePath: String, onSuccess: () -> Unit) {
-        _isLoading.value = true
-        coroutineScope.launch {
-            try {
-                val dirPath = _directoryPath.joinToString("/")
-                adbDevicePoller.exec("push $localFilePath /$dirPath") { result ->
-                    if (result.any { it.contains("error") || it.contains("failed") }) {
-                        setError("导入文件失败: ${result.joinToString("\n")}")
-                    } else {
-                        setSuccess("文件导入成功")
-                    }
-                    _isLoading.value = false
-                    onSuccess()
-                }
-            } catch (e: Exception) {
-                setError("导入文件失败: ${e.message}")
-                _isLoading.value = false
-            }
-        }
-    }
-
-    /**
-     * Navigate to a specific path index
-     * @param index the index to navigate to (-1 for root)
-     */
-    fun navigateToPathIndex(index: Int) {
-        if (index < -1 || index >= _directoryPath.size) return
-
-        // 保存当前路径的副本，以便在出错时恢复
-        val previousPath = _directoryPath.toList()
-
-        // 如果是根目录
-        if (index == -1) {
-            _directoryPath.clear()
-            loadFiles()
-            return
-        } else {
-            // 移除所有大于index的路径组件
-            while (_directoryPath.size > index + 1) {
-                _directoryPath.removeLast()
-            }
-        }
-
-        // 检查目录权限
-        coroutineScope.launch {
-            try {
-                val dirPath = _directoryPath.joinToString("/")
-                // 先检查目录是否可访问
-                adbDevicePoller.exec("shell cd /${dirPath} && echo SUCCESS || echo FAILURE") { result ->
-                    if (result.any { it.contains("Permission denied") || it.contains("FAILURE") }) {
-                        // 恢复之前的路径
-                        _directoryPath.clear()
-                        _directoryPath.addAll(previousPath)
-                        _error.value = "权限不足：无法访问该目录"
-                    }
-                    // 无论成功与否，都加载文件列表
-                    loadFiles()
-                }
-            } catch (e: Exception) {
-                // 出现异常时，也恢复路径
-                _directoryPath.clear()
-                _directoryPath.addAll(previousPath)
-                _error.value = "Error accessing directory: ${e.message}"
-                loadFiles()
-            }
-        }
-    }
-
-    /**
-     * Import a file from local system to current directory
-     */
-    fun importFile(file: java.io.File, onSuccess: () -> Unit) {
-        _isLoading.value = true
-        _error.value = null
-
-        coroutineScope.launch {
-            try {
-                val dirPath = _directoryPath.joinToString("/")
-                val localFilePath = file.absolutePath
-
-                adbDevicePoller.exec("push \"$localFilePath\" \"/${dirPath}/\"") { result ->
-                    if (result.any { it.contains("error") || it.contains("failed") }) {
-                        setError("导入文件失败: ${result.joinToString("\n")}")
-                    } else {
-                        setSuccess("文件导入成功")
-                        onSuccess()
-                    }
-                    _isLoading.value = false
-                }
-            } catch (e: Exception) {
-                setError("导入文件失败: ${e.message}")
-                _isLoading.value = false
-            }
-        }
-    }
-
-    /**
-     * Import a folder from local system to current directory
-     */
-    fun importFolder(folderPath: String, onSuccess: () -> Unit) {
-        _isLoading.value = true
-        _error.value = null
-
-        coroutineScope.launch {
-            try {
-                val dirPath = _directoryPath.joinToString("/")
-                val folderName = File(folderPath).name
-
-                // 先在目标目录创建同名文件夹
-                adbDevicePoller.exec("push \"$folderPath\" \"/${dirPath}/${folderName}/\"") { pushResult ->
-                    if (pushResult.any { it.contains("error") || it.contains("failed") }) {
-                        setError("导入文件夹失败: ${pushResult.joinToString("\n")}")
-                    } else {
-                        setSuccess("文件夹导入成功")
-                        onSuccess()
-                    }
-                    _isLoading.value = false
-                }
-            } catch (e: Exception) {
-                setError("导入文件夹失败: ${e.message}")
-                _isLoading.value = false
-            }
-        }
-    }
-
-    fun importFiles(files: List<File>, onSuccess: () -> Unit) {
-        _isLoading.value = true
-        _error.value = null
-
-        coroutineScope.launch {
-            val dirPath = _directoryPath.joinToString("/")
-
-            for (file in files) {
-                val command = if (file.isDirectory) {
-                    val folderName = file.name
-                    "push \"${file.canonicalPath}\" \"/${dirPath}/${folderName}/\""
+                val filePath = "${directoryPath}/${fileName}"
+                adbDevicePoller.pull(filePath, tempFile.absolutePath)
+                val encoding = if (useDetectedEncoding) {
+                    detectEncoding(tempFile)
                 } else {
-                    "push \"${file.canonicalPath}\" \"/${dirPath}/\""
+                    _state.value.fileEncoding
                 }
-                val pushResult = runCatching { adbDevicePoller.execSuspend(command) }
-                    .onFailure { it.printStackTrace() }
-                    .getOrNull() ?: listOf("Unknown error")
-                if (pushResult.any { it.lowercase().contains("error") || it.contains("failed") }) {
-                    setError("批量导入文件失败: ${pushResult.joinToString("\n")}")
-                    break
-                }
-            }
-
-            _isLoading.value = false
-            if (_error.value == null) {
-                onSuccess()
-            }
-        }
-
-    }
-
-    /**
-     * 刷新当前目录内容
-     */
-    fun reload() {
-        loadFiles()
-    }
-
-    /**
-     * 检查是否可以向上导航
-     */
-    fun canNavigateUp(): Boolean {
-        return _directoryPath.isNotEmpty()
-    }
-
-    // 设置错误消息并自动清除
-    fun setError(message: String) {
-        _error.value = message
-        coroutineScope.launch {
-            kotlinx.coroutines.delay(3000) // 3秒后自动清除错误消息
-            _error.value = null
-        }
-    }
-
-    // 设置成功消息并自动清除
-    private fun setSuccess(message: String) {
-        _success.value = message
-        coroutineScope.launch {
-            kotlinx.coroutines.delay(3000) // 3秒后自动清除成功消息
-            _success.value = null
-        }
-    }
-
-    // 清除错误消息
-    fun clearError() {
-        _error.value = null
-    }
-
-    // 清除成功消息
-    fun clearSuccess() {
-        _success.value = null
-    }
-
-    /**
-     * 搜索文件
-     */
-    fun searchFiles(query: String) {
-        if (query.isBlank()) {
-            _searchResults.value = emptyList()
-            return
-        }
-
-        _isSearching.value = true
-
-        coroutineScope.launch {
-            try {
-                val dirPath = _directoryPath.joinToString("/")
-                val cmd = "shell cd /${dirPath} && stat -c '%F|%A|%h|%U|%G|%s|%Y|%n|%N' * 2>/dev/null | awk -F'|' -v query=\"$query\" 'tolower(\$8) ~ tolower(query)'"
-                println("cmd: $cmd")
-                adbDevicePoller.exec(cmd) { result ->
-                    println("result: $result")
-                    _searchResults.value = FileUtils.parseStatOutput(result)
-                    _isSearching.value = false
-                }
+                val content = tempFile.readText(Charset.forName(encoding))
+                _state.update { it.copy(fileName = fileName, fileEncoding = encoding, fileContent = content) }
             } catch (e: Exception) {
-                setError("搜索文件失败: ${e.message}")
-                _isSearching.value = false
+                _effect.emit(FileManagerEffect.ShowErrorTips(e.message.toString()))
+            } finally {
+                _state.update { it.copy(operationInProgress = false, isTransferring = false, transferringFileName = null, showTransferDialog = false) }
+                tempFile.delete()
             }
         }
     }
 
-    fun setViewMode(mode: ViewMode) {
-        _viewMode.value = mode
-    }
-
-    /**
-     * 添加书签并持久化保存
-     * @param name 书签名称，如果为空或空白字符串，则使用当前路径最后一个组件作为名称
-     */
-    fun addBookmark(name: String? = null) {
-        val currentPath = directoryPath.joinToString("/")
-        // 如果未提供名称或名称为空，使用当前路径最后一个组件作为书签名
-        val bookmarkName = if (name.isNullOrBlank()) {
-            // 如果路径为空，使用"根目录"作为名称
-            if (directoryPath.isEmpty()) {
-                "根目录"
-            } else {
-                // 否则使用路径的最后一个组件
-                directoryPath.last()
-            }
-        } else {
-            name
-        }
-
-        val bookmark = Bookmark(bookmarkName, currentPath)
-        _bookmarks.add(bookmark)
-        saveBookmarks()
-    }
-
-    /**
-     * 删除书签并持久化保存
-     */
-    fun removeBookmark(bookmark: Bookmark) {
-        _bookmarks.remove(bookmark)
-        saveBookmarks()
-    }
-
-    /**
-     * 导航到书签的路径
-     */
-    fun navigateToBookmark(bookmark: Bookmark) {
-        directoryPath.clear()
-        directoryPath.addAll(bookmark.path.split("/").filter { it.isNotEmpty() })
-        loadFiles()
-    }
-
-    // 自动检测文件编码
     private fun detectEncoding(file: File): String {
         val detector = UniversalDetector(null)
         file.inputStream().use { input ->
@@ -767,65 +261,219 @@ class FileManagerViewModel(
         return detector.detectedCharset ?: "UTF-8"
     }
 
-    private fun checkForUpdates() {
-        coroutineScope.launch {
+    private fun importFiles(files: List<File>) {
+        _state.update { it.copy(operationInProgress = true) }
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                val latestRelease = withContext(Dispatchers.IO) {
-                    val response = URL("https://api.github.com/repos/$GITHUB_URL/releases/latest").readText()
-                    Json.decodeFromString<GitHubRelease>(response)
+                for (file in files) {
+                    _state.update { it.copy(isTransferring = true, transferringFileName = file.name, showTransferDialog = true) }
+                    val destPath = if (file.isDirectory) {
+                        "${directoryPath}/${file.name}"
+                    } else {
+                        directoryPath
+                    }
+                    adbDevicePoller.push(file.canonicalPath, destPath)
                 }
-
-                // 比较版本号
-                val currentVersion = VERSION.replace("v", "")
-                val latestVersion = latestRelease.tag_name.replace("v", "")
-
-                if (isNewerVersion(latestVersion, currentVersion)) {
-                    _updateInfo.value = UpdateInfo(
-                        version = latestRelease.tag_name,
-                        releaseNotes = latestRelease.body,
-                        downloadUrl = latestRelease.html_url
-                    )
-                    _showUpdateDialog.value = true
-                }
+                loadFiles()
+                _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.fileImportSuccess))
             } catch (e: Exception) {
-                // 处理检查更新失败的情况
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.fileImportFailed(e.message ?: "")))
+            } finally {
+                _state.update { it.copy(operationInProgress = false, isTransferring = false, transferringFileName = null, showTransferDialog = false) }
             }
         }
     }
 
-    private fun isNewerVersion(latest: String, current: String): Boolean {
-        val latestParts = latest.split(".").map { it.toInt() }
-        val currentParts = current.split(".").map { it.toInt() }
+    private fun exportFile(fileName: String, destinationPath: String) {
+        _state.update { it.copy(operationInProgress = true, isTransferring = true, transferringFileName = fileName, showTransferDialog = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.pull("${directoryPath}/${fileName}", destinationPath)
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.fileExportFailed(e.message ?: "")))
+            } finally {
+                _state.update { it.copy(operationInProgress = false, isTransferring = false, transferringFileName = null, showTransferDialog = false) }
+            }
+        }
+    }
 
-        for (i in 0 until minOf(latestParts.size, currentParts.size)) {
-            if (latestParts[i] > currentParts[i]) return true
-            if (latestParts[i] < currentParts[i]) return false
+    private fun deleteFile(fileName: String) {
+        _state.update { it.copy(operationInProgress = true, pendingDeleteFile = null) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.delete("${directoryPath}/${fileName}")
+                loadFiles()
+                _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.fileDeleteSuccess))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.fileDeleteFailed(e.message ?: "")))
+            } finally {
+                _state.update { it.copy(operationInProgress = false) }
+            }
+        }
+    }
+
+    private fun navigateTo(directoryName: String) {
+        println("navigateTo called with: '$directoryName', current directoryList: $_directoryList")
+        val isSymlink = directoryName.contains("/") || directoryName.contains("\\")
+
+        if (isSymlink) {
+            if (directoryName.startsWith("/")) {
+                _directoryList.clear()
+                val pathComponents =
+                    directoryName.substring(1).split("/").filter { it.isNotEmpty() }
+                _directoryList.addAll(pathComponents)
+            } else {
+                val pathComponents = directoryName.split("/").filter { it.isNotEmpty() }
+
+                for (component in pathComponents) {
+                    when (component) {
+                        "." -> continue
+                        ".." -> {
+                            if (_directoryList.isNotEmpty()) {
+                                _directoryList.removeLast()
+                            }
+                        }
+
+                        else -> _directoryList.add(component)
+                    }
+                }
+            }
+        } else {
+            _directoryList.add(directoryName)
         }
 
-        return latestParts.size > currentParts.size
+        println("After navigateTo, directoryList: $_directoryList, directoryPath: '$directoryPath'")
+        loadFiles()
+        checkCurrentPathBookmarked()
     }
 
-    fun dismissUpdateDialog() {
-        _showUpdateDialog.value = false
+    private fun navigateToPathIndex(index: Int) {
+        if (index < -1 || index >= _directoryList.size) {
+            viewModelScope.launch {
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.pathInvalidIndex))
+            }
+            return
+        }
+        if (index == -1) {
+            _directoryList.clear()
+        } else {
+            while (_directoryList.size > index + 1) {
+                _directoryList.removeLast()
+            }
+        }
+        loadFiles()
+        checkCurrentPathBookmarked()
+    }
+
+    private fun navigateUp() {
+        if (_directoryList.isNotEmpty()) {
+            _directoryList.removeLast()
+            loadFiles()
+            checkCurrentPathBookmarked()
+        } else {
+            viewModelScope.launch(Dispatchers.IO) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.pathAlreadyRoot))
+            }
+        }
+    }
+
+    private fun loadFiles() {
+        println("Loading files for path: '$directoryPath', directoryList: $_directoryList")
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.update { it.copy(files = LoadState.Loading) }
+            try {
+                val result = adbDevicePoller.loadFiles(directoryPath)
+                println("Load files result: $result")
+                val list = FileUtils.parseStatOutput(result)
+                if (list.isEmpty()) {
+                    _state.update { it.copy(files = LoadState.Empty) }
+                } else {
+                    _state.update { state ->
+                        state.copy(files = LoadState.Success(list.toMutableList().apply {
+                            when (_state.value.sortType) {
+                                SortType.NAME_ASC -> sortBy { it.fileName.lowercase() }
+                                SortType.TYPE_ASC -> sortWith(compareByDescending<FileItem> { it.isDir }.thenBy { it.fileName.lowercase() })
+                                SortType.TYPE_DESC -> sortWith(compareBy<FileItem> { it.isDir }.thenByDescending { it.fileName.lowercase() })
+                                SortType.DATE_ASC -> sortBy { it.date }
+                                SortType.DATE_DESC -> sortByDescending { it.date }
+                                SortType.SIZE_ASC -> sortBy { it.size }
+                                SortType.SIZE_DESC -> sortByDescending { it.size }
+                            }
+                        }))
+                    }
+                }
+            } catch (e: Exception) {
+                println("Error loading files: ${e.message}")
+                e.printStackTrace()
+                _state.update { it.copy(files = LoadState.Error(e)) }
+            }
+        }
+    }
+
+    private fun saveFile(newContent: String) {
+        val currentFileName = _state.value.fileName ?: return
+        _state.update { it.copy(operationInProgress = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val tempFile = File.createTempFile("save_", ".tmp")
+                try {
+                    tempFile.writeText(newContent, Charset.forName(_state.value.fileEncoding))
+                    adbDevicePoller.push(tempFile.absolutePath, "${directoryPath}/${currentFileName}")
+                    _state.update { it.copy(fileContent = newContent) }
+                    _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.fileSaveSuccess))
+                } finally {
+                    tempFile.delete()
+                }
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.fileSaveFailed(e.message ?: "")))
+            } finally {
+                _state.update { it.copy(operationInProgress = false) }
+            }
+        }
+    }
+
+    private fun createDirectory(dirName: String) {
+        _state.update { it.copy(operationInProgress = true, showCreateDirectoryDialog = false) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.createDirectory(directoryPath, dirName)
+                loadFiles()
+                _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.folderCreatedSuccess))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.folderCreatedFailed(e.message ?: "")))
+            } finally {
+                _state.update { it.copy(operationInProgress = false) }
+            }
+        }
+    }
+
+    private fun createFile(fileName: String, content: String) {
+        _state.update { it.copy(operationInProgress = true, showCreateFileDialog = false) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.createFile(directoryPath, fileName, content)
+                loadFiles()
+                _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.fileCreatedSuccess))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.fileCreatedFailed(e.message ?: "")))
+            } finally {
+                _state.update { it.copy(operationInProgress = false) }
+            }
+        }
+    }
+
+    private fun renameFile(oldName: String, newName: String) {
+        _state.update { it.copy(operationInProgress = true, pendingRenameFile = null) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.renameFile(directoryPath, oldName, newName)
+                loadFiles()
+                _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.renameSuccess))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.renameFailed(e.message ?: "")))
+            } finally {
+                _state.update { it.copy(operationInProgress = false) }
+            }
+        }
     }
 }
-
-/**
- * 排序类型枚举
- */
-enum class SortType(val displayName: String) {
-    TYPE_ASC("类型 (文件夹优先)"),
-    TYPE_DESC("类型 (文件优先)"),
-    NAME_ASC("名称 (A-Z)"),
-    DATE_ASC("日期 (最早)"),
-    DATE_DESC("日期 (最新)"),
-    SIZE_ASC("大小 (最小)"),
-    SIZE_DESC("大小 (最大)")
-}
-
-/**
- * 文件视图模式
- */
-enum class ViewMode {
-    LIST, GRID
-} 

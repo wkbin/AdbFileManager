@@ -1,6 +1,5 @@
 package view.components.dnd
 
-import LocalAdb
 import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.runtime.Composable
@@ -18,11 +17,18 @@ import java.io.File
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun Modifier.adbDndSource(selectedFile: String): Modifier {
-    val adbFile = LocalAdb.current.adbPath
+fun Modifier.adbDndSource(
+    selectedFile: String,
+    onRequestExport: (String) -> Unit
+): Modifier {
     return dragAndDropSource {
         DragAndDropTransferData(
-            transferable = DragAndDropTransferable(PlaceholderTransferable(adbFile, selectedFile)),
+            transferable = DragAndDropTransferable(
+                PlaceholderTransferable(
+                    selectedFile,
+                    onRequestExport
+                )
+            ),
             supportedActions = listOf(DragAndDropTransferAction.Copy),
             onTransferCompleted = {
                 println("$it transfer completed")
@@ -33,21 +39,20 @@ fun Modifier.adbDndSource(selectedFile: String): Modifier {
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun Modifier.adbDndTarget(onDropAction: (List<File>) -> Unit): Modifier {
+fun Modifier.adbDndTarget(onDropFiles: (List<File>) -> Unit): Modifier {
     val dropTarget = remember {
         object : DragAndDropTarget {
-            override fun onStarted(event: DragAndDropEvent) {
-            }
+            override fun onStarted(event: DragAndDropEvent) {}
 
-            override fun onEnded(event: DragAndDropEvent) {
-            }
+            override fun onEnded(event: DragAndDropEvent) {}
 
             override fun onDrop(event: DragAndDropEvent): Boolean {
                 val transferable = event.awtTransferable
                 if (transferable.isDataFlavorSupported(DataFlavor.javaFileListFlavor)) {
-                    val data = transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<File>
+                    val data =
+                        transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<File>
                     if (!data.isNullOrEmpty()) {
-                        onDropAction(data)
+                        onDropFiles(data)
                         return true
                     }
                 }
