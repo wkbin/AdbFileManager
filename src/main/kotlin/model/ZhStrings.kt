@@ -25,6 +25,15 @@ class ZhStrings : Strings {
     override val fileCancel = "取消"
     override val fileSave = "保存"
     override val fileRename = "重命名"
+    override val fileCopy = "复制"
+    override val fileMove = "移动"
+    override val fileCopyTo = "复制到..."
+    override val fileMoveTo = "移动到..."
+    override val copySuccess = "复制成功"
+    override fun copyFailed(error: String) = "复制失败: $error"
+    override val moveSuccess = "移动成功"
+    override fun moveFailed(error: String) = "移动失败: $error"
+    override val destinationPath = "目标路径"
     override val fileImportSuccess = "导入文件成功"
     override fun fileImportFailed(error: String) = "导入文件失败: $error"
     override fun fileExportFailed(error: String) = "导出文件失败: $error"
@@ -33,6 +42,9 @@ class ZhStrings : Strings {
     override val fileSaveSuccess = "保存文件成功"
     override fun fileSaveFailed(error: String) = "保存文件失败: $error"
     override val fileDownload = "下载"
+    override val fileInstallApk = "安装 APK"
+    override val apkInstallSuccess = "APK 安装成功"
+    override fun apkInstallFailed(error: String) = "APK 安装失败: $error"
     override val fileEdit = "编辑"
     override val fileNewFolder = "创建新文件夹"
     override val fileNewFile = "创建新文件"
@@ -183,5 +195,20 @@ class ZhStrings : Strings {
     // Transfer strings
     override val transferFile = "传输文件"
     override val transferPreparing = "准备中..."
+    override val transferComplete = "传输完成"
+    override fun transferProgress(bytesTransferred: Long, totalBytes: Long): String {
+        val transferred = formatFileSize(bytesTransferred)
+        val total = formatFileSize(totalBytes)
+        return "$transferred / $total"
+    }
     override fun transferInProgress(percent: Int) = "传输中... (约 $percent%)"
+
+    private fun formatFileSize(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+            bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes.toDouble() / (1024 * 1024))} MB"
+            else -> "${"%.2f".format(bytes.toDouble() / (1024 * 1024 * 1024))} GB"
+        }
+    }
 }

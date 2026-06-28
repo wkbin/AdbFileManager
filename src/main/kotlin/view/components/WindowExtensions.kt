@@ -1,6 +1,7 @@
 package view.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -22,40 +23,60 @@ import java.awt.event.MouseMotionAdapter
 @OptIn(ExperimentalComposeUiApi::class)
 fun Modifier.moveableWindow(window: java.awt.Window) = composed {
     var isDragging by remember { mutableStateOf(false) }
+
+    // Track active listeners so we can clean up if the composable leaves
+    // composition during a drag (prevents AWT listener leak)
+    val activeListeners = remember { mutableListOf<Any>() }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            // Clean up any listeners still registered when leaving composition
+            activeListeners.forEach { listener ->
+                when (listener) {
+                    is MouseMotionAdapter -> window.removeMouseMotionListener(listener)
+                    is MouseAdapter -> window.removeMouseListener(listener)
+                }
+            }
+            activeListeners.clear()
+            if (isDragging) {
+                window.cursor = Cursor.getDefaultCursor()
+            }
+        }
+    }
+
     then(
         Modifier.pointerHoverIcon(PointerIcon(Cursor(if (isDragging) Cursor.MOVE_CURSOR else Cursor.DEFAULT_CURSOR)))
             .onPointerEvent(PointerEventType.Press) {
-                // 记录点击位置
                 val awtEvent = it.awtEventOrNull
                 isDragging = true
                 if (awtEvent != null) {
-                    // 计算鼠标点击位置相对于窗口的偏移
                     val offsetX = awtEvent.x
                     val offsetY = awtEvent.y
 
                     // 添加移动监听器
                     val mouseMoveListener = object : MouseMotionAdapter() {
                         override fun mouseDragged(e: MouseEvent) {
-                            // 新的窗口位置 = 鼠标在屏幕上的位置 - 初始点击时的偏移
                             val newX = e.locationOnScreen.x - offsetX
                             val newY = e.locationOnScreen.y - offsetY
                             window.setLocation(newX, newY)
                         }
                     }
 
-                    val cleanup = {
-                        window.removeMouseMotionListener(mouseMoveListener)
-                        isDragging = false
-                        window.cursor = Cursor.getDefaultCursor()
-                    }
-
                     // 添加释放监听器移除移动监听器
                     val mouseReleaseListener = object : MouseAdapter() {
                         override fun mouseReleased(e: MouseEvent) {
-                            cleanup()
+                            window.removeMouseMotionListener(mouseMoveListener)
                             window.removeMouseListener(this)
+                            activeListeners.remove(mouseMoveListener)
+                            activeListeners.remove(this)
+                            isDragging = false
+                            window.cursor = Cursor.getDefaultCursor()
                         }
                     }
+
+                    // Track listeners for cleanup on dispose
+                    activeListeners.add(mouseMoveListener)
+                    activeListeners.add(mouseReleaseListener)
 
                     // 添加监听器
                     window.addMouseMotionListener(mouseMoveListener)

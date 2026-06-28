@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.FilterList
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,6 +21,8 @@ import model.StringsManager
 import view.intent.FileManagerIntent
 import viewmodel.FileManagerViewModel
 
+private enum class SearchFilter { All, DirectoriesOnly, FilesOnly }
+
 @Composable
 fun SearchDialog(
     visible: Boolean,
@@ -30,15 +33,22 @@ fun SearchDialog(
     if (!visible) return
 
     var searchQuery by remember { mutableStateOf("") }
+    var filterType by remember { mutableStateOf(SearchFilter.All) }
     val focusRequester = remember { FocusRequester() }
     val strings by StringsManager.strings.collectAsState()
 
-    val filteredFiles = remember(searchQuery, allFiles) {
+    val filteredFiles = remember(searchQuery, allFiles, filterType) {
         if (searchQuery.isBlank()) {
             emptyList()
         } else {
-            allFiles.filter { 
-                it.fileName.contains(searchQuery, ignoreCase = true) 
+            allFiles.filter { file ->
+                val matchesQuery = file.fileName.contains(searchQuery, ignoreCase = true)
+                val matchesFilter = when (filterType) {
+                    SearchFilter.All -> true
+                    SearchFilter.DirectoriesOnly -> file.isDir
+                    SearchFilter.FilesOnly -> !file.isDir
+                }
+                matchesQuery && matchesFilter
             }
         }
     }
@@ -94,6 +104,46 @@ fun SearchDialog(
                     )
                 )
 
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 搜索过滤选项
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.FilterList,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    SearchFilter.entries.forEach { filter ->
+                        FilterChip(
+                            selected = filterType == filter,
+                            onClick = { filterType = filter },
+                            label = {
+                                Text(
+                                    text = when (filter) {
+                                        SearchFilter.All -> "All"
+                                        SearchFilter.DirectoriesOnly -> strings.fileDirectory
+                                        SearchFilter.FilesOnly -> strings.fileName
+                                    },
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                        )
+                    }
+                    if (filteredFiles.isNotEmpty()) {
+                        Text(
+                            text = "${filteredFiles.size} results",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 when {
@@ -127,7 +177,7 @@ fun SearchDialog(
                             verticalArrangement = Arrangement.spacedBy(2.dp),
                             contentPadding = PaddingValues(vertical = 4.dp)
                         ) {
-                            items(filteredFiles) { file ->
+                            items(filteredFiles, key = { it.fileName }) { file ->
                                 FileListItem(
                                     file = file,
                                     onFileClick = {

@@ -56,6 +56,18 @@ class AdbDevicePoller(private val adb: Adb) {
     suspend fun createDirectory(directoryPath: String, dirName: String) = fileOperations.createDirectory(directoryPath, dirName)
     suspend fun createFile(directoryPath: String, fileName: String, content: String) = fileOperations.createFile(directoryPath, fileName, content)
     suspend fun changePermissions(directoryPath: String, fileName: String, permissions: String) = fileOperations.changePermissions(directoryPath, fileName, permissions)
+    suspend fun installApk(filePath: String): String = fileOperations.installApk(filePath)
+    suspend fun copyFile(sourcePath: String, destDirectory: String) = fileOperations.copyFile(sourcePath, destDirectory)
+    suspend fun moveFile(sourcePath: String, destDirectory: String) = fileOperations.moveFile(sourcePath, destDirectory)
+
+    fun pushWithProgress(
+        localPath: String,
+        remotePath: String,
+        progressCallback: AdbTransferProgress
+    ): kotlinx.coroutines.flow.Flow<String> {
+        val device = _currentDevice.value ?: throw AdbDeviceNotFoundException()
+        return adb.pushWithProgress(device, localPath, remotePath, progressCallback)
+    }
 
     suspend fun pair(ipAddress: String, port: String, pairingPort: String, pairingCode: String) {
         val device = _currentDevice.value ?: return

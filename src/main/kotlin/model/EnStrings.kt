@@ -25,6 +25,15 @@ class EnStrings : Strings {
     override val fileCancel = "Cancel"
     override val fileSave = "Save"
     override val fileRename = "Rename"
+    override val fileCopy = "Copy"
+    override val fileMove = "Move"
+    override val fileCopyTo = "Copy to..."
+    override val fileMoveTo = "Move to..."
+    override val copySuccess = "Copied successfully"
+    override fun copyFailed(error: String) = "Copy failed: $error"
+    override val moveSuccess = "Moved successfully"
+    override fun moveFailed(error: String) = "Move failed: $error"
+    override val destinationPath = "Destination path"
     override val fileImportSuccess = "Files imported successfully"
     override fun fileImportFailed(error: String) = "Failed to import files: $error"
     override fun fileExportFailed(error: String) = "Failed to export file: $error"
@@ -33,6 +42,9 @@ class EnStrings : Strings {
     override val fileSaveSuccess = "File saved successfully"
     override fun fileSaveFailed(error: String) = "Failed to save file: $error"
     override val fileDownload = "Download"
+    override val fileInstallApk = "Install APK"
+    override val apkInstallSuccess = "APK installed successfully"
+    override fun apkInstallFailed(error: String) = "APK install failed: $error"
     override val fileEdit = "Edit"
     override val fileNewFolder = "Create New Folder"
     override val fileNewFile = "Create New File"
@@ -183,5 +195,20 @@ class EnStrings : Strings {
     // Transfer strings
     override val transferFile = "Transfer File"
     override val transferPreparing = "Preparing..."
+    override val transferComplete = "Transfer complete"
+    override fun transferProgress(bytesTransferred: Long, totalBytes: Long): String {
+        val transferred = formatFileSize(bytesTransferred)
+        val total = formatFileSize(totalBytes)
+        return "$transferred / $total"
+    }
     override fun transferInProgress(percent: Int) = "Transferring... (~${percent}%)"
+
+    private fun formatFileSize(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+            bytes < 1024 * 1024 * 1024 -> "${"%.1f".format(bytes.toDouble() / (1024 * 1024))} MB"
+            else -> "${"%.2f".format(bytes.toDouble() / (1024 * 1024 * 1024))} GB"
+        }
+    }
 }

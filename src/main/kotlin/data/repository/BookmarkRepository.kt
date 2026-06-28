@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -56,23 +57,18 @@ class BookmarkRepository {
 
     suspend fun addBookmark(name: String, path: String): Bookmark = withContext(Dispatchers.IO) {
         val bookmark = Bookmark(name = name, path = path)
-        val newList = _bookmarks.value.toMutableList()
-        newList.add(0, bookmark)
-        _bookmarks.value = newList
+        _bookmarks.update { currentList -> listOf(bookmark) + currentList }
         saveBookmarks()
         bookmark
     }
 
     suspend fun removeBookmark(bookmark: Bookmark) = withContext(Dispatchers.IO) {
-        val newList = _bookmarks.value.toMutableList()
-        newList.remove(bookmark)
-        _bookmarks.value = newList
+        _bookmarks.update { currentList -> currentList.filterNot { it.path == bookmark.path && it.name == bookmark.name } }
         saveBookmarks()
     }
 
     suspend fun removeBookmarkByPath(path: String) = withContext(Dispatchers.IO) {
-        val newList = _bookmarks.value.filterNot { it.path == path }
-        _bookmarks.value = newList
+        _bookmarks.update { currentList -> currentList.filterNot { it.path == path } }
         saveBookmarks()
     }
 

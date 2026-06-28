@@ -18,16 +18,26 @@ class ZipUtils {
         @Throws(Exception::class)
         fun unzip(inputStream: InputStream, destDirectory: String) {
             val buffer = ByteArray(1024)
-            val destDir = File(destDirectory)
-            if (!destDir.exists()) {
-                destDir.mkdirs()
+            val destDir = File(destDirectory).also { dir ->
+                if (!dir.exists()) {
+                    dir.mkdirs()
+                }
             }
-            
+            val canonicalDestDir = destDir.canonicalPath + File.separator
+
             ZipInputStream(inputStream).use { zipInputStream ->
                 var zipEntry = zipInputStream.nextEntry
                 while (zipEntry != null) {
                     val newFile = File(destDirectory, zipEntry.name)
-                    
+                    val canonicalPath = newFile.canonicalPath
+
+                    // Prevent Zip Slip path traversal attack
+                    if (!canonicalPath.startsWith(canonicalDestDir)) {
+                        throw SecurityException(
+                            "Zip entry '${zipEntry.name}' is outside of the target directory"
+                        )
+                    }
+
                     if (zipEntry.isDirectory) {
                         newFile.mkdirs()
                     } else {
@@ -39,7 +49,7 @@ class ZipUtils {
                             }
                         }
                     }
-                    
+
                     zipInputStream.closeEntry()
                     zipEntry = zipInputStream.nextEntry
                 }

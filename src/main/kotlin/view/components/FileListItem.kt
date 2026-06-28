@@ -80,13 +80,18 @@ fun FileListItem(
     onDeleteFile: () -> Unit,
     onDownloadFile: () -> Unit,
     onChangePermissions: () -> Unit,
+    onRenameFile: () -> Unit = {},
+    onInstallApk: () -> Unit = {},
+    onCopyFile: () -> Unit = {},
+    onMoveFile: () -> Unit = {},
+    isSelectionMode: Boolean = false,
+    isSelected: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
 
     // 状态
     var isHovered by remember { mutableStateOf(false) }
-    var isExpanded by remember { mutableStateOf(false) }
 
     val strings by StringsManager.strings.collectAsState()
 
@@ -120,16 +125,7 @@ fun FileListItem(
                 interactionSource = interactionSource,
                 indication = null
             ) {
-                if (file.isDir) {
-                    coroutineScope.launch {
-                        isExpanded = true
-                        // 添加一个短暂的延迟来显示动画效果
-                        kotlinx.coroutines.delay(150)
-                        onFileClick()
-                    }
-                } else {
-                    onFileClick()
-                }
+                onFileClick()
             },
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
@@ -143,6 +139,15 @@ fun FileListItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 多选模式下的复选框
+            if (isSelectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onFileClick() },
+                    modifier = Modifier.padding(end = 8.dp)
+                )
+            }
+
             // 文件图标容器
             Box(
                 modifier = Modifier
@@ -271,6 +276,33 @@ fun FileListItem(
                     }
                 }
 
+                // 重命名按钮
+                IconButton(
+                    onClick = onRenameFile,
+                    enabled = isHovered
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = strings.fileRename,
+                        tint = MaterialTheme.colorScheme.tertiary
+                    )
+                }
+
+                // APK 安装按钮 - 仅为 .apk 文件显示
+                val isApk = file.fileName.endsWith(".apk", ignoreCase = true)
+                if (isApk) {
+                    IconButton(
+                        onClick = onInstallApk,
+                        enabled = isHovered
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.PlayArrow,
+                            contentDescription = strings.fileInstallApk,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
                 // 修改权限按钮
                 IconButton(
                     onClick = onChangePermissions,
@@ -279,6 +311,30 @@ fun FileListItem(
                     Icon(
                         imageVector = Icons.Outlined.Lock,
                         contentDescription = strings.changePermissions,
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
+
+                // 复制按钮
+                IconButton(
+                    onClick = onCopyFile,
+                    enabled = isHovered
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.ContentCopy,
+                        contentDescription = strings.fileCopy,
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                }
+
+                // 移动按钮
+                IconButton(
+                    onClick = onMoveFile,
+                    enabled = isHovered
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.DriveFileMove,
+                        contentDescription = strings.fileMove,
                         tint = MaterialTheme.colorScheme.secondary
                     )
                 }

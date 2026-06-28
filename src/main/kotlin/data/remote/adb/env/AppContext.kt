@@ -11,4 +11,13 @@ object AppContext {
      */
     @Volatile
     var adbDevice: AdbDevice? = null
+
+    /**
+     * Debug mode flag. Set to true to enable verbose logging.
+     * Controlled by system property "adbFileManager.debug" or environment variable "ADBFM_DEBUG".
+     */
+    val isDebug: Boolean by lazy {
+        System.getProperty("adbFileManager.debug")?.toBoolean() == true
+                || System.getenv("ADBFM_DEBUG")?.toBoolean() == true
+    }
 } 

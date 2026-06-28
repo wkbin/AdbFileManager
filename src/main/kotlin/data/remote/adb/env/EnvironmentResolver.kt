@@ -15,8 +15,10 @@ internal class EnvironmentResolver {
                 envMap[key] = replaceEnvVars(value)
             }
         }
-        envMap.forEach { (key, value) ->
-            println("$key: $value")
+        if (AppContext.isDebug) {
+            envMap.forEach { (key, _) ->
+                println("[DEBUG] env variable loaded: $key")
+            }
         }
         envMap
     }

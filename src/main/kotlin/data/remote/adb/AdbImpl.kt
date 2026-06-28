@@ -106,17 +106,22 @@ class AdbImpl(
         remotePath: String,
         progressCallback: AdbTransferProgress
     ): Flow<String> {
-        val command = "$adbPath -s ${adbDevice.deviceId} push -p \"$localPath\" \"$remotePath\""
-        return terminal.connect(command)
+        val commandArgs = listOf(adbPath, "-s", adbDevice.deviceId, "push", "-p", localPath, remotePath)
+        return terminal.connectSafe(commandArgs)
     }
 
-    @Deprecated("Use shell(), push(), or pull() instead", ReplaceWith("shell(adbDevice, *args, throwOnError)"))
+    @Deprecated(
+        message = "Use shell(), push(), or pull() instead. String-based commands break with paths containing spaces.",
+        replaceWith = ReplaceWith("shell(adbDevice, *args, throwOnError)")
+    )
     override suspend fun exec(
         adbDevice: AdbDevice,
         cmd: String,
         throwOnError: Boolean
     ): List<String> {
         val args = mutableListOf(adbPath, "-s", adbDevice.deviceId)
+        // WARNING: split(" ") breaks quoted arguments with spaces.
+        // Use shell() / push() / pull() which accept List<String> args.
         args.addAll(cmd.split(" "))
         return terminal.runSafe(args, throwOnError)
     }

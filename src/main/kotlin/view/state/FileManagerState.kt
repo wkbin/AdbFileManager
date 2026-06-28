@@ -24,5 +24,10 @@ data class FileManagerState(
     val showChangePermissionsDialog: Boolean = false,
     val isTransferring: Boolean = false,
     val transferringFileName: String? = null,
-    val showTransferDialog: Boolean = false
+    val showTransferDialog: Boolean = false,
+    val pendingCopyMoveFile: FileItem? = null,
+    val isCopyOperation: Boolean = true, // true = copy, false = move
+    val showCopyMoveDialog: Boolean = false,
+    val selectionMode: Boolean = false,
+    val selectedFiles: Set<String> = emptySet()
 )

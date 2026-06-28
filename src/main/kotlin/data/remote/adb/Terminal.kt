@@ -17,6 +17,10 @@ import org.jetbrains.skiko.hostOs
 class Terminal(
     private val defaultTimeoutMs: Long = DEFAULT_TIMEOUT_MS
 ) {
+    @Deprecated(
+        message = "Use runSafe() with List<String> args instead. String-based commands break with paths containing spaces.",
+        replaceWith = ReplaceWith("runSafe(command.split(\" \"), throwOnError, timeoutMs)")
+    )
     suspend fun run(
         command: String,
         throwOnError: Boolean = false,
@@ -26,6 +30,8 @@ class Terminal(
             logWarning("Command is null or empty.")
             return@withContext emptyList()
         }
+        // WARNING: split(" ") breaks quoted arguments with spaces.
+        // Use runSafe() which accepts List<String> args.
         val commandArray = if (hostOs.isWindows) {
             command.split(" ").toTypedArray()
         } else {
@@ -55,16 +61,17 @@ class Terminal(
         throwOnError: Boolean,
         timeoutMs: Long
     ): List<String> {
+        var process: java.lang.Process? = null
         return try {
             withTimeout(timeoutMs) {
-                val process = ProcessBuilder(commandArgs)
+                process = ProcessBuilder(commandArgs)
                     .redirectErrorStream(true)
                     .start()
 
-                val output = process.inputStream.bufferedReader().readLines()
+                val output = process!!.inputStream.bufferedReader().readLines()
 
                 if (throwOnError) {
-                    val exitCode = process.waitFor()
+                    val exitCode = process!!.waitFor()
                     if (exitCode != 0) {
                         val msg = output.joinToString("\n")
                         throw AdbCommandException(
@@ -80,10 +87,18 @@ class Terminal(
                 }
             }
         } catch (e: TimeoutCancellationException) {
+            process?.destroyForcibly()
             throw AdbException("Command timed out after ${timeoutMs}ms", e)
+        } catch (e: Exception) {
+            process?.destroyForcibly()
+            throw e
         }
     }
 
+    @Deprecated(
+        message = "Use connectSafe() with List<String> args instead. String-based commands break with paths containing spaces.",
+        replaceWith = ReplaceWith("connectSafe(command.split(\" \"))")
+    )
     fun connect(command: String): Flow<String> = channelFlow {
         if (command.isEmpty()) {
             logWarning("Command is null or empty.")
@@ -92,7 +107,41 @@ class Terminal(
 
         logInfo(command)
 
+        // WARNING: split(" ") breaks quoted arguments with spaces.
+        // Use connectSafe() which accepts List<String> args.
         val process = ProcessBuilder(*command.split(" ").toTypedArray())
+            .redirectErrorStream(true)
+            .start()
+
+        withContext(Dispatchers.IO) {
+            process.inputStream.bufferedReader().useLines { lines ->
+                lines.forEach { line ->
+                    try {
+                        send(line)
+                    } catch (e: Exception) {
+                        logError("Error sending line to flow", e)
+                        cancel()
+                    }
+                }
+            }
+        }
+
+        awaitClose {
+            process.destroy()
+            logInfo("""COMPLETED EXECUTE ADB\n$command""".trimIndent())
+        }
+    }.flowOn(Dispatchers.IO)
+
+    fun connectSafe(commandArgs: List<String>): Flow<String> = channelFlow {
+        if (commandArgs.isEmpty()) {
+            logWarning("Command args are empty.")
+            return@channelFlow
+        }
+
+        val commandLog = commandArgs.joinToString(" ")
+        logInfo(commandLog)
+
+        val process = ProcessBuilder(commandArgs)
             .redirectErrorStream(true)
             .start()
 

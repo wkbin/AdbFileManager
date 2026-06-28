@@ -224,17 +224,13 @@ fun FileEditDialog(
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
-    val hasChanges = remember(initialContent) { 
-        mutableStateOf(false)
+    // 检测内容变化 - 使用 derivedStateOf 避免每次按键都重启协程
+    val hasChanges by remember {
+        derivedStateOf { content != initialContent }
     }
-    
+
     // 检测当前是否为暗色模式
     val isDarkMode = ThemeState.isDark()
-    
-    // 检测内容变化
-    LaunchedEffect(content) {
-        hasChanges.value = content != initialContent
-    }
     
     // 窗口状态，用于控制窗口位置
     val windowState = rememberWindowState(width = 900.dp, height = 700.dp)

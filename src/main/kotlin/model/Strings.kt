@@ -25,6 +25,15 @@ interface Strings {
     val fileCancel: String
     val fileSave: String
     val fileRename: String
+    val fileCopy: String
+    val fileMove: String
+    val fileCopyTo: String
+    val fileMoveTo: String
+    val copySuccess: String
+    fun copyFailed(error: String): String
+    val moveSuccess: String
+    fun moveFailed(error: String): String
+    val destinationPath: String
     val fileImportSuccess: String
     fun fileImportFailed(error: String): String
     fun fileExportFailed(error: String): String
@@ -33,6 +42,9 @@ interface Strings {
     val fileSaveSuccess: String
     fun fileSaveFailed(error: String): String
     val fileDownload: String
+    val fileInstallApk: String
+    val apkInstallSuccess: String
+    fun apkInstallFailed(error: String): String
     val fileEdit: String
     val fileNewFolder: String
     val fileNewFile: String
@@ -173,5 +185,7 @@ interface Strings {
     
     val transferFile: String
     val transferPreparing: String
+    val transferComplete: String
+    fun transferProgress(bytesTransferred: Long, totalBytes: Long): String
     fun transferInProgress(percent: Int): String
 }

@@ -48,4 +48,19 @@ sealed class FileManagerIntent {
     
     data class StartTransfer(val fileName: String) : FileManagerIntent()
     object EndTransfer : FileManagerIntent()
+
+    data class InstallApk(val fileName: String) : FileManagerIntent()
+
+    data class RequestCopy(val file: FileItem) : FileManagerIntent()
+    data class RequestMove(val file: FileItem) : FileManagerIntent()
+    object DismissCopyMoveDialog : FileManagerIntent()
+    data class CopyFile(val fileName: String, val destPath: String) : FileManagerIntent()
+    data class MoveFile(val fileName: String, val destPath: String) : FileManagerIntent()
+
+    object ToggleSelectionMode : FileManagerIntent()
+    data class ToggleFileSelection(val fileName: String) : FileManagerIntent()
+    object SelectAllFiles : FileManagerIntent()
+    object ClearFileSelection : FileManagerIntent()
+    object BatchDeleteFiles : FileManagerIntent()
+    data class BatchExportFiles(val destinationPath: String) : FileManagerIntent()
 }

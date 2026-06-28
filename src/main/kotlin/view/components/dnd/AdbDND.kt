@@ -19,7 +19,7 @@ import java.io.File
 @Composable
 fun Modifier.adbDndSource(
     selectedFile: String,
-    onRequestExport: (String) -> Unit
+    onRequestExport: suspend (String) -> Unit
 ): Modifier {
     return dragAndDropSource {
         DragAndDropTransferData(

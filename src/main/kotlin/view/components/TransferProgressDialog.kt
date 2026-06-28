@@ -16,43 +16,50 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.delay
+import model.FileTransferState
 import model.StringsManager
+import kotlinx.coroutines.flow.StateFlow
 
 @Composable
 fun TransferProgressDialog(
     visible: Boolean,
     fileName: String?,
+    transferState: StateFlow<FileTransferState>,
     onDismiss: () -> Unit,
     onCancel: (() -> Unit)? = null
 ) {
     if (!visible) return
-    
-    val strings by StringsManager.strings.collectAsState()
-    var progress by remember { mutableStateOf(0f) }
-    var fileSizeText by remember { mutableStateOf(strings.transferPreparing) }
 
-    LaunchedEffect(visible) {
-        progress = 0f
-        while (progress < 0.95f) {
-            delay(100)
-            progress += (0.01f + (0.02f * (1f - progress))).coerceIn(0.01f, 0.05f)
-            fileSizeText = when {
-                progress < 0.25f -> strings.transferPreparing
-                progress < 0.5f -> strings.transferInProgress(25)
-                progress < 0.75f -> strings.transferInProgress(50)
-                else -> strings.transferInProgress(75)
+    val strings by StringsManager.strings.collectAsState()
+    val currentState by transferState.collectAsState()
+
+    val progressText = when (val state = currentState) {
+        is FileTransferState.Transferring -> {
+            if (state.totalBytes > 0) {
+                "${(state.progress * 100).toInt()}%"
+            } else {
+                ""
             }
         }
+        else -> ""
+    }
+
+    val statusText = when (val state = currentState) {
+        is FileTransferState.Transferring -> {
+            if (state.totalBytes > 0) {
+                strings.transferProgress(state.bytesTransferred, state.totalBytes)
+            } else {
+                strings.transferInProgress(0)
+            }
+        }
+        is FileTransferState.Completed -> strings.transferComplete
+        is FileTransferState.Failed -> state.error
+        FileTransferState.Idle -> strings.transferPreparing
     }
 
     AlertDialog(
@@ -83,27 +90,50 @@ fun TransferProgressDialog(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(8.dp),
-                    )
+                    when (val state = currentState) {
+                        is FileTransferState.Transferring -> {
+                            if (state.totalBytes > 0) {
+                                // Deterministic progress for push operations
+                                LinearProgressIndicator(
+                                    progress = { state.progress },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp),
+                                )
+                            } else {
+                                // Indeterminate for pull operations (adb pull has no progress reporting)
+                                LinearProgressIndicator(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp),
+                                )
+                            }
+                        }
+                        else -> {
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(8.dp),
+                            )
+                        }
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = fileSizeText,
+                            text = statusText,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Text(
-                            text = "${(progress * 100).toInt()}%",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-                        )
+                        if (progressText.isNotEmpty()) {
+                            Text(
+                                text = progressText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }

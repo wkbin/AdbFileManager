@@ -1,5 +1,6 @@
 package view
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +38,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
@@ -65,6 +67,7 @@ import view.components.ErrorView
 import view.components.FileListItem
 import view.components.LoadingView
 import view.components.ChangePermissionsDialog
+import view.components.RenameDialog
 import view.components.TransferProgressDialog
 import view.components.PathNavigator
 import view.components.toast.ToastModel
@@ -187,8 +190,20 @@ fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManage
                 },
                 onNavigateToBookmarkClick = { bookmark ->
                     viewModel.dispatch(FileManagerIntent.NavigateToBookmark(bookmark))
+                },
+                selectionMode = state.selectionMode,
+                onToggleSelectionMode = {
+                    viewModel.dispatch(FileManagerIntent.ToggleSelectionMode)
                 }
             )
+            // 操作进行中的进度指示器
+            AnimatedVisibility(
+                visible = state.operationInProgress
+            ) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth().height(2.dp)
+                )
+            }
             FileListView(viewModel)
         }
     }
@@ -288,11 +303,82 @@ fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManage
         }
     )
 
+    state.pendingRenameFile?.let { file ->
+        RenameDialog(
+            visible = true,
+            file = file,
+            onDismiss = {
+                viewModel.dispatch(FileManagerIntent.DismissRenameDialog)
+            },
+            onConfirm = { newName ->
+                viewModel.dispatch(FileManagerIntent.RenameFile(file.fileName, newName))
+            }
+        )
+    }
+
+    // 复制/移动对话框
+    if (state.showCopyMoveDialog && state.pendingCopyMoveFile != null) {
+        var destPath by remember { mutableStateOf("/" + viewModel.directoryList.joinToString("/")) }
+        val isCopy = state.isCopyOperation
+        val strings by StringsManager.strings.collectAsState()
+
+        AlertDialog(
+            onDismissRequest = {
+                viewModel.dispatch(FileManagerIntent.DismissCopyMoveDialog)
+            },
+            title = {
+                Text(
+                    text = if (isCopy) strings.fileCopyTo else strings.fileMoveTo,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "${strings.fileName}: ${state.pendingCopyMoveFile!!.fileName}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = destPath,
+                        onValueChange = { destPath = it },
+                        label = { Text(strings.destinationPath) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val intent = if (isCopy)
+                            FileManagerIntent.CopyFile(state.pendingCopyMoveFile!!.fileName, destPath)
+                        else
+                            FileManagerIntent.MoveFile(state.pendingCopyMoveFile!!.fileName, destPath)
+                        viewModel.dispatch(intent)
+                    },
+                    enabled = destPath.isNotEmpty()
+                ) {
+                    Text(if (isCopy) strings.fileCopy else strings.fileMove)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { viewModel.dispatch(FileManagerIntent.DismissCopyMoveDialog) }
+                ) {
+                    Text(strings.fileCancel)
+                }
+            }
+        )
+    }
+
     TransferProgressDialog(
         visible = state.showTransferDialog,
         fileName = state.transferringFileName,
-        onDismiss = { 
-            viewModel.dispatch(FileManagerIntent.EndTransfer) 
+        transferState = viewModel.transferProgress,
+        onDismiss = {
+            viewModel.dispatch(FileManagerIntent.EndTransfer)
         },
         onCancel = {
             viewModel.dispatch(FileManagerIntent.EndTransfer)
@@ -378,7 +464,9 @@ private fun FileToolBar(
     onDismissBookmarkMenu: () -> Unit,
     onAddBookmarkClick: () -> Unit,
     onRemoveBookmarkClick: (Bookmark) -> Unit,
-    onNavigateToBookmarkClick: (Bookmark) -> Unit
+    onNavigateToBookmarkClick: (Bookmark) -> Unit,
+    selectionMode: Boolean = false,
+    onToggleSelectionMode: () -> Unit = {}
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
@@ -405,6 +493,15 @@ private fun FileToolBar(
                     icon = Icons.AutoMirrored.Rounded.ArrowBack,
                     text = strings.navBack,
                     tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+
+                // 多选按钮
+                ToolbarButton(
+                    onClick = onToggleSelectionMode,
+                    icon = if (selectionMode) Icons.Outlined.Deselect else Icons.Outlined.CheckBox,
+                    text = if (selectionMode) "Cancel" else "Select",
+                    tint = if (selectionMode) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(4.dp))
 
@@ -541,6 +638,16 @@ private fun FileToolBar(
                         }
                     }
                 }
+
+                // 主题切换按钮
+                IconButton(
+                    onClick = { view.theme.ThemeState.toggleTheme() }
+                ) {
+                    Text(
+                        text = if (view.theme.ThemeState.isDark()) "☀️" else "🌙",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
             }
         }
     }
@@ -599,6 +706,57 @@ private fun FileListView(viewModel: FileManagerViewModel) {
                         viewModel.dispatch(FileManagerIntent.ImportFiles(files))
                     }
             ) {
+                // 多选批量操作栏
+                AnimatedVisibility(
+                    visible = state.selectionMode && state.selectedFiles.isNotEmpty(),
+                    modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        tonalElevation = 4.dp
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${state.selectedFiles.size} selected",
+                                style = MaterialTheme.typography.labelLarge
+                            )
+                            Button(
+                                onClick = { viewModel.dispatch(FileManagerIntent.SelectAllFiles) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Text("All")
+                            }
+                            Button(
+                                onClick = { viewModel.dispatch(FileManagerIntent.ClearFileSelection) },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.secondary
+                                )
+                            ) {
+                                Text("None")
+                            }
+                            Button(
+                                onClick = {
+                                    viewModel.dispatch(FileManagerIntent.BatchDeleteFiles)
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(4.dp))
+                                Text("Delete")
+                            }
+                        }
+                    }
+                }
+
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize()
@@ -618,18 +776,24 @@ private fun FileListView(viewModel: FileManagerViewModel) {
                         FileListItem(
                             file = file,
                             onFileClick = {
-                                if (file.isDir) {
-                                    if (file.link != null) {
-                                        viewModel.dispatch(FileManagerIntent.NavigateTo(file.link))
-                                    } else {
-                                        viewModel.dispatch(FileManagerIntent.NavigateTo(file.fileName))
-                                    }
+                                if (state.selectionMode) {
+                                    viewModel.dispatch(FileManagerIntent.ToggleFileSelection(file.fileName))
                                 } else {
-                                    if (isEditableFile(file.fileName)) {
-                                        viewModel.dispatch(FileManagerIntent.LoadFileContent(file.fileName))
+                                    if (file.isDir) {
+                                        if (file.link != null) {
+                                            viewModel.dispatch(FileManagerIntent.NavigateTo(file.link))
+                                        } else {
+                                            viewModel.dispatch(FileManagerIntent.NavigateTo(file.fileName))
+                                        }
+                                    } else {
+                                        if (isEditableFile(file.fileName)) {
+                                            viewModel.dispatch(FileManagerIntent.LoadFileContent(file.fileName))
+                                        }
                                     }
                                 }
                             },
+                            isSelectionMode = state.selectionMode,
+                            isSelected = file.fileName in state.selectedFiles,
                             onEditFile = {
                                 viewModel.dispatch(FileManagerIntent.LoadFileContent(file.fileName))
                             },
@@ -637,19 +801,38 @@ private fun FileListView(viewModel: FileManagerViewModel) {
                                 viewModel.dispatch(FileManagerIntent.RequestDeleteConfirmation(file.fileName))
                             },
                             onDownloadFile = {
+                                // Download to system Downloads folder
+                                val downloadsDir = java.io.File(System.getProperty("user.home"), "Downloads")
+                                if (downloadsDir.exists()) {
+                                    viewModel.dispatch(
+                                        FileManagerIntent.ExportFile(
+                                            file.fileName,
+                                            downloadsDir.absolutePath + java.io.File.separator + file.fileName
+                                        )
+                                    )
+                                }
                             },
                             onChangePermissions = {
                                 viewModel.dispatch(FileManagerIntent.RequestChangePermissions(file))
                             },
+                            onRenameFile = {
+                                viewModel.dispatch(FileManagerIntent.RequestRename(file))
+                            },
+                            onInstallApk = {
+                                viewModel.dispatch(FileManagerIntent.InstallApk(file.fileName))
+                            },
+                            onCopyFile = {
+                                viewModel.dispatch(FileManagerIntent.RequestCopy(file))
+                            },
+                            onMoveFile = {
+                                viewModel.dispatch(FileManagerIntent.RequestMove(file))
+                            },
                             modifier = Modifier.adbDndSource(
                                 selectedFile = "/${viewModel.directoryList.joinToString("/")}/${file.fileName}",
-                                onRequestExport = {
-                                    viewModel.dispatch(
-                                        FileManagerIntent.ExportFile(
-                                            file.fileName,
-                                            it
-                                        )
-                                    )
+                                onRequestExport = { destinationPath ->
+                                    // Synchronous pull for DND — ensures file is fully downloaded
+                                    // before the external drop target receives it
+                                    viewModel.exportFileSync(file.fileName, destinationPath)
                                 }
                             )
                         )
