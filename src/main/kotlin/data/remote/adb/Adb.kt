@@ -13,7 +13,8 @@ interface Adb {
     suspend fun pull(adbDevice: AdbDevice, remotePath: String, localPath: String, throwOnError: Boolean = false): List<String>
     
     fun pushWithProgress(adbDevice: AdbDevice, localPath: String, remotePath: String, progressCallback: AdbTransferProgress): kotlinx.coroutines.flow.Flow<String>
-    
+    fun pullWithProgress(adbDevice: AdbDevice, remotePath: String, localPath: String, progressCallback: AdbTransferProgress): kotlinx.coroutines.flow.Flow<String>
+
     @Deprecated("Use shell(), push(), or pull() instead", ReplaceWith("shell(adbDevice, *args, throwOnError)"))
     suspend fun exec(adbDevice: AdbDevice, cmd: String, throwOnError: Boolean = false): List<String>
 }

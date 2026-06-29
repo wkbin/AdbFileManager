@@ -1,8 +1,14 @@
 package data.remote.adb
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.io.IOException
 import data.remote.adb.env.Environment
+import java.io.File
 
 class AdbImpl(
     private val adbPath: String,
@@ -109,6 +115,42 @@ class AdbImpl(
         val commandArgs = listOf(adbPath, "-s", adbDevice.deviceId, "push", "-p", localPath, remotePath)
         return terminal.connectSafe(commandArgs)
     }
+
+    override fun pullWithProgress(
+        adbDevice: AdbDevice,
+        remotePath: String,
+        localPath: String,
+        progressCallback: AdbTransferProgress
+    ): Flow<String> = channelFlow {
+        // ponytail: poll local file size while adb pull runs, since adb pull has no -p flag
+        val sizeOutput = terminal.runSafe(
+            listOf(adbPath, "-s", adbDevice.deviceId, "shell", "stat", "-c", "%s", remotePath),
+            throwOnError = false
+        )
+        val totalSize = sizeOutput.firstOrNull()?.trim()?.toLongOrNull() ?: 0L
+
+        val pullDeferred = async(Dispatchers.IO) {
+            terminal.runSafe(
+                listOf(adbPath, "-s", adbDevice.deviceId, "pull", remotePath, localPath),
+                throwOnError = true
+            )
+        }
+
+        val localFile = File(localPath)
+        if (totalSize > 0) {
+            while (!pullDeferred.isCompleted) {
+                delay(100)
+                if (localFile.exists()) {
+                    val percent = (localFile.length() * 100 / totalSize).toInt().coerceIn(0, 100)
+                    progressCallback.onProgress(percent)
+                }
+            }
+        }
+        progressCallback.onProgress(100)
+
+        val result = pullDeferred.await()
+        result.forEach { send(it) }
+    }.flowOn(Dispatchers.IO)
 
     @Deprecated(
         message = "Use shell(), push(), or pull() instead. String-based commands break with paths containing spaces.",

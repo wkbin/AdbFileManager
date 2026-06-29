@@ -18,12 +18,18 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.DriveFileMove
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -84,8 +90,6 @@ fun FileListItem(
     onInstallApk: () -> Unit = {},
     onCopyFile: () -> Unit = {},
     onMoveFile: () -> Unit = {},
-    isSelectionMode: Boolean = false,
-    isSelected: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -139,15 +143,6 @@ fun FileListItem(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 多选模式下的复选框
-            if (isSelectionMode) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { onFileClick() },
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-            }
-
             // 文件图标容器
             Box(
                 modifier = Modifier
@@ -333,7 +328,7 @@ fun FileListItem(
                     enabled = isHovered
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.DriveFileMove,
+                        imageVector = Icons.AutoMirrored.Outlined.DriveFileMove,
                         contentDescription = strings.fileMove,
                         tint = MaterialTheme.colorScheme.secondary
                     )

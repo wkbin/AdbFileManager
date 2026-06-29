@@ -13,6 +13,7 @@ import java.io.IOException
 import java.util.concurrent.TimeUnit
 import model.StringsManager
 import org.jetbrains.skiko.hostOs
+import kotlin.time.Duration.Companion.milliseconds
 
 class Terminal(
     private val defaultTimeoutMs: Long = DEFAULT_TIMEOUT_MS
@@ -63,7 +64,7 @@ class Terminal(
     ): List<String> {
         var process: java.lang.Process? = null
         return try {
-            withTimeout(timeoutMs) {
+            withTimeout(timeoutMs.milliseconds) {
                 process = ProcessBuilder(commandArgs)
                     .redirectErrorStream(true)
                     .start()
@@ -71,7 +72,7 @@ class Terminal(
                 val output = process!!.inputStream.bufferedReader().readLines()
 
                 if (throwOnError) {
-                    val exitCode = process!!.waitFor()
+                    val exitCode = process.waitFor()
                     if (exitCode != 0) {
                         val msg = output.joinToString("\n")
                         throw AdbCommandException(
@@ -160,7 +161,7 @@ class Terminal(
 
         awaitClose {
             process.destroy()
-            logInfo("""COMPLETED EXECUTE ADB\n$command""".trimIndent())
+            logInfo("""COMPLETED EXECUTE ADB\n$commandLog""".trimIndent())
         }
     }.flowOn(Dispatchers.IO)
 

@@ -364,7 +364,7 @@ fun FileEditDialog(
 
                         // 状态指示
                         AnimatedVisibility(
-                            visible = hasChanges.value,
+                            visible = hasChanges,
                             enter = fadeIn() + expandHorizontally(),
                             exit = fadeOut() + shrinkHorizontally()
                         ) {
@@ -476,7 +476,7 @@ fun FileEditDialog(
                         // 保存按钮
                         Button(
                             onClick = { onSave(content) },
-                            enabled = hasChanges.value,
+                            enabled = hasChanges,
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.primary,
                                 disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant

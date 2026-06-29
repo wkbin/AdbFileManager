@@ -249,13 +249,21 @@ class FileManagerViewModel(
         fileName: String,
         useDetectedEncoding: Boolean
     ) {
+        val fileSize = (_state.value.files as? LoadState.Success)?.data
+            ?.find { it.fileName == fileName }?.size?.toLongOrNull() ?: 0L
+        _transferProgress.startTransfer(fileName, fileSize)
         _state.update { it.copy(operationInProgress = true, isTransferring = true, transferringFileName = fileName, showTransferDialog = true) }
-        _transferProgress.startTransfer(fileName, 0L) // pull doesn't report progress, use indeterminate
         val tempFile = File.createTempFile("pull_", ".tmp")
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val filePath = "${directoryPath}/${fileName}"
-                adbDevicePoller.pull(filePath, tempFile.absolutePath)
+                adbDevicePoller.pullWithProgress(
+                    filePath,
+                    tempFile.absolutePath,
+                    data.remote.adb.AdbTransferProgress { percent ->
+                        _transferProgress.updateProgress((percent / 100f * fileSize).toLong())
+                    }
+                ).collect { /* consume flow to drive pull completion */ }
                 _transferProgress.complete()
                 val encoding = if (useDetectedEncoding) {
                     detectEncoding(tempFile)
@@ -305,13 +313,10 @@ class FileManagerViewModel(
                         // Use pushWithProgress for real progress tracking
                         adbDevicePoller.pushWithProgress(
                             file.canonicalPath,
-                            destPath,
-                            object : data.remote.adb.AdbTransferProgress {
-                                override fun onProgress(bytesTransferred: Long, totalBytes: Long) {
-                                    _transferProgress.updateProgress(bytesTransferred)
-                                }
-                            }
-                        ).collect { /* consume flow to drive push completion */ }
+                            destPath
+                        ) { percent ->
+                            _transferProgress.updateProgress((percent / 100f * fileSize).toLong())
+                        }.collect { /* consume flow to drive push completion */ }
                     } else {
                         adbDevicePoller.push(file.canonicalPath, destPath)
                     }
@@ -329,11 +334,18 @@ class FileManagerViewModel(
     }
 
     private fun exportFile(fileName: String, destinationPath: String) {
+        val fileSize = (_state.value.files as? LoadState.Success)?.data
+            ?.find { it.fileName == fileName }?.size?.toLongOrNull() ?: 0L
+        _transferProgress.startTransfer(fileName, fileSize)
         _state.update { it.copy(operationInProgress = true, isTransferring = true, transferringFileName = fileName, showTransferDialog = true) }
-        _transferProgress.startTransfer(fileName, 0L) // pull doesn't report progress, use indeterminate
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                adbDevicePoller.pull("${directoryPath}/${fileName}", destinationPath)
+                adbDevicePoller.pullWithProgress(
+                    "${directoryPath}/${fileName}",
+                    destinationPath
+                ) { percent ->
+                    _transferProgress.updateProgress((percent / 100f * fileSize).toLong())
+                }.collect { /* consume flow to drive pull completion */ }
                 _transferProgress.complete()
             } catch (e: Exception) {
                 _transferProgress.fail(e.message ?: "Export failed")
@@ -647,7 +659,7 @@ class FileManagerViewModel(
             try {
                 for (fileName in files) {
                     val srcPath = "${directoryPath}/$fileName"
-                    val destFile = java.io.File(destinationPath, fileName)
+                    val destFile = File(destinationPath, fileName)
                     adbDevicePoller.pull(srcPath, destFile.absolutePath)
                 }
                 _state.update { it.copy(selectedFiles = emptySet(), selectionMode = false) }

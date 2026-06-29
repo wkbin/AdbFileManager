@@ -15,15 +15,15 @@ class AdbFileOperations(
 
     suspend fun loadFiles(directoryPath: String): List<String> {
         val device = currentDeviceProvider() ?: throw AdbDeviceNotFoundException()
-        val safePath = if (directoryPath.isEmpty()) "" else "/$directoryPath"
+        val safePath = if (directoryPath.isEmpty()) "/" else "/$directoryPath"
         println("Executing loadFiles for path: '$safePath'")
 
+        // ponytail: escape | as \| so the remote shell doesn't interpret it as pipe.
+        // Using cd && stat directly (no sh -c) so cd actually changes the working directory.
         val statFormat = "%F|%A|%h|%U|%G|%s|%Y|%n|%N"
-        return if (safePath.isEmpty()) {
-            adb.shell(device, "stat", "-L", "-c", statFormat, "*")
-        } else {
-            adb.shell(device, "sh", "-c", "cd '$safePath' && stat -L -c '$statFormat' * 2>/dev/null")
-        }
+        val escapedFormat = statFormat.replace("|", "\\|")
+        val targetPath = if (safePath == "/") "/" else "'$safePath'"
+        return adb.shell(device, "cd", targetPath, "&&", "stat", "-L", "-c", escapedFormat, "*", "2>/dev/null")
     }
 
     suspend fun push(originPath: String, destinationPath: String) {

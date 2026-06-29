@@ -69,6 +69,15 @@ class AdbDevicePoller(private val adb: Adb) {
         return adb.pushWithProgress(device, localPath, remotePath, progressCallback)
     }
 
+    fun pullWithProgress(
+        remotePath: String,
+        localPath: String,
+        progressCallback: AdbTransferProgress
+    ): kotlinx.coroutines.flow.Flow<String> {
+        val device = _currentDevice.value ?: throw AdbDeviceNotFoundException()
+        return adb.pullWithProgress(device, remotePath, localPath, progressCallback)
+    }
+
     suspend fun pair(ipAddress: String, port: String, pairingPort: String, pairingCode: String) {
         val device = _currentDevice.value ?: return
         val ipPort = port.ifEmpty { "5555" }

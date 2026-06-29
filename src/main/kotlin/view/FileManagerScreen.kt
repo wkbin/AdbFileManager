@@ -27,12 +27,15 @@ import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.NoteAdd
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.CheckBox
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Deselect
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -190,10 +193,6 @@ fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManage
                 },
                 onNavigateToBookmarkClick = { bookmark ->
                     viewModel.dispatch(FileManagerIntent.NavigateToBookmark(bookmark))
-                },
-                selectionMode = state.selectionMode,
-                onToggleSelectionMode = {
-                    viewModel.dispatch(FileManagerIntent.ToggleSelectionMode)
                 }
             )
             // 操作进行中的进度指示器
@@ -464,9 +463,7 @@ private fun FileToolBar(
     onDismissBookmarkMenu: () -> Unit,
     onAddBookmarkClick: () -> Unit,
     onRemoveBookmarkClick: (Bookmark) -> Unit,
-    onNavigateToBookmarkClick: (Bookmark) -> Unit,
-    selectionMode: Boolean = false,
-    onToggleSelectionMode: () -> Unit = {}
+    onNavigateToBookmarkClick: (Bookmark) -> Unit
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
@@ -493,15 +490,6 @@ private fun FileToolBar(
                     icon = Icons.AutoMirrored.Rounded.ArrowBack,
                     text = strings.navBack,
                     tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-
-                // 多选按钮
-                ToolbarButton(
-                    onClick = onToggleSelectionMode,
-                    icon = if (selectionMode) Icons.Outlined.Deselect else Icons.Outlined.CheckBox,
-                    text = if (selectionMode) "Cancel" else "Select",
-                    tint = if (selectionMode) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(4.dp))
 
@@ -639,15 +627,6 @@ private fun FileToolBar(
                     }
                 }
 
-                // 主题切换按钮
-                IconButton(
-                    onClick = { view.theme.ThemeState.toggleTheme() }
-                ) {
-                    Text(
-                        text = if (view.theme.ThemeState.isDark()) "☀️" else "🌙",
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                }
             }
         }
     }
@@ -706,57 +685,6 @@ private fun FileListView(viewModel: FileManagerViewModel) {
                         viewModel.dispatch(FileManagerIntent.ImportFiles(files))
                     }
             ) {
-                // 多选批量操作栏
-                AnimatedVisibility(
-                    visible = state.selectionMode && state.selectedFiles.isNotEmpty(),
-                    modifier = Modifier.align(Alignment.TopCenter).padding(8.dp)
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        tonalElevation = 4.dp
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "${state.selectedFiles.size} selected",
-                                style = MaterialTheme.typography.labelLarge
-                            )
-                            Button(
-                                onClick = { viewModel.dispatch(FileManagerIntent.SelectAllFiles) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary
-                                )
-                            ) {
-                                Text("All")
-                            }
-                            Button(
-                                onClick = { viewModel.dispatch(FileManagerIntent.ClearFileSelection) },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondary
-                                )
-                            ) {
-                                Text("None")
-                            }
-                            Button(
-                                onClick = {
-                                    viewModel.dispatch(FileManagerIntent.BatchDeleteFiles)
-                                },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.error
-                                )
-                            ) {
-                                Icon(Icons.Outlined.Delete, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Delete")
-                            }
-                        }
-                    }
-                }
-
                 LazyColumn(
                     state = listState,
                     modifier = Modifier.fillMaxSize()
@@ -776,24 +704,18 @@ private fun FileListView(viewModel: FileManagerViewModel) {
                         FileListItem(
                             file = file,
                             onFileClick = {
-                                if (state.selectionMode) {
-                                    viewModel.dispatch(FileManagerIntent.ToggleFileSelection(file.fileName))
-                                } else {
-                                    if (file.isDir) {
-                                        if (file.link != null) {
-                                            viewModel.dispatch(FileManagerIntent.NavigateTo(file.link))
-                                        } else {
-                                            viewModel.dispatch(FileManagerIntent.NavigateTo(file.fileName))
-                                        }
+                                if (file.isDir) {
+                                    if (file.link != null) {
+                                        viewModel.dispatch(FileManagerIntent.NavigateTo(file.link))
                                     } else {
-                                        if (isEditableFile(file.fileName)) {
-                                            viewModel.dispatch(FileManagerIntent.LoadFileContent(file.fileName))
-                                        }
+                                        viewModel.dispatch(FileManagerIntent.NavigateTo(file.fileName))
+                                    }
+                                } else {
+                                    if (isEditableFile(file.fileName)) {
+                                        viewModel.dispatch(FileManagerIntent.LoadFileContent(file.fileName))
                                     }
                                 }
                             },
-                            isSelectionMode = state.selectionMode,
-                            isSelected = file.fileName in state.selectedFiles,
                             onEditFile = {
                                 viewModel.dispatch(FileManagerIntent.LoadFileContent(file.fileName))
                             },
