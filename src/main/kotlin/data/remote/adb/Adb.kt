@@ -2,6 +2,7 @@ package data.remote.adb
 
 
 interface Adb {
+    fun getAdbPath(): String
     suspend fun devices(): List<String>
     suspend fun wifiState(deviceId: String): AdbWifiState
     suspend fun connect(ipAddress: String, port: String): AdbWifiState

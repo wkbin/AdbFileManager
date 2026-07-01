@@ -6,6 +6,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.io.IOException
 import data.remote.adb.env.Environment
 import java.io.File
@@ -14,6 +15,8 @@ class AdbImpl(
     private val adbPath: String,
     private val terminal: Terminal
 ) : Adb {
+    override fun getAdbPath(): String = adbPath
+
     override suspend fun devices(): List<String> {
         val result = terminal.runSafe(listOf(adbPath, "devices"))
         val regex = """(.+)(device)""".toRegex()
@@ -113,7 +116,12 @@ class AdbImpl(
         progressCallback: AdbTransferProgress
     ): Flow<String> {
         val commandArgs = listOf(adbPath, "-s", adbDevice.deviceId, "push", "-p", localPath, remotePath)
-        return terminal.connectSafe(commandArgs)
+        val progressRegex = Regex("""\[(\d+)%]""")
+        return terminal.connectSafe(commandArgs).onEach { line ->
+            progressRegex.find(line)?.groupValues?.get(1)?.toIntOrNull()?.let {
+                progressCallback.onProgress(it)
+            }
+        }
     }
 
     override fun pullWithProgress(

@@ -59,6 +59,13 @@ class AdbDevicePoller(private val adb: Adb) {
     suspend fun installApk(filePath: String): String = fileOperations.installApk(filePath)
     suspend fun copyFile(sourcePath: String, destDirectory: String) = fileOperations.copyFile(sourcePath, destDirectory)
     suspend fun moveFile(sourcePath: String, destDirectory: String) = fileOperations.moveFile(sourcePath, destDirectory)
+    suspend fun getInstalledPackages() = fileOperations.getInstalledPackages()
+    suspend fun getAppLabel(packageName: String) = fileOperations.getAppLabel(packageName)
+    suspend fun getAppApkPath(packageName: String) = fileOperations.getAppApkPath(packageName)
+    suspend fun uninstallApp(packageName: String) = fileOperations.uninstallApp(packageName)
+    suspend fun backupApk(packageName: String, destinationPath: String) = fileOperations.backupApk(packageName, destinationPath)
+    suspend fun takeScreenshot(destinationPath: String) = fileOperations.takeScreenshot(destinationPath)
+    suspend fun pushClipboard(text: String) = fileOperations.pushClipboard(text)
 
     fun pushWithProgress(
         localPath: String,

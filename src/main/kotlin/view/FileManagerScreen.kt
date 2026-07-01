@@ -32,6 +32,9 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Deselect
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Apps
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -84,6 +87,8 @@ import view.effect.FileManagerEffect
 import view.intent.FileManagerIntent
 import viewmodel.FileManagerViewModel
 import view.components.SearchDialog
+import view.components.AppManagerDialog
+import view.components.ClipboardDialog
 
 @Composable
 fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManagerViewModel>()) {
@@ -193,7 +198,10 @@ fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManage
                 },
                 onNavigateToBookmarkClick = { bookmark ->
                     viewModel.dispatch(FileManagerIntent.NavigateToBookmark(bookmark))
-                }
+                },
+                onAppsClick = { viewModel.dispatch(FileManagerIntent.ShowAppManager) },
+                onScreenshotClick = { viewModel.dispatch(FileManagerIntent.TakeScreenshot) },
+                onClipboardClick = { viewModel.dispatch(FileManagerIntent.ShowClipboardDialog) }
             )
             // 操作进行中的进度指示器
             AnimatedVisibility(
@@ -390,6 +398,23 @@ fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManage
         allFiles = allFiles,
         viewModel = viewModel
     )
+
+    AppManagerDialog(
+        visible = state.showAppManager,
+        appList = state.appList,
+        isLoading = state.appListLoading,
+        onDismiss = { viewModel.dispatch(FileManagerIntent.DismissAppManager) },
+        onUninstall = { viewModel.dispatch(FileManagerIntent.UninstallApp(it)) },
+        onBackup = { pkg, dest ->
+            viewModel.dispatch(FileManagerIntent.BackupApk(pkg, dest))
+        }
+    )
+
+    ClipboardDialog(
+        visible = state.showClipboardDialog,
+        onDismiss = { viewModel.dispatch(FileManagerIntent.DismissClipboardDialog) },
+        onPush = { viewModel.dispatch(FileManagerIntent.PushClipboard(it)) }
+    )
 }
 
 @Composable
@@ -463,7 +488,10 @@ private fun FileToolBar(
     onDismissBookmarkMenu: () -> Unit,
     onAddBookmarkClick: () -> Unit,
     onRemoveBookmarkClick: (Bookmark) -> Unit,
-    onNavigateToBookmarkClick: (Bookmark) -> Unit
+    onNavigateToBookmarkClick: (Bookmark) -> Unit,
+    onAppsClick: () -> Unit = {},
+    onScreenshotClick: () -> Unit = {},
+    onClipboardClick: () -> Unit = {}
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
@@ -627,6 +655,31 @@ private fun FileToolBar(
                     }
                 }
 
+            }
+
+            // Right side: utility buttons
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                ToolbarButton(
+                    onClick = onAppsClick,
+                    icon = Icons.Outlined.Apps,
+                    text = "Apps",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                ToolbarButton(
+                    onClick = onScreenshotClick,
+                    icon = Icons.Outlined.CameraAlt,
+                    text = "Shot",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                ToolbarButton(
+                    onClick = onClipboardClick,
+                    icon = Icons.Outlined.ContentPaste,
+                    text = "Clip",
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
         }
     }

@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import model.AppInfo
 import model.Bookmark
 import model.FileItem
 import model.FileTransferProgress
@@ -165,6 +166,14 @@ class FileManagerViewModel(
             FileManagerIntent.ClearFileSelection -> clearFileSelection()
             FileManagerIntent.BatchDeleteFiles -> batchDeleteFiles()
             is FileManagerIntent.BatchExportFiles -> batchExportFiles(intent.destinationPath)
+            FileManagerIntent.ShowAppManager -> showAppManager()
+            FileManagerIntent.DismissAppManager -> _state.update { it.copy(showAppManager = false) }
+            is FileManagerIntent.UninstallApp -> uninstallApp(intent.packageName)
+            is FileManagerIntent.BackupApk -> backupApk(intent.packageName, intent.destinationPath)
+            FileManagerIntent.TakeScreenshot -> takeScreenshot()
+            FileManagerIntent.ShowClipboardDialog -> _state.update { it.copy(showClipboardDialog = true) }
+            FileManagerIntent.DismissClipboardDialog -> _state.update { it.copy(showClipboardDialog = false) }
+            is FileManagerIntent.PushClipboard -> pushClipboard(intent.text)
         }
     }
 
@@ -672,6 +681,99 @@ class FileManagerViewModel(
                 ))
             } finally {
                 _state.update { it.copy(operationInProgress = false, isTransferring = false, transferringFileName = null, showTransferDialog = false) }
+            }
+        }
+    }
+
+    // ── App management ──────────────────────────────────────────────
+
+    private fun showAppManager() {
+        _state.update { it.copy(showAppManager = true, appListLoading = true, appList = emptyList()) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val packages = adbDevicePoller.getInstalledPackages().sorted()
+                _state.update { it.copy(appList = packages.map { AppInfo(it) }, appListLoading = false) }
+                // Resolve labels in background, one by one
+                packages.forEach { pkg ->
+                    val label = adbDevicePoller.getAppLabel(pkg)
+                    _state.update { state ->
+                        val updated = state.appList.map { a ->
+                            if (a.packageName == pkg) a.copy(label = label) else a
+                        }
+                        state.copy(appList = updated)
+                    }
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(appListLoading = false) }
+                _effect.emit(FileManagerEffect.ShowErrorTips(e.message ?: "Failed to load apps"))
+            }
+        }
+    }
+
+    private fun uninstallApp(packageName: String) {
+        _state.update { it.copy(operationInProgress = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.uninstallApp(packageName)
+                _state.update { it.copy(appList = it.appList.filter { a -> a.packageName != packageName }) }
+                _effect.emit(FileManagerEffect.ShowSuccessTips("Uninstalled $packageName"))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(e.message ?: "Uninstall failed"))
+            } finally {
+                _state.update { it.copy(operationInProgress = false) }
+            }
+        }
+    }
+
+    private fun backupApk(packageName: String, destinationPath: String) {
+        _transferProgress.startTransfer("$packageName.apk", 0L)
+        _state.update { it.copy(operationInProgress = true, isTransferring = true, transferringFileName = "$packageName.apk", showTransferDialog = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.backupApk(packageName, destinationPath)
+                _transferProgress.complete()
+                _effect.emit(FileManagerEffect.ShowSuccessTips("Backup saved"))
+            } catch (e: Exception) {
+                _transferProgress.fail(e.message ?: "Backup failed")
+                _effect.emit(FileManagerEffect.ShowErrorTips(e.message ?: "Backup failed"))
+            } finally {
+                _state.update { it.copy(operationInProgress = false, isTransferring = false, transferringFileName = null, showTransferDialog = false) }
+            }
+        }
+    }
+
+    // ── Screenshot ──────────────────────────────────────────────────
+
+    private fun takeScreenshot() {
+        _state.update { it.copy(operationInProgress = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val sdf = java.text.SimpleDateFormat("yyyyMMdd_HHmmss")
+                val timestamp = sdf.format(java.util.Date())
+                val downloadsDir = java.io.File(System.getProperty("user.home"), "Downloads")
+                val destFile = java.io.File(downloadsDir, "screenshot_$timestamp.png")
+                adbDevicePoller.takeScreenshot(destFile.absolutePath)
+                _effect.emit(FileManagerEffect.ShowSuccessTips("Screenshot saved: ${destFile.name}"))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(e.message ?: "Screenshot failed"))
+            } finally {
+                _state.update { it.copy(operationInProgress = false) }
+            }
+        }
+    }
+
+    // ── Clipboard ───────────────────────────────────────────────────
+
+    private fun pushClipboard(text: String) {
+        _state.update { it.copy(operationInProgress = true, showClipboardDialog = false) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.pushClipboard(text)
+                _effect.emit(FileManagerEffect.ShowSuccessTips("Clipboard pushed"))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips(e.message ?: "Clipboard push failed"))
+            } finally {
+                _state.update { it.copy(operationInProgress = false) }
             }
         }
     }

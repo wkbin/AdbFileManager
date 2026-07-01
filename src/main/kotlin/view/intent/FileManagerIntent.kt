@@ -63,4 +63,18 @@ sealed class FileManagerIntent {
     object ClearFileSelection : FileManagerIntent()
     object BatchDeleteFiles : FileManagerIntent()
     data class BatchExportFiles(val destinationPath: String) : FileManagerIntent()
+
+    // App management
+    object ShowAppManager : FileManagerIntent()
+    object DismissAppManager : FileManagerIntent()
+    data class UninstallApp(val packageName: String) : FileManagerIntent()
+    data class BackupApk(val packageName: String, val destinationPath: String) : FileManagerIntent()
+
+    // Screenshot
+    object TakeScreenshot : FileManagerIntent()
+
+    // Clipboard
+    object ShowClipboardDialog : FileManagerIntent()
+    object DismissClipboardDialog : FileManagerIntent()
+    data class PushClipboard(val text: String) : FileManagerIntent()
 }

@@ -1,5 +1,6 @@
 package view.state
 
+import model.AppInfo
 import model.Bookmark
 import model.FileItem
 import model.SortType
@@ -29,5 +30,9 @@ data class FileManagerState(
     val isCopyOperation: Boolean = true, // true = copy, false = move
     val showCopyMoveDialog: Boolean = false,
     val selectionMode: Boolean = false,
-    val selectedFiles: Set<String> = emptySet()
+    val selectedFiles: Set<String> = emptySet(),
+    val showAppManager: Boolean = false,
+    val appList: List<AppInfo> = emptyList(),
+    val appListLoading: Boolean = false,
+    val showClipboardDialog: Boolean = false
 )
