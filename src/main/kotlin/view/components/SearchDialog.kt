@@ -203,6 +203,15 @@ fun SearchDialog(
                                         onDismiss()
                                     },
                                     onDownloadFile = {
+                                        val downloadsDir = java.io.File(System.getProperty("user.home"), "Downloads")
+                                        downloadsDir.mkdirs()
+                                        viewModel.dispatch(
+                                            FileManagerIntent.ExportFile(
+                                                file.fileName,
+                                                java.io.File(downloadsDir, file.fileName).absolutePath
+                                            )
+                                        )
+                                        onDismiss()
                                     },
                                     onChangePermissions = {
                                         viewModel.dispatch(FileManagerIntent.RequestChangePermissions(file))

@@ -114,6 +114,50 @@ class AdbFileOperationsTest {
         assertTrue(packageQuery.throwOnError)
     }
 
+    @Test
+    fun `remote file operations shell quote spaces quotes and dollar signs`() = runBlocking {
+        val adb = RecordingAdb()
+        val operations = AdbFileOperations(
+            adb = adb,
+            currentDeviceProvider = { device },
+            windowsPushWorkaroundEnabled = false
+        )
+
+        operations.delete("data/local/tmp/a b'c\$d.txt")
+        operations.renameFile("data/local/tmp", "old ' \$ name", "new ' \$ name")
+        operations.copyFile("storage/emulated/0/源 文件.txt", "/data/local/tmp/目标 目录")
+        operations.moveFile("storage/emulated/0/移动 文件.txt", "/data/local/tmp/目标 目录")
+
+        assertEquals(
+            listOf("rm", "-rf", "--", "'/data/local/tmp/a b'\\''c\$d.txt'"),
+            adb.shellCalls[0].args
+        )
+        assertEquals(
+            listOf(
+                "mv", "--",
+                "'/data/local/tmp/old '\\'' \$ name'",
+                "'/data/local/tmp/new '\\'' \$ name'"
+            ),
+            adb.shellCalls[1].args
+        )
+        assertEquals(
+            listOf(
+                "cp", "-r", "--",
+                "'/storage/emulated/0/源 文件.txt'",
+                "'/data/local/tmp/目标 目录'"
+            ),
+            adb.shellCalls[2].args
+        )
+        assertEquals(
+            listOf(
+                "mv", "--",
+                "'/storage/emulated/0/移动 文件.txt'",
+                "'/data/local/tmp/目标 目录'"
+            ),
+            adb.shellCalls[3].args
+        )
+    }
+
     private data class PushCall(val localPath: String, val remotePath: String, val content: String)
     private data class ShellCall(val args: List<String>, val throwOnError: Boolean)
 

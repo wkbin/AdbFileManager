@@ -63,7 +63,7 @@ fun TransferProgressDialog(
     }
 
     AlertDialog(
-        onDismissRequest = { },
+        onDismissRequest = { (onCancel ?: onDismiss).invoke() },
         title = {
             Text(
                 text = strings.transferFile,

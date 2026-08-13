@@ -27,6 +27,8 @@ fun ToolbarButton(
     icon: ImageVector,
     text: String,
     tint: Color = MaterialTheme.colorScheme.primary,
+    enabled: Boolean = true,
+    compact: Boolean = false,
     onClick: () -> Unit
 ) {
     Surface(
@@ -36,22 +38,24 @@ fun ToolbarButton(
     ) {
         Row(
             modifier = Modifier
-                .clickable(onClick = onClick)
-                .padding(horizontal = 10.dp, vertical = 6.dp),
+                .clickable(enabled = enabled, onClick = onClick)
+                .padding(horizontal = if (compact) 8.dp else 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = tint,
+                tint = if (enabled) tint else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
                 modifier = Modifier.size(18.dp)
             )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (!compact) {
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
+            }
         }
     }
 }

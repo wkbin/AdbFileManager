@@ -6,6 +6,7 @@ import runtime.AdbStore
 import data.remote.adb.Adb
 import data.remote.adb.AdbDevicePoller
 import data.remote.adb.AdbImpl
+import data.remote.adb.AdbShellSessionFactory
 import data.remote.adb.Terminal
 import data.repository.BookmarkRepository
 import viewmodel.FileManagerViewModel
@@ -22,6 +23,7 @@ val adbModule = module {
     }
     single<Adb> { AdbImpl(get(named("adbPath")), get()) }
     single { AdbDevicePoller(get()) }
+    single { AdbShellSessionFactory(get()) }
     single { BookmarkRepository() }
 }
 

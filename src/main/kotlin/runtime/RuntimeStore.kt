@@ -6,27 +6,104 @@ import org.jetbrains.skiko.hostOs
 import utils.ZipUtils
 import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.RandomAccessFile
+import java.nio.channels.FileLock
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.nio.file.StandardOpenOption
 import java.nio.file.Paths
 
 
 abstract class Runtime {
     suspend fun installRuntime(byteArray: ByteArray, installPath: String) {
         withContext(Dispatchers.IO) {
-            ByteArrayInputStream(byteArray).use { inputStream ->
-                if (hostOs.isWindows) {
-                    ZipUtils.unzip(inputStream, installPath)
-                    return@withContext
-                }
+            synchronized(INSTALL_MONITOR) {
+                val installDirectory = File(installPath).also { it.mkdirs() }
+                val lockFile = File(installDirectory.parentFile ?: installDirectory, ".adb-runtime-install.lock")
+                RandomAccessFile(lockFile, "rw").channel.use { channel ->
+                    val lock: FileLock = channel.lock()
+                    try {
+                        if (hostOs.isWindows) {
+                            installWindowsRuntime(byteArray, installDirectory)
+                            return@synchronized
+                        }
 
-                val adbOutputFile = File(installPath, "adb")
-                if (!adbOutputFile.exists()) {
-                    adbOutputFile.createNewFile()
-                }
-                adbOutputFile.outputStream().use { outputStream ->
-                    inputStream.copyTo(outputStream)
+                        val adbOutputFile = File(installDirectory, "adb")
+                        if (!adbOutputFile.exists() || !contentMatches(adbOutputFile, byteArray)) {
+                            adbOutputFile.outputStream().use { outputStream ->
+                                outputStream.write(byteArray)
+                            }
+                        }
+                    } finally {
+                        lock.release()
+                    }
                 }
             }
         }
+    }
+
+    private fun installWindowsRuntime(byteArray: ByteArray, installDirectory: File) {
+        if (archiveMatches(byteArray, installDirectory)) return
+
+        val existingAdb = File(installDirectory, "adb.exe")
+        if (existingAdb.isFile && existingAdb.length() > 0 && isFileInUse(existingAdb)) {
+            // Another app instance or adb command is using this executable. The
+            // existing complete runtime remains usable; retry the update next start.
+            println("ADB runtime update deferred because ${existingAdb.absolutePath} is in use")
+            return
+        }
+
+        val stagingDirectory = Files.createTempDirectory(
+            (installDirectory.parentFile ?: installDirectory).toPath(),
+            ".adb-runtime-staging-"
+        ).toFile()
+        try {
+            ByteArrayInputStream(byteArray).use { ZipUtils.unzip(it, stagingDirectory.absolutePath) }
+            check(archiveMatches(byteArray, stagingDirectory)) { "Extracted ADB runtime is incomplete" }
+
+            stagingDirectory.listFiles().orEmpty().forEach { stagedFile ->
+                if (!stagedFile.isFile) return@forEach
+                Files.move(
+                    stagedFile.toPath(),
+                    File(installDirectory, stagedFile.name).toPath(),
+                    StandardCopyOption.REPLACE_EXISTING
+                )
+            }
+        } finally {
+            stagingDirectory.deleteRecursively()
+        }
+    }
+
+    private fun archiveMatches(byteArray: ByteArray, installDirectory: File): Boolean =
+        ByteArrayInputStream(byteArray).use {
+            ZipUtils.archiveMatches(it, installDirectory.absolutePath)
+        }
+
+    private fun isFileInUse(file: File): Boolean = try {
+        Files.newByteChannel(file.toPath(), StandardOpenOption.WRITE).use { }
+        false
+    } catch (_: Exception) {
+        true
+    }
+
+    private fun contentMatches(file: File, bytes: ByteArray): Boolean {
+        if (!file.isFile || file.length() != bytes.size.toLong()) return false
+        file.inputStream().use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            var offset = 0
+            while (true) {
+                val count = input.read(buffer)
+                if (count < 0) return offset == bytes.size
+                for (index in 0 until count) {
+                    if (buffer[index] != bytes[offset + index]) return false
+                }
+                offset += count
+            }
+        }
+    }
+
+    companion object {
+        private val INSTALL_MONITOR = Any()
     }
 }
 

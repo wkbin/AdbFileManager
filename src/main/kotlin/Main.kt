@@ -7,14 +7,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.awt.ComposeWindow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.ExperimentalResourceApi
 import org.jetbrains.skiko.hostOs
+import org.koin.core.Koin
 import org.koin.core.context.startKoin
 import org.koin.dsl.module
 import model.StringsManager
@@ -24,6 +27,8 @@ import top.wkbin.filemanager.generated.resources.Res
 import view.MainScreen
 import view.theme.AdbFileManagerTheme
 import java.io.File
+import java.awt.Dimension
+import java.awt.GraphicsEnvironment
 
 // Composition locals
 val LocalWindow = compositionLocalOf<ComposeWindow> { error("Window not provided") }
@@ -31,11 +36,11 @@ val LocalWindow = compositionLocalOf<ComposeWindow> { error("Window not provided
 /**
  * 应用程序入口点
  */
-fun main() = application {
+fun main() {
     StringsManager.init()
-    
+
     val adbStore = AdbStore(ContextStore().fileDir)
-    startKoin {
+    val koin = startKoin {
         modules(
             module {
                 single { adbStore }
@@ -43,9 +48,20 @@ fun main() = application {
             adbModule, viewModelModule
         )
         printLogger()
-    }
+    }.koin
+
+    launchApplication(adbStore, koin)
+}
+
+private fun launchApplication(adbStore: AdbStore, koin: Koin) = application {
 
     var isRuntimeInitialized by remember { mutableStateOf(false) }
+    val availableScreen = remember {
+        GraphicsEnvironment.getLocalGraphicsEnvironment().maximumWindowBounds
+    }
+    val initialWindowSize = remember(availableScreen.width, availableScreen.height) {
+        calculateInitialWindowSize(availableScreen.width, availableScreen.height)
+    }
 
     // 初始化ADB运行时
     initAdbRuntime(adbStore) {
@@ -55,20 +71,34 @@ fun main() = application {
     // 主应用程序窗口
     Window(
         title = StringsManager.strings.value.appTitle,
-        state = rememberWindowState(width = 1200.dp, height = 800.dp),
+        state = rememberWindowState(
+            position = WindowPosition(Alignment.Center),
+            width = initialWindowSize.width.dp,
+            height = initialWindowSize.height.dp
+        ),
         onCloseRequest = ::exitApplication,
         undecorated = true  // 移除默认窗口装饰
     ) {
+        LaunchedEffect(window, availableScreen.width, availableScreen.height) {
+            window.minimumSize = Dimension(
+                minOf(900, (availableScreen.width * 0.85).toInt()),
+                minOf(600, (availableScreen.height * 0.85).toInt())
+            )
+        }
         if (isRuntimeInitialized) {
             CompositionLocalProvider(
                 LocalWindow provides window
             ) {
                 AdbFileManagerTheme {
-                    MainScreen(onCloseRequest = ::exitApplication)
+                    MainScreen(
+                        shellSessionFactory = koin.get(),
+                        onCloseRequest = ::exitApplication
+                    )
                 }
             }
         }
     }
+
 }
 
 /**

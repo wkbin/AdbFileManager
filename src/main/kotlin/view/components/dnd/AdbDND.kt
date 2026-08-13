@@ -4,6 +4,7 @@ import androidx.compose.foundation.draganddrop.dragAndDropSource
 import androidx.compose.foundation.draganddrop.dragAndDropTarget
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draganddrop.DragAndDropEvent
@@ -40,6 +41,7 @@ fun Modifier.adbDndSource(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun Modifier.adbDndTarget(onDropFiles: (List<File>) -> Unit): Modifier {
+    val currentOnDropFiles = rememberUpdatedState(onDropFiles)
     val dropTarget = remember {
         object : DragAndDropTarget {
             override fun onStarted(event: DragAndDropEvent) {}
@@ -52,7 +54,7 @@ fun Modifier.adbDndTarget(onDropFiles: (List<File>) -> Unit): Modifier {
                     val data =
                         transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<File>
                     if (!data.isNullOrEmpty()) {
-                        onDropFiles(data)
+                        currentOnDropFiles.value(data)
                         return true
                     }
                 }
@@ -61,4 +63,17 @@ fun Modifier.adbDndTarget(onDropFiles: (List<File>) -> Unit): Modifier {
         }
     }
     return dragAndDropTarget(shouldStartDragAndDrop = { true }, target = dropTarget)
+}
+
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun Modifier.localFileDndSource(file: File): Modifier {
+    return dragAndDropSource {
+        DragAndDropTransferData(
+            transferable = DragAndDropTransferable(
+                LocalFileTransferable(file)
+            ),
+            supportedActions = listOf(DragAndDropTransferAction.Copy)
+        )
+    }
 }

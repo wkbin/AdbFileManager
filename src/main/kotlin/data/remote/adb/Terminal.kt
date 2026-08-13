@@ -1,12 +1,17 @@
 package data.remote.adb
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.job
 import model.StringsManager
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -26,6 +31,7 @@ class Terminal(
         executeProcess(commandArgs, commandArgs.joinToString(" "), throwOnError, timeoutMs)
     }
 
+    @OptIn(InternalCoroutinesApi::class)
     private suspend fun executeProcess(
         commandArgs: List<String>,
         commandLog: String,
@@ -33,11 +39,21 @@ class Terminal(
         timeoutMs: Long
     ): List<String> {
         var process: java.lang.Process? = null
+        val cancellationHandle = currentCoroutineContext().job.invokeOnCompletion(
+            onCancelling = true,
+            invokeImmediately = true
+        ) { cause ->
+            if (cause != null) {
+                process?.destroyForcibly()
+            }
+        }
         return try {
             withTimeout(timeoutMs.milliseconds) {
+                currentCoroutineContext().ensureActive()
                 process = ProcessBuilder(commandArgs)
                     .redirectErrorStream(true)
                     .start()
+                currentCoroutineContext().ensureActive()
 
                 val output = process!!.inputStream.bufferedReader().readLines()
 
@@ -63,9 +79,12 @@ class Terminal(
         } catch (e: Exception) {
             process?.destroyForcibly()
             throw e
+        } finally {
+            cancellationHandle.dispose()
         }
     }
 
+    @OptIn(InternalCoroutinesApi::class)
     fun connectSafe(commandArgs: List<String>): Flow<String> = channelFlow {
         if (commandArgs.isEmpty()) {
             logWarning("Command args are empty.")
@@ -77,7 +96,16 @@ class Terminal(
 
         val output = mutableListOf<String>()
         val process = ProcessBuilder(commandArgs).redirectErrorStream(true).start()
+        val cancellationHandle = currentCoroutineContext().job.invokeOnCompletion(
+            onCancelling = true,
+            invokeImmediately = true
+        ) { cause ->
+            if (cause != null && process.isAlive) {
+                process.destroyForcibly()
+            }
+        }
         try {
+            currentCoroutineContext().ensureActive()
             withContext(Dispatchers.IO) {
                 process.inputStream.bufferedReader().useLines { lines ->
                     lines.forEach { line ->
@@ -95,6 +123,7 @@ class Terminal(
                 )
             }
         } finally {
+            cancellationHandle.dispose()
             if (process.isAlive) process.destroyForcibly()
             logInfo("""COMPLETED EXECUTE ADB\n$commandLog""".trimIndent())
         }

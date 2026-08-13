@@ -27,6 +27,7 @@ interface Strings {
     val fileRename: String
     val fileCopy: String
     val fileMove: String
+    val fileDragToCopy: String
     val fileCopyTo: String
     val fileMoveTo: String
     val copySuccess: String
@@ -106,6 +107,23 @@ interface Strings {
     val editorFileContent: String
     val editorModified: String
     val editorCharactersLines: String
+    fun editorPosition(line: Int, column: Int, lines: Int, characters: Int): String
+    val editorUndo: String
+    val editorRedo: String
+    val editorFind: String
+    val editorFindNext: String
+    val editorReplace: String
+    val editorReplaceWith: String
+    val editorReplaceAll: String
+    val editorNoMatch: String
+    val editorCloseFind: String
+    val editorDiscardTitle: String
+    val editorDiscardMessage: String
+    val editorDiscard: String
+    val editorContinueEditing: String
+    fun editorUnsupportedEncoding(encoding: String): String
+    fun editorReloadEncodingFailed(encoding: String, error: String): String
+    fun editorSavedAsUtf8(originalEncoding: String): String
 
     val sortTitle: String
     val sortTypeFolderFirst: String
@@ -136,6 +154,27 @@ interface Strings {
     val permissionInvalid: String
 
     fun terminalCommandFailed(exitCode: Int, msg: String): String
+    val terminalTitle: String
+    val terminalOpen: String
+    val terminalHint: String
+    val terminalCommand: String
+    val terminalPlaceholder: String
+    val terminalRun: String
+    val terminalClear: String
+    val terminalClose: String
+    val terminalNew: String
+    val terminalFilesTab: String
+    val panelLeft: String
+    val panelRight: String
+    val panelCopyToOther: String
+    val panelMoveToOther: String
+    val localCopyToAndroid: String
+    val localDirectoryReadOnly: String
+    val localPaneCollapse: String
+    val localPaneExpand: String
+    fun localDirectoryNotFound(path: String): String
+    fun localDestinationNotDirectory(path: String): String
+    fun localDirectoryNotWritable(path: String): String
 
     fun adbPermissionSet(path: String): String
     fun adbPermissionError(msg: String): String

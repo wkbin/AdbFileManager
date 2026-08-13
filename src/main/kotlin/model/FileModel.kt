@@ -23,7 +23,9 @@ data class FileItem(
     val isDir: Boolean,
     val fileName: String,
     val size: String,
+    val sizeBytes: Long,
     val date: String,
+    val modifiedEpochSeconds: Long,
     val icon: DrawableResource,
     val link: String?,
     val permissions: String
@@ -59,6 +61,27 @@ object FileUtils {
             "xml" -> Res.drawable.icon_xml
             else -> Res.drawable.icon_file
         }
+    }
+
+    fun fromLocalFile(file: java.io.File): FileItem {
+        val modified = file.lastModified().coerceAtLeast(0L)
+        val readableDate = java.text.SimpleDateFormat("yyyy/MM/dd HH:mm:ss")
+            .format(java.util.Date(modified))
+        return FileItem(
+            isDir = file.isDirectory,
+            fileName = file.name.ifEmpty { file.absolutePath },
+            size = if (file.isDirectory) "" else formatSize(file.length()),
+            sizeBytes = if (file.isDirectory) 0L else file.length(),
+            date = readableDate,
+            modifiedEpochSeconds = modified / 1000,
+            icon = getIconPath(file.isDirectory, file.name),
+            link = null,
+            permissions = buildString {
+                append(if (file.canRead()) "r" else "-")
+                append(if (file.canWrite()) "w" else "-")
+                append(if (file.canExecute()) "x" else "-")
+            }
+        )
     }
 
     /**
@@ -130,11 +153,13 @@ object FileUtils {
                 isDir = isDir,
                 fileName = name,
                 size = if (isDir) "" else formatSize(size),
+                sizeBytes = size,
                 date = formatTimestamp(timestamp),
+                modifiedEpochSeconds = timestamp.toLongOrNull() ?: 0L,
                 icon = getIconPath(isDir, name),
                 link = linkPath,
                 permissions = permissions
             )
         }
     }
-} 
+}

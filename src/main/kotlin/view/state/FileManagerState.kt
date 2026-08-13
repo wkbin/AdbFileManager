@@ -31,6 +31,7 @@ data class FileManagerState(
     val showCopyMoveDialog: Boolean = false,
     val selectionMode: Boolean = false,
     val selectedFiles: Set<String> = emptySet(),
+    val pendingBatchDeleteFiles: Set<String> = emptySet(),
     val showAppManager: Boolean = false,
     val appList: List<AppInfo> = emptyList(),
     val appListLoading: Boolean = false,

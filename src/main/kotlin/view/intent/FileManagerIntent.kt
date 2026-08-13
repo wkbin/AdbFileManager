@@ -17,7 +17,11 @@ sealed class FileManagerIntent {
     object CancelDeleteConfirmation : FileManagerIntent()
     data class NavigateTo(val directoryName: String) : FileManagerIntent()
     data class ResetSortType(val type: SortType) : FileManagerIntent()
-    data class ExportFile(val fileName: String, val destinationPath: String) : FileManagerIntent()
+    data class ExportFile(
+        val fileName: String,
+        val destinationPath: String,
+        val deleteRemoteAfterExport: Boolean = false
+    ) : FileManagerIntent()
     data class LoadFileContent(val fileName: String, val useDetectedEncoding: Boolean = true) :
         FileManagerIntent()
 
@@ -61,8 +65,13 @@ sealed class FileManagerIntent {
     data class ToggleFileSelection(val fileName: String) : FileManagerIntent()
     object SelectAllFiles : FileManagerIntent()
     object ClearFileSelection : FileManagerIntent()
+    object RequestBatchDeleteConfirmation : FileManagerIntent()
+    object CancelBatchDeleteConfirmation : FileManagerIntent()
     object BatchDeleteFiles : FileManagerIntent()
     data class BatchExportFiles(val destinationPath: String) : FileManagerIntent()
+    data class BatchMoveToLocal(val destinationPath: String) : FileManagerIntent()
+    data class BatchCopyTo(val destinationPath: String) : FileManagerIntent()
+    data class BatchMoveTo(val destinationPath: String) : FileManagerIntent()
 
     // App management
     object ShowAppManager : FileManagerIntent()

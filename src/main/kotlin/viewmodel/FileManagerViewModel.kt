@@ -5,6 +5,9 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -24,6 +27,11 @@ import model.FileTransferState
 import model.FileUtils
 import model.SortType
 import model.StringsManager
+import model.LocalDestinationException
+import model.LocalDestinationFailure
+import model.validateLocalDestinationDirectory
+import model.encodeTextLosslessly
+import model.normalizeDetectedTextEncoding
 import org.mozilla.universalchardet.UniversalDetector
 import data.remote.adb.AdbDevicePoller
 import data.repository.BookmarkRepository
@@ -50,8 +58,10 @@ class FileManagerViewModel(
 
     private val _transferProgress = FileTransferProgress()
     val transferProgress: StateFlow<FileTransferState> = _transferProgress.state
+    private var transferJob: Job? = null
 
     private val directoryPath get() = _directoryList.joinToString("/")
+    val currentDirectoryPath get() = if (directoryPath.isEmpty()) "/" else "/$directoryPath"
 
     init {
         loadFiles()
@@ -94,13 +104,17 @@ class FileManagerViewModel(
 
             is FileManagerIntent.NavigateTo -> navigateTo(intent.directoryName)
             is FileManagerIntent.ResetSortType -> setSortType(intent.type)
-            is FileManagerIntent.ExportFile -> exportFile(intent.fileName, intent.destinationPath)
+            is FileManagerIntent.ExportFile -> exportFile(
+                intent.fileName,
+                intent.destinationPath,
+                intent.deleteRemoteAfterExport
+            )
             is FileManagerIntent.LoadFileContent -> loadFileContent(
                 intent.fileName,
                 intent.useDetectedEncoding
             )
 
-            is FileManagerIntent.ChangeEncoding -> _state.update { it.copy(fileEncoding = intent.encoding) }
+            is FileManagerIntent.ChangeEncoding -> changeFileEncoding(intent.encoding)
             FileManagerIntent.CloseEditor -> _state.update { it.copy(fileContent = null, fileName = null) }
             is FileManagerIntent.SaveFile -> saveFile(intent.newContent)
             is FileManagerIntent.RequestRename -> {
@@ -147,7 +161,7 @@ class FileManagerViewModel(
                 _state.update { it.copy(isTransferring = true, transferringFileName = intent.fileName, showTransferDialog = true) }
             }
             FileManagerIntent.EndTransfer -> {
-                _state.update { it.copy(isTransferring = false, transferringFileName = null, showTransferDialog = false) }
+                cancelActiveTransfer()
             }
             is FileManagerIntent.InstallApk -> installApk(intent.fileName)
             is FileManagerIntent.RequestCopy -> {
@@ -165,8 +179,15 @@ class FileManagerViewModel(
             is FileManagerIntent.ToggleFileSelection -> toggleFileSelection(intent.fileName)
             FileManagerIntent.SelectAllFiles -> selectAllFiles()
             FileManagerIntent.ClearFileSelection -> clearFileSelection()
+            FileManagerIntent.RequestBatchDeleteConfirmation -> requestBatchDeleteConfirmation()
+            FileManagerIntent.CancelBatchDeleteConfirmation -> _state.update {
+                it.copy(pendingBatchDeleteFiles = emptySet())
+            }
             FileManagerIntent.BatchDeleteFiles -> batchDeleteFiles()
             is FileManagerIntent.BatchExportFiles -> batchExportFiles(intent.destinationPath)
+            is FileManagerIntent.BatchMoveToLocal -> batchExportFiles(intent.destinationPath, deleteRemoteAfterExport = true)
+            is FileManagerIntent.BatchCopyTo -> batchCopyMoveTo(intent.destinationPath, move = false)
+            is FileManagerIntent.BatchMoveTo -> batchCopyMoveTo(intent.destinationPath, move = true)
             FileManagerIntent.ShowAppManager -> showAppManager()
             FileManagerIntent.DismissAppManager -> _state.update { it.copy(showAppManager = false) }
             is FileManagerIntent.UninstallApp -> uninstallApp(intent.packageName)
@@ -262,11 +283,11 @@ class FileManagerViewModel(
         useDetectedEncoding: Boolean
     ) {
         val fileSize = (_state.value.files as? LoadState.Success)?.data
-            ?.find { it.fileName == fileName }?.size?.toLongOrNull() ?: 0L
+            ?.find { it.fileName == fileName }?.sizeBytes ?: 0L
         _transferProgress.startTransfer(fileName, fileSize)
         _state.update { it.copy(operationInProgress = true, isTransferring = true, transferringFileName = fileName, showTransferDialog = true) }
         val tempFile = File.createTempFile("pull_", ".tmp")
-        viewModelScope.launch(Dispatchers.IO) {
+        launchTransfer {
             try {
                 val filePath = "${directoryPath}/${fileName}"
                 adbDevicePoller.pullWithProgress(
@@ -284,6 +305,8 @@ class FileManagerViewModel(
                 }
                 val content = tempFile.readText(Charset.forName(encoding))
                 _state.update { it.copy(fileName = fileName, fileEncoding = encoding, fileContent = content) }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _transferProgress.fail(e.message.toString())
                 _effect.emit(FileManagerEffect.ShowErrorTips(e.message.toString()))
@@ -304,12 +327,12 @@ class FileManagerViewModel(
             }
         }
         detector.dataEnd()
-        return detector.detectedCharset ?: "UTF-8"
+        return normalizeDetectedTextEncoding(detector.detectedCharset)
     }
 
     private fun importFiles(files: List<File>) {
         _state.update { it.copy(operationInProgress = true) }
-        viewModelScope.launch(Dispatchers.IO) {
+        launchTransfer {
             try {
                 for (file in files) {
                     val destPath = if (file.isDirectory) {
@@ -336,6 +359,8 @@ class FileManagerViewModel(
                 }
                 loadFiles()
                 _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.fileImportSuccess))
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 _transferProgress.fail(e.message ?: "Transfer failed")
                 _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.fileImportFailed(e.message ?: "")))
@@ -345,13 +370,22 @@ class FileManagerViewModel(
         }
     }
 
-    private fun exportFile(fileName: String, destinationPath: String) {
+    private fun exportFile(
+        fileName: String,
+        destinationPath: String,
+        deleteRemoteAfterExport: Boolean = false
+    ) {
         val fileSize = (_state.value.files as? LoadState.Success)?.data
-            ?.find { it.fileName == fileName }?.size?.toLongOrNull() ?: 0L
+            ?.find { it.fileName == fileName }?.sizeBytes ?: 0L
         _transferProgress.startTransfer(fileName, fileSize)
         _state.update { it.copy(operationInProgress = true, isTransferring = true, transferringFileName = fileName, showTransferDialog = true) }
-        viewModelScope.launch(Dispatchers.IO) {
+        val destination = File(destinationPath).absoluteFile
+        val destinationExistedBefore = destination.exists()
+        launchTransfer {
             try {
+                val destinationDirectory = destination.parentFile
+                    ?: throw LocalDestinationException(LocalDestinationFailure.NOT_DIRECTORY, destination)
+                validateLocalDestinationDirectory(destinationDirectory)
                 adbDevicePoller.pullWithProgress(
                     "${directoryPath}/${fileName}",
                     destinationPath
@@ -359,9 +393,17 @@ class FileManagerViewModel(
                     _transferProgress.updateProgress((percent / 100f * fileSize).toLong())
                 }.collect { /* consume flow to drive pull completion */ }
                 _transferProgress.complete()
+                if (deleteRemoteAfterExport) {
+                    adbDevicePoller.delete("${directoryPath}/${fileName}")
+                    loadFiles()
+                }
+                _effect.emit(FileManagerEffect.LocalFilesChanged)
+            } catch (e: CancellationException) {
+                if (!destinationExistedBefore) destination.deleteRecursively()
+                throw e
             } catch (e: Exception) {
                 _transferProgress.fail(e.message ?: "Export failed")
-                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.fileExportFailed(e.message ?: "")))
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.fileExportFailed(exportErrorMessage(e))))
             } finally {
                 _state.update { it.copy(operationInProgress = false, isTransferring = false, transferringFileName = null, showTransferDialog = false) }
             }
@@ -374,7 +416,40 @@ class FileManagerViewModel(
      * running on the AWT DnD thread (not Compose main thread).
      */
     suspend fun exportFileSync(fileName: String, destinationPath: String) {
+        File(destinationPath).absoluteFile.parentFile?.let(::validateLocalDestinationDirectory)
         adbDevicePoller.pull("${directoryPath}/${fileName}", destinationPath)
+    }
+
+    private fun launchTransfer(block: suspend CoroutineScope.() -> Unit) {
+        transferJob?.cancel()
+        val job = viewModelScope.launch(Dispatchers.IO, block = block)
+        transferJob = job
+        job.invokeOnCompletion {
+            if (transferJob === job) transferJob = null
+        }
+    }
+
+    private fun cancelActiveTransfer() {
+        transferJob?.cancel(CancellationException("Transfer cancelled by user"))
+        _transferProgress.reset()
+        _state.update {
+            it.copy(
+                operationInProgress = false,
+                isTransferring = false,
+                transferringFileName = null,
+                showTransferDialog = false
+            )
+        }
+    }
+
+    private fun exportErrorMessage(error: Exception): String {
+        if (error !is LocalDestinationException) return error.message.orEmpty()
+        val path = error.directory.absolutePath
+        return when (error.failure) {
+            LocalDestinationFailure.NOT_FOUND -> StringsManager.strings.value.localDirectoryNotFound(path)
+            LocalDestinationFailure.NOT_DIRECTORY -> StringsManager.strings.value.localDestinationNotDirectory(path)
+            LocalDestinationFailure.NOT_WRITABLE -> StringsManager.strings.value.localDirectoryNotWritable(path)
+        }
     }
 
     private fun deleteFile(fileName: String) {
@@ -454,6 +529,34 @@ class FileManagerViewModel(
         }
     }
 
+    private fun changeFileEncoding(encoding: String) {
+        if (!Charset.isSupported(encoding)) {
+            viewModelScope.launch {
+                _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.editorUnsupportedEncoding(encoding)))
+            }
+            return
+        }
+        val currentFileName = _state.value.fileName ?: return
+        _state.update { it.copy(fileEncoding = encoding, operationInProgress = true) }
+        val tempFile = File.createTempFile("redecode_", ".tmp")
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.pull("${directoryPath}/${currentFileName}", tempFile.absolutePath)
+                val content = tempFile.readText(Charset.forName(encoding))
+                _state.update { it.copy(fileContent = content) }
+            } catch (e: Exception) {
+                _effect.emit(
+                    FileManagerEffect.ShowErrorTips(
+                        StringsManager.strings.value.editorReloadEncodingFailed(encoding, e.message.orEmpty())
+                    )
+                )
+            } finally {
+                tempFile.delete()
+                _state.update { it.copy(operationInProgress = false) }
+            }
+        }
+    }
+
     private fun removeLastDirectory(): Boolean {
         val lastIndex = _directoryList.lastIndex
         if (lastIndex < 0) return false
@@ -476,12 +579,13 @@ class FileManagerViewModel(
                         state.copy(files = LoadState.Success(list.toMutableList().apply {
                             when (state.sortType) {
                                 SortType.NAME_ASC -> sortBy { it.fileName.lowercase() }
+                                SortType.NAME_DESC -> sortByDescending { it.fileName.lowercase() }
                                 SortType.TYPE_ASC -> sortWith(compareByDescending<FileItem> { it.isDir }.thenBy { it.fileName.lowercase() })
                                 SortType.TYPE_DESC -> sortWith(compareBy<FileItem> { it.isDir }.thenByDescending { it.fileName.lowercase() })
-                                SortType.DATE_ASC -> sortBy { it.date }
-                                SortType.DATE_DESC -> sortByDescending { it.date }
-                                SortType.SIZE_ASC -> sortBy { it.size }
-                                SortType.SIZE_DESC -> sortByDescending { it.size }
+                                SortType.DATE_ASC -> sortBy { it.modifiedEpochSeconds }
+                                SortType.DATE_DESC -> sortByDescending { it.modifiedEpochSeconds }
+                                SortType.SIZE_ASC -> sortBy { it.sizeBytes }
+                                SortType.SIZE_DESC -> sortByDescending { it.sizeBytes }
                             }
                         }))
                     }
@@ -501,10 +605,19 @@ class FileManagerViewModel(
             try {
                 val tempFile = File.createTempFile("save_", ".tmp")
                 try {
-                    tempFile.writeText(newContent, Charset.forName(_state.value.fileEncoding))
+                    val originalEncoding = _state.value.fileEncoding
+                    val encoded = encodeTextLosslessly(newContent, originalEncoding)
+                    tempFile.writeBytes(encoded.bytes)
                     adbDevicePoller.push(tempFile.absolutePath, "${directoryPath}/${currentFileName}")
-                    _state.update { it.copy(fileContent = newContent) }
-                    _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.fileSaveSuccess))
+                    _state.update {
+                        it.copy(fileContent = newContent, fileEncoding = encoded.encoding)
+                    }
+                    val message = if (encoded.upgradedToUtf8) {
+                        StringsManager.strings.value.editorSavedAsUtf8(originalEncoding)
+                    } else {
+                        StringsManager.strings.value.fileSaveSuccess
+                    }
+                    _effect.emit(FileManagerEffect.ShowSuccessTips(message))
                 } finally {
                     tempFile.delete()
                 }
@@ -613,9 +726,11 @@ class FileManagerViewModel(
 
     private fun toggleSelectionMode() {
         _state.update {
+            val enabled = !it.selectionMode
             it.copy(
-                selectionMode = !it.selectionMode,
-                selectedFiles = if (it.selectionMode) emptySet() else it.selectedFiles
+                selectionMode = enabled,
+                selectedFiles = if (enabled) it.selectedFiles else emptySet(),
+                pendingBatchDeleteFiles = emptySet()
             )
         }
     }
@@ -643,51 +758,164 @@ class FileManagerViewModel(
         _state.update { it.copy(selectedFiles = emptySet()) }
     }
 
+    private fun requestBatchDeleteConfirmation() {
+        val selected = _state.value.selectedFiles
+        if (selected.isNotEmpty()) {
+            _state.update { it.copy(pendingBatchDeleteFiles = selected) }
+        }
+    }
+
     private fun batchDeleteFiles() {
-        val files = _state.value.selectedFiles.toList()
+        val files = _state.value.pendingBatchDeleteFiles.toList()
         if (files.isEmpty()) return
-        _state.update { it.copy(operationInProgress = true, pendingDeleteFile = null) }
+        _state.update {
+            it.copy(operationInProgress = true, pendingDeleteFile = null, pendingBatchDeleteFiles = emptySet())
+        }
         viewModelScope.launch(Dispatchers.IO) {
-            try {
-                for (fileName in files) {
+            val failures = mutableListOf<String>()
+            for (fileName in files) {
+                try {
                     adbDevicePoller.delete("${directoryPath}/$fileName")
+                } catch (_: Exception) {
+                    failures += fileName
                 }
+            }
+            try {
                 loadFiles()
-                _state.update { it.copy(selectedFiles = emptySet(), selectionMode = false) }
-                _effect.emit(FileManagerEffect.ShowSuccessTips(
-                    StringsManager.strings.value.fileDeleteSuccess
-                ))
-            } catch (e: Exception) {
-                _effect.emit(FileManagerEffect.ShowErrorTips(
-                    StringsManager.strings.value.fileDeleteFailed(e.message ?: "")
-                ))
+                if (failures.isEmpty()) {
+                    _state.update { it.copy(selectedFiles = emptySet(), selectionMode = false) }
+                    _effect.emit(FileManagerEffect.ShowSuccessTips("已删除 ${files.size} 个项目"))
+                } else {
+                    _state.update { it.copy(selectedFiles = failures.toSet()) }
+                    _effect.emit(FileManagerEffect.ShowErrorTips(
+                        "已删除 ${files.size - failures.size} 个项目，${failures.size} 个失败：${failures.joinToString()}"
+                    ))
+                }
             } finally {
                 _state.update { it.copy(operationInProgress = false) }
             }
         }
     }
 
-    private fun batchExportFiles(destinationPath: String) {
+    private fun batchExportFiles(destinationPath: String, deleteRemoteAfterExport: Boolean = false) {
         val files = _state.value.selectedFiles.toList()
-        if (files.isEmpty()) return
-        _state.update { it.copy(operationInProgress = true, isTransferring = true, showTransferDialog = true) }
-        viewModelScope.launch(Dispatchers.IO) {
+        if (files.isEmpty() || destinationPath.isBlank()) return
+        val fileMetadata = (_state.value.files as? LoadState.Success)?.data
+            ?.associateBy { it.fileName }
+            .orEmpty()
+        _state.update {
+            it.copy(
+                operationInProgress = true,
+                isTransferring = true,
+                transferringFileName = files.firstOrNull(),
+                showTransferDialog = true
+            )
+        }
+        launchTransfer {
+            val destinationDirectory = File(destinationPath).absoluteFile
             try {
-                for (fileName in files) {
-                    val srcPath = "${directoryPath}/$fileName"
-                    val destFile = File(destinationPath, fileName)
-                    adbDevicePoller.pull(srcPath, destFile.absolutePath)
+                validateLocalDestinationDirectory(destinationDirectory)
+            } catch (error: LocalDestinationException) {
+                _effect.emit(
+                    FileManagerEffect.ShowErrorTips(
+                        StringsManager.strings.value.fileExportFailed(exportErrorMessage(error))
+                    )
+                )
+                _state.update {
+                    it.copy(
+                        operationInProgress = false,
+                        isTransferring = false,
+                        transferringFileName = null,
+                        showTransferDialog = false
+                    )
                 }
-                _state.update { it.copy(selectedFiles = emptySet(), selectionMode = false) }
-                _effect.emit(FileManagerEffect.ShowSuccessTips(
-                    StringsManager.strings.value.fileImportSuccess
-                ))
-            } catch (e: Exception) {
-                _effect.emit(FileManagerEffect.ShowErrorTips(
-                    StringsManager.strings.value.fileExportFailed(e.message ?: "")
-                ))
+                return@launchTransfer
+            }
+            val failures = mutableListOf<String>()
+            for (fileName in files) {
+                val sizeBytes = fileMetadata[fileName]?.sizeBytes ?: 0L
+                _transferProgress.startTransfer(fileName, sizeBytes)
+                _state.update { it.copy(transferringFileName = fileName) }
+                val destFile = File(destinationDirectory, fileName)
+                val destinationExistedBefore = destFile.exists()
+                try {
+                    val srcPath = "${directoryPath}/$fileName"
+                    if (fileMetadata[fileName]?.isDir == true) {
+                        adbDevicePoller.pull(srcPath, destFile.absolutePath)
+                    } else {
+                        adbDevicePoller.pullWithProgress(srcPath, destFile.absolutePath) { percent ->
+                            _transferProgress.updateProgress((percent / 100f * sizeBytes).toLong())
+                        }.collect { }
+                    }
+                    if (deleteRemoteAfterExport) {
+                        adbDevicePoller.delete(srcPath)
+                    }
+                    _transferProgress.complete()
+                } catch (e: CancellationException) {
+                    if (!destinationExistedBefore) destFile.deleteRecursively()
+                    throw e
+                } catch (e: Exception) {
+                    _transferProgress.fail(e.message ?: "导出失败")
+                    failures += fileName
+                }
+            }
+            try {
+                if (failures.size < files.size) {
+                    _effect.emit(FileManagerEffect.LocalFilesChanged)
+                }
+                if (failures.isEmpty()) {
+                    _state.update { it.copy(selectedFiles = emptySet(), selectionMode = false) }
+                    _effect.emit(FileManagerEffect.ShowSuccessTips("已导出 ${files.size} 个项目"))
+                } else {
+                    _state.update { it.copy(selectedFiles = failures.toSet()) }
+                    _effect.emit(FileManagerEffect.ShowErrorTips(
+                        "已导出 ${files.size - failures.size} 个项目，${failures.size} 个失败：${failures.joinToString()}"
+                    ))
+                }
             } finally {
                 _state.update { it.copy(operationInProgress = false, isTransferring = false, transferringFileName = null, showTransferDialog = false) }
+            }
+        }
+    }
+
+    private fun batchCopyMoveTo(destinationPath: String, move: Boolean) {
+        val files = _state.value.selectedFiles.toList()
+        if (files.isEmpty() || destinationPath.isBlank()) return
+        _state.update { it.copy(operationInProgress = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val failures = mutableListOf<String>()
+            for (fileName in files) {
+                try {
+                    val sourcePath = "${directoryPath}/$fileName"
+                    if (move) {
+                        adbDevicePoller.moveFile(sourcePath, destinationPath)
+                    } else {
+                        adbDevicePoller.copyFile(sourcePath, destinationPath)
+                    }
+                } catch (_: Exception) {
+                    failures += fileName
+                }
+            }
+            try {
+                loadFiles()
+                val completed = files.size - failures.size
+                if (failures.isEmpty()) {
+                    _state.update { it.copy(selectedFiles = emptySet(), selectionMode = false) }
+                    _effect.emit(
+                        FileManagerEffect.ShowSuccessTips(
+                            if (move) "已移动 $completed 个项目" else "已复制 $completed 个项目"
+                        )
+                    )
+                } else {
+                    _state.update { it.copy(selectedFiles = failures.toSet()) }
+                    _effect.emit(
+                        FileManagerEffect.ShowErrorTips(
+                            "已${if (move) "移动" else "复制"} $completed 个项目，${failures.size} 个失败：${failures.joinToString()}"
+                        )
+                    )
+                }
+            } finally {
+                _state.update { it.copy(operationInProgress = false) }
             }
         }
     }
@@ -738,11 +966,15 @@ class FileManagerViewModel(
         if (packageName.isBlank() || destinationPath.isBlank()) return
         _transferProgress.startTransfer("$packageName.apk", 0L)
         _state.update { it.copy(operationInProgress = true, isTransferring = true, transferringFileName = "$packageName.apk", showTransferDialog = true) }
-        viewModelScope.launch(Dispatchers.IO) {
+        val destinationExistedBefore = File(destinationPath).exists()
+        launchTransfer {
             try {
                 adbDevicePoller.backupApk(packageName, destinationPath)
                 _transferProgress.complete()
                 _effect.emit(FileManagerEffect.ShowSuccessTips("Backup saved"))
+            } catch (e: CancellationException) {
+                if (!destinationExistedBefore) File(destinationPath).deleteRecursively()
+                throw e
             } catch (e: Exception) {
                 _transferProgress.fail(e.message ?: "Backup failed")
                 _effect.emit(FileManagerEffect.ShowErrorTips(e.message ?: "Backup failed"))

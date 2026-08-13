@@ -23,6 +23,8 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.DriveFileMove
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.MoreVert
+import androidx.compose.material.icons.outlined.DragIndicator
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Edit
@@ -32,6 +34,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -40,7 +44,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,7 +53,7 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.vector.ImageVector
 import model.FileItem
 import model.StringsManager
 import org.jetbrains.compose.resources.painterResource
@@ -90,16 +93,29 @@ fun FileListItem(
     onInstallApk: () -> Unit = {},
     onCopyFile: () -> Unit = {},
     onMoveFile: () -> Unit = {},
+    selectionMode: Boolean = false,
+    isSelected: Boolean = false,
+    onSelectionChange: () -> Unit = {},
+    compact: Boolean = false,
+    allowEdit: Boolean = true,
+    allowAdministrativeActions: Boolean = true,
+    allowMove: Boolean = true,
+    copyEnabled: Boolean = true,
+    moveEnabled: Boolean = true,
+    showDragHandle: Boolean = false,
+    dragHandleModifier: Modifier = Modifier,
+    copyIcon: ImageVector = Icons.Outlined.ContentCopy,
     modifier: Modifier = Modifier
 ) {
-    val coroutineScope = rememberCoroutineScope()
-
     // 状态
     var isHovered by remember { mutableStateOf(false) }
+    var showMoreMenu by remember { mutableStateOf(false) }
 
     val strings by StringsManager.strings.collectAsState()
 
-    val backgroundColor = if (isHovered) {
+    val backgroundColor = if (isSelected) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else if (isHovered) {
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
     } else {
         MaterialTheme.colorScheme.surface
@@ -108,7 +124,7 @@ fun FileListItem(
     val interactionSource = remember { MutableInteractionSource() }
 
     // 判断文件是否可编辑
-    val isEditable = !file.isDir && isEditableFile(file.fileName)
+    val isEditable = allowEdit && !file.isDir && isEditableFile(file.fileName)
 
     // 主卡片
     Card(
@@ -129,7 +145,7 @@ fun FileListItem(
                 interactionSource = interactionSource,
                 indication = null
             ) {
-                onFileClick()
+                if (selectionMode) onSelectionChange() else onFileClick()
             },
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
@@ -140,9 +156,17 @@ fun FileListItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(if (compact) 10.dp else 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (selectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onSelectionChange() }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+
             // 文件图标容器
             Box(
                 modifier = Modifier
@@ -158,7 +182,7 @@ fun FileListItem(
                 )
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(if (compact) 10.dp else 16.dp))
 
             // 文件信息
             Column(
@@ -209,7 +233,7 @@ fun FileListItem(
                     }
 
                     // 权限标签
-                    Surface(
+                    if (!compact) Surface(
                         modifier = Modifier.padding(end = 8.dp),
                         shape = RoundedCornerShape(4.dp),
                         color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
@@ -253,12 +277,28 @@ fun FileListItem(
             Row(
                 modifier = Modifier
                     .height(50.dp)
-                    .alpha(if (isHovered) 1f else 0f),
+                    .alpha(if (!selectionMode && isHovered) 1f else 0f),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // 拖放仅从独立手柄开始，避免点击进入目录时因鼠标轻微移动而误触复制。
+                if (!selectionMode && showDragHandle) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .then(dragHandleModifier),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.DragIndicator,
+                            contentDescription = strings.fileDragToCopy,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
                 // 编辑按钮 - 只为可编辑的文件显示
-                if (isEditable) {
+                if (!selectionMode && isEditable) {
                     IconButton(
                         onClick = onEditFile,
                         enabled = isHovered
@@ -272,7 +312,7 @@ fun FileListItem(
                 }
 
                 // 重命名按钮
-                IconButton(
+                if (!selectionMode && !compact) IconButton(
                     onClick = onRenameFile,
                     enabled = isHovered
                 ) {
@@ -285,7 +325,7 @@ fun FileListItem(
 
                 // APK 安装按钮 - 仅为 .apk 文件显示
                 val isApk = file.fileName.endsWith(".apk", ignoreCase = true)
-                if (isApk) {
+                if (!selectionMode && isApk && !compact) {
                     IconButton(
                         onClick = onInstallApk,
                         enabled = isHovered
@@ -299,7 +339,7 @@ fun FileListItem(
                 }
 
                 // 修改权限按钮
-                IconButton(
+                if (!selectionMode && !compact) IconButton(
                     onClick = onChangePermissions,
                     enabled = isHovered
                 ) {
@@ -311,21 +351,56 @@ fun FileListItem(
                 }
 
                 // 复制按钮
-                IconButton(
+                if (!selectionMode) IconButton(
                     onClick = onCopyFile,
-                    enabled = isHovered
+                    enabled = isHovered && copyEnabled
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.ContentCopy,
+                        imageVector = copyIcon,
                         contentDescription = strings.fileCopy,
                         tint = MaterialTheme.colorScheme.secondary
                     )
                 }
 
+                if (!selectionMode && compact && allowAdministrativeActions) Box {
+                    IconButton(onClick = { showMoreMenu = true }, enabled = isHovered) {
+                        Icon(
+                            imageVector = Icons.Outlined.MoreVert,
+                            contentDescription = "更多操作",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = showMoreMenu,
+                        onDismissRequest = { showMoreMenu = false }
+                    ) {
+                        if (isApk) DropdownMenuItem(
+                            text = { Text(strings.fileInstallApk) },
+                            onClick = { showMoreMenu = false; onInstallApk() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(strings.fileRename) },
+                            onClick = { showMoreMenu = false; onRenameFile() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(strings.changePermissions) },
+                            onClick = { showMoreMenu = false; onChangePermissions() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(strings.fileDownload) },
+                            onClick = { showMoreMenu = false; onDownloadFile() }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(strings.fileDelete) },
+                            onClick = { showMoreMenu = false; onDeleteFile() }
+                        )
+                    }
+                }
+
                 // 移动按钮
-                IconButton(
+                if (!selectionMode && allowMove) IconButton(
                     onClick = onMoveFile,
-                    enabled = isHovered
+                    enabled = isHovered && moveEnabled
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.DriveFileMove,
@@ -335,7 +410,7 @@ fun FileListItem(
                 }
 
                 // 下载按钮
-                IconButton(
+                if (!selectionMode && !compact) IconButton(
                     onClick = onDownloadFile,
                     enabled = isHovered
                 ) {
@@ -347,7 +422,7 @@ fun FileListItem(
                 }
 
                 // 删除按钮
-                IconButton(
+                if (!selectionMode && !compact) IconButton(
                     onClick = onDeleteFile,
                     enabled = isHovered
                 ) {

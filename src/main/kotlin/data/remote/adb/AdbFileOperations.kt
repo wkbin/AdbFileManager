@@ -1,6 +1,7 @@
 package data.remote.adb
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
@@ -17,7 +18,7 @@ class AdbFileOperations(
 ) {
     suspend fun delete(filePath: String) {
         val device = currentDeviceProvider() ?: throw AdbDeviceNotFoundException()
-        adb.shell(device, "rm", "-rf", "\"$filePath\"", throwOnError = true)
+        adb.shell(device, "rm", "-rf", "--", shellQuote(absoluteRemotePath(filePath)), throwOnError = true)
     }
 
     suspend fun loadFiles(directoryPath: String): List<String> {
@@ -29,7 +30,7 @@ class AdbFileOperations(
         // Using cd && stat directly (no sh -c) so cd actually changes the working directory.
         val statFormat = "%F|%A|%h|%U|%G|%s|%Y|%n|%N"
         val escapedFormat = statFormat.replace("|", "\\|")
-        val targetPath = if (safePath == "/") "/" else "'$safePath'"
+        val targetPath = shellQuote(safePath)
         return adb.shell(device, "cd", targetPath, "&&", "stat", "-L", "-c", escapedFormat, "*", "2>/dev/null")
     }
 
@@ -85,8 +86,9 @@ class AdbFileOperations(
         adb.shell(
             device,
             "mv",
-            "\"$safePath/$oldName\"",
-            "\"$safePath/$newName\"",
+            "--",
+            shellQuote(appendRemotePath(safePath, oldName)),
+            shellQuote(appendRemotePath(safePath, newName)),
             throwOnError = true
         )
     }
@@ -97,7 +99,7 @@ class AdbFileOperations(
         adb.shell(
             device,
             "mkdir", "-p",
-            "\"$safePath/$dirName\"",
+            "--", shellQuote(appendRemotePath(safePath, dirName)),
             throwOnError = true
         )
     }
@@ -173,9 +175,11 @@ class AdbFileOperations(
                 throwOnError = true
             )
         } finally {
-            withContext(Dispatchers.IO) { localStage.delete() }
-            runCatching {
-                adb.shell(device, "rm", "-f", "--", shellQuote(remoteStage), throwOnError = false)
+            withContext(NonCancellable + Dispatchers.IO) {
+                localStage.delete()
+                runCatching {
+                    adb.shell(device, "rm", "-f", "--", shellQuote(remoteStage), throwOnError = false)
+                }
             }
         }
     }
@@ -191,7 +195,7 @@ class AdbFileOperations(
     suspend fun installApk(filePath: String): String {
         val device = currentDeviceProvider() ?: throw AdbDeviceNotFoundException()
         val safePath = if (filePath.startsWith("/")) filePath else "/$filePath"
-        val result = adb.shell(device, "pm", "install", "-r", "\"$safePath\"", throwOnError = true)
+        val result = adb.shell(device, "pm", "install", "-r", shellQuote(safePath), throwOnError = true)
         return result.joinToString("\n")
     }
 
@@ -199,14 +203,14 @@ class AdbFileOperations(
         val device = currentDeviceProvider() ?: throw AdbDeviceNotFoundException()
         val srcPath = if (sourcePath.startsWith("/")) sourcePath else "/$sourcePath"
         val destPath = if (destDirectory.startsWith("/")) destDirectory else "/$destDirectory"
-        adb.shell(device, "cp", "-r", "\"$srcPath\"", "\"$destPath\"", throwOnError = true)
+        adb.shell(device, "cp", "-r", "--", shellQuote(srcPath), shellQuote(destPath), throwOnError = true)
     }
 
     suspend fun moveFile(sourcePath: String, destDirectory: String) {
         val device = currentDeviceProvider() ?: throw AdbDeviceNotFoundException()
         val srcPath = if (sourcePath.startsWith("/")) sourcePath else "/$sourcePath"
         val destPath = if (destDirectory.startsWith("/")) destDirectory else "/$destDirectory"
-        adb.shell(device, "mv", "\"$srcPath\"", "\"$destPath\"", throwOnError = true)
+        adb.shell(device, "mv", "--", shellQuote(srcPath), shellQuote(destPath), throwOnError = true)
     }
 
     suspend fun changePermissions(directoryPath: String, fileName: String, permissions: String) {
@@ -214,7 +218,7 @@ class AdbFileOperations(
         val safePath = if (directoryPath.isEmpty()) "" else "/$directoryPath"
         val fullPath = if (safePath.isEmpty()) "/$fileName" else "$safePath/$fileName"
         println("Changing permissions for: $fullPath to $permissions")
-        val result = adb.shell(device, "chmod", permissions, "\"$fullPath\"", throwOnError = true)
+        val result = adb.shell(device, "chmod", permissions, "--", shellQuote(fullPath), throwOnError = true)
         println("chmod result: $result")
     }
 

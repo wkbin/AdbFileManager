@@ -8,11 +8,14 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -30,11 +33,16 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.CheckBox
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Deselect
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.ContentPaste
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.West
+import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -50,6 +58,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -65,6 +74,9 @@ import model.Bookmark
 import model.FileItem
 import model.SortType
 import model.StringsManager
+import model.copyDroppedFilesToDirectory
+import model.isLikelyWritableLocalDirectory
+import model.FileManagerLayoutPreferences
 import org.koin.compose.viewmodel.koinViewModel
 import view.components.CreateDirectoryDialog
 import view.components.CreateFileDialog
@@ -89,9 +101,80 @@ import viewmodel.FileManagerViewModel
 import view.components.SearchDialog
 import view.components.AppManagerDialog
 import view.components.ClipboardDialog
+import view.components.CodeEditorDialog
+import view.components.LocalFilePane
+import java.io.File
+import javax.swing.JFileChooser
 
 @Composable
-fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManagerViewModel>()) {
+fun FileManagerScreen() {
+    val remoteViewModel = koinViewModel<FileManagerViewModel>(key = "remote-file-pane")
+    var activePane by remember { mutableStateOf(FilePaneSide.LEFT) }
+    var localDirectory by remember { mutableStateOf(File(System.getProperty("user.home"))) }
+    var localRefreshVersion by remember { mutableStateOf(0) }
+    var localPaneCollapsed by remember {
+        mutableStateOf(FileManagerLayoutPreferences.isLocalPaneCollapsed())
+    }
+    val strings by StringsManager.strings.collectAsState()
+
+    LaunchedEffect(remoteViewModel) {
+        remoteViewModel.dispatch(FileManagerIntent.ResetDirectory("storage/emulated/0"))
+    }
+
+    Row(modifier = Modifier.fillMaxSize().padding(6.dp)) {
+        val localPaneModifier = if (localPaneCollapsed) {
+            Modifier.width(48.dp).fillMaxHeight()
+        } else {
+            Modifier.weight(1f).fillMaxSize()
+        }
+        LocalFilePane(
+            isActive = activePane == FilePaneSide.LEFT,
+            onActivate = { activePane = FilePaneSide.LEFT },
+            onPathChanged = { localDirectory = it },
+            onCopyToRemote = { files ->
+                remoteViewModel.dispatch(FileManagerIntent.ImportFiles(files))
+            },
+            onDropFromRemote = { files, destination ->
+                copyDroppedFilesToDirectory(files, destination)
+                localRefreshVersion++
+            },
+            refreshVersion = localRefreshVersion,
+            collapsed = localPaneCollapsed,
+            onCollapsedChange = { collapsed ->
+                localPaneCollapsed = collapsed
+                FileManagerLayoutPreferences.setLocalPaneCollapsed(collapsed)
+            },
+            modifier = localPaneModifier
+        )
+        VerticalDivider(
+            modifier = Modifier.fillMaxHeight().padding(vertical = 4.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+        FileManagerPane(
+            viewModel = remoteViewModel,
+            paneTitle = strings.panelRight,
+            localDirectory = localDirectory,
+            isActive = activePane == FilePaneSide.RIGHT,
+            onActivate = { activePane = FilePaneSide.RIGHT },
+            onLocalFilesChanged = { localRefreshVersion++ },
+            modifier = Modifier.weight(1f).fillMaxSize()
+        )
+    }
+}
+
+private enum class FilePaneSide { LEFT, RIGHT }
+
+@Composable
+private fun FileManagerPane(
+    viewModel: FileManagerViewModel,
+    paneTitle: String,
+    localDirectory: File,
+    isActive: Boolean,
+    onActivate: () -> Unit,
+    onLocalFilesChanged: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     var showSearch by remember { mutableStateOf(false) }
     val state by viewModel.state.collectAsState()
     
@@ -102,18 +185,36 @@ fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManage
         }
     }
     val strings by StringsManager.strings.collectAsState()
+    val localDirectoryWritable = remember(localDirectory) {
+        isLikelyWritableLocalDirectory(localDirectory)
+    }
 
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = modifier
+            .border(
+                width = if (isActive) 2.dp else 1.dp,
+                color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
+                shape = RoundedCornerShape(10.dp)
+            )
             .shadow(
                 elevation = 2.dp,
-                shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp)
+                shape = RoundedCornerShape(10.dp)
             ),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            Surface(
+                modifier = Modifier.fillMaxWidth().clickable(onClick = onActivate),
+                color = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Text(
+                    text = paneTitle,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
@@ -123,9 +224,11 @@ fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManage
                 PathNavigator(
                     currentPath = viewModel.directoryList,
                     onPathClick = { index ->
+                        onActivate()
                         viewModel.dispatch(FileManagerIntent.NavigateToPathIndex(index))
                     },
                     onPathInput = { path ->
+                        onActivate()
                         viewModel.dispatch(FileManagerIntent.ResetDirectory(path))
                     },
                     modifier = Modifier.weight(1f)
@@ -199,9 +302,30 @@ fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManage
                 onNavigateToBookmarkClick = { bookmark ->
                     viewModel.dispatch(FileManagerIntent.NavigateToBookmark(bookmark))
                 },
+                selectionMode = state.selectionMode,
+                selectedCount = state.selectedFiles.size,
+                totalCount = allFiles.size,
+                onRefreshClick = { viewModel.dispatch(FileManagerIntent.LoadFiles) },
+                onToggleSelectionMode = { viewModel.dispatch(FileManagerIntent.ToggleSelectionMode) },
+                onSelectAllClick = { viewModel.dispatch(FileManagerIntent.SelectAllFiles) },
+                onClearSelectionClick = { viewModel.dispatch(FileManagerIntent.ClearFileSelection) },
+                onBatchDeleteClick = { viewModel.dispatch(FileManagerIntent.RequestBatchDeleteConfirmation) },
+                onBatchExportClick = {
+                    chooseExportDirectory()?.let { path ->
+                        viewModel.dispatch(FileManagerIntent.BatchExportFiles(path))
+                    }
+                },
+                onBatchCopyToOtherClick = {
+                    viewModel.dispatch(FileManagerIntent.BatchExportFiles(localDirectory.absolutePath))
+                },
+                onBatchMoveToOtherClick = {
+                    viewModel.dispatch(FileManagerIntent.BatchMoveToLocal(localDirectory.absolutePath))
+                },
                 onAppsClick = { viewModel.dispatch(FileManagerIntent.ShowAppManager) },
                 onScreenshotClick = { viewModel.dispatch(FileManagerIntent.TakeScreenshot) },
-                onClipboardClick = { viewModel.dispatch(FileManagerIntent.ShowClipboardDialog) }
+                onClipboardClick = { viewModel.dispatch(FileManagerIntent.ShowClipboardDialog) },
+                otherPaneWritable = localDirectoryWritable,
+                compact = true
             )
             // 操作进行中的进度指示器
             AnimatedVisibility(
@@ -211,7 +335,7 @@ fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManage
                     modifier = Modifier.fillMaxWidth().height(2.dp)
                 )
             }
-            FileListView(viewModel)
+            FileListView(viewModel, onActivate, onLocalFilesChanged, localDirectory, localDirectoryWritable)
         }
     }
 
@@ -265,6 +389,54 @@ fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManage
             containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
             titleContentColor = MaterialTheme.colorScheme.onSurface,
             textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+
+    if (state.pendingBatchDeleteFiles.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = {
+                viewModel.dispatch(FileManagerIntent.CancelBatchDeleteConfirmation)
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Rounded.DeleteForever,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("批量删除") },
+            text = { Text("确定删除选中的 ${state.pendingBatchDeleteFiles.size} 个项目吗？此操作不可撤销。") },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.dispatch(FileManagerIntent.BatchDeleteFiles) },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("删除") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    viewModel.dispatch(FileManagerIntent.CancelBatchDeleteConfirmation)
+                }) { Text(strings.fileCancel) }
+            }
+        )
+    }
+
+    val editorContent = state.fileContent
+    val editorFileName = state.fileName
+    if (editorContent != null && editorFileName != null) {
+        CodeEditorDialog(
+            visible = true,
+            fileName = editorFileName,
+            initialContent = editorContent,
+            fileEncoding = state.fileEncoding,
+            onEncodingChange = { encoding ->
+                viewModel.dispatch(FileManagerIntent.ChangeEncoding(encoding))
+            },
+            onSave = { content ->
+                viewModel.dispatch(FileManagerIntent.SaveFile(content))
+            },
+            onDismiss = {
+                viewModel.dispatch(FileManagerIntent.CloseEditor)
+            }
         )
     }
 
@@ -325,7 +497,7 @@ fun FileManagerScreen(viewModel: FileManagerViewModel = koinViewModel<FileManage
 
     // 复制/移动对话框
     if (state.showCopyMoveDialog && state.pendingCopyMoveFile != null) {
-        var destPath by remember { mutableStateOf("/" + viewModel.directoryList.joinToString("/")) }
+        var destPath by remember(state.pendingCopyMoveFile) { mutableStateOf(viewModel.currentDirectoryPath) }
         val isCopy = state.isCopyOperation
         val strings by StringsManager.strings.collectAsState()
 
@@ -489,9 +661,22 @@ private fun FileToolBar(
     onAddBookmarkClick: () -> Unit,
     onRemoveBookmarkClick: (Bookmark) -> Unit,
     onNavigateToBookmarkClick: (Bookmark) -> Unit,
+    selectionMode: Boolean,
+    selectedCount: Int,
+    totalCount: Int,
+    onRefreshClick: () -> Unit,
+    onToggleSelectionMode: () -> Unit,
+    onSelectAllClick: () -> Unit,
+    onClearSelectionClick: () -> Unit,
+    onBatchDeleteClick: () -> Unit,
+    onBatchExportClick: () -> Unit,
+    onBatchCopyToOtherClick: () -> Unit,
+    onBatchMoveToOtherClick: () -> Unit,
+    otherPaneWritable: Boolean = true,
     onAppsClick: () -> Unit = {},
     onScreenshotClick: () -> Unit = {},
-    onClipboardClick: () -> Unit = {}
+    onClipboardClick: () -> Unit = {},
+    compact: Boolean = false
 ) {
     var showSortMenu by remember { mutableStateOf(false) }
     var showCreateMenu by remember { mutableStateOf(false) }
@@ -513,11 +698,65 @@ private fun FileToolBar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Start
             ) {
+                if (selectionMode) {
+                    Text(
+                        text = "已选择 $selectedCount 项",
+                        style = MaterialTheme.typography.titleSmall,
+                        modifier = Modifier.padding(horizontal = 8.dp)
+                    )
+                    ToolbarButton(
+                        onClick = if (selectedCount == totalCount && totalCount > 0) onClearSelectionClick else onSelectAllClick,
+                        icon = if (selectedCount == totalCount && totalCount > 0) Icons.Outlined.Deselect else Icons.Outlined.CheckBox,
+                        text = if (selectedCount == totalCount && totalCount > 0) "取消全选" else "全选",
+                        tint = MaterialTheme.colorScheme.primary,
+                        compact = compact
+                    )
+                    ToolbarButton(
+                        onClick = onBatchExportClick,
+                        icon = Icons.Outlined.Download,
+                        text = "导出",
+                        tint = MaterialTheme.colorScheme.primary,
+                        enabled = selectedCount > 0,
+                        compact = compact
+                    )
+                    ToolbarButton(
+                        onClick = onBatchCopyToOtherClick,
+                        icon = Icons.Outlined.West,
+                        text = strings.panelCopyToOther,
+                        tint = MaterialTheme.colorScheme.secondary,
+                        enabled = selectedCount > 0 && otherPaneWritable,
+                        compact = compact
+                    )
+                    ToolbarButton(
+                        onClick = onBatchMoveToOtherClick,
+                        icon = Icons.AutoMirrored.Outlined.DriveFileMove,
+                        text = strings.panelMoveToOther,
+                        tint = MaterialTheme.colorScheme.secondary,
+                        enabled = selectedCount > 0 && otherPaneWritable,
+                        compact = compact
+                    )
+                    ToolbarButton(
+                        onClick = onBatchDeleteClick,
+                        icon = Icons.Outlined.Delete,
+                        text = "删除",
+                        tint = MaterialTheme.colorScheme.error,
+                        enabled = selectedCount > 0,
+                        compact = compact
+                    )
+                    ToolbarButton(
+                        onClick = onToggleSelectionMode,
+                        icon = Icons.Outlined.Deselect,
+                        text = "退出",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        compact = compact
+                    )
+                } else {
                 ToolbarButton(
                     onClick = onBackClick,
                     icon = Icons.AutoMirrored.Rounded.ArrowBack,
                     text = strings.navBack,
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
+                    compact = compact
                 )
                 Spacer(modifier = Modifier.width(4.dp))
 
@@ -526,7 +765,8 @@ private fun FileToolBar(
                         onClick = { showCreateMenu = true },
                         icon = Icons.Outlined.Add,
                         text = strings.fileCreate,
-                        tint = MaterialTheme.colorScheme.secondary
+                        tint = MaterialTheme.colorScheme.secondary,
+                        compact = compact
                     )
                     DropdownMenu(
                         expanded = showCreateMenu,
@@ -569,7 +809,8 @@ private fun FileToolBar(
                         onClick = onBookmarkMenuClick,
                         icon = if (currentPathBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
                         text = strings.bookmark,
-                        tint = if (currentPathBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (currentPathBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        compact = compact
                     )
                     DropdownMenu(
                         expanded = showBookmarkMenu,
@@ -628,7 +869,8 @@ private fun FileToolBar(
                         onClick = { showSortMenu = true },
                         icon = Icons.AutoMirrored.Outlined.Sort,
                         text = strings.sortTitle,
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
+                        compact = compact
                     )
                     DropdownMenu(
                         expanded = showSortMenu,
@@ -655,10 +897,26 @@ private fun FileToolBar(
                     }
                 }
 
+                ToolbarButton(
+                    onClick = onRefreshClick,
+                    icon = Icons.Outlined.Refresh,
+                    text = "刷新",
+                    tint = MaterialTheme.colorScheme.primary,
+                    compact = compact
+                )
+                ToolbarButton(
+                    onClick = onToggleSelectionMode,
+                    icon = Icons.Outlined.CheckBox,
+                    text = "多选",
+                    tint = MaterialTheme.colorScheme.primary,
+                    compact = compact
+                )
+
+                }
             }
 
             // Right side: utility buttons
-            Row(
+            if (!selectionMode) Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -666,19 +924,22 @@ private fun FileToolBar(
                     onClick = onAppsClick,
                     icon = Icons.Outlined.Apps,
                     text = "Apps",
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
+                    compact = compact
                 )
                 ToolbarButton(
                     onClick = onScreenshotClick,
                     icon = Icons.Outlined.CameraAlt,
                     text = "Shot",
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
+                    compact = compact
                 )
                 ToolbarButton(
                     onClick = onClipboardClick,
                     icon = Icons.Outlined.ContentPaste,
                     text = "Clip",
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.primary,
+                    compact = compact
                 )
             }
         }
@@ -687,7 +948,13 @@ private fun FileToolBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FileListView(viewModel: FileManagerViewModel) {
+private fun FileListView(
+    viewModel: FileManagerViewModel,
+    onActivate: () -> Unit,
+    onLocalFilesChanged: () -> Unit,
+    localDirectory: File,
+    localDirectoryWritable: Boolean
+) {
     val state by viewModel.state.collectAsState()
     val toastUiState = remember { ToastUIState() }
 
@@ -701,6 +968,8 @@ private fun FileListView(viewModel: FileManagerViewModel) {
                 is FileManagerEffect.ShowErrorTips -> {
                     toastUiState.show(ToastModel(effect.message, ToastModel.Type.Error))
                 }
+
+                FileManagerEffect.LocalFilesChanged -> onLocalFilesChanged()
             }
         }
     }
@@ -756,7 +1025,24 @@ private fun FileListView(viewModel: FileManagerViewModel) {
                     ) { file ->
                         FileListItem(
                             file = file,
+                            selectionMode = state.selectionMode,
+                            compact = true,
+                            copyIcon = Icons.Outlined.West,
+                            showDragHandle = true,
+                            dragHandleModifier = Modifier.adbDndSource(
+                                selectedFile = "/${viewModel.directoryList.joinToString("/")}/${file.fileName}",
+                                onRequestExport = { destinationPath ->
+                                    viewModel.exportFileSync(file.fileName, destinationPath)
+                                }
+                            ),
+                            copyEnabled = localDirectoryWritable,
+                            moveEnabled = localDirectoryWritable,
+                            isSelected = file.fileName in state.selectedFiles,
+                            onSelectionChange = {
+                                viewModel.dispatch(FileManagerIntent.ToggleFileSelection(file.fileName))
+                            },
                             onFileClick = {
+                                onActivate()
                                 if (file.isDir) {
                                     if (file.link != null) {
                                         viewModel.dispatch(FileManagerIntent.NavigateTo(file.link))
@@ -797,19 +1083,22 @@ private fun FileListView(viewModel: FileManagerViewModel) {
                                 viewModel.dispatch(FileManagerIntent.InstallApk(file.fileName))
                             },
                             onCopyFile = {
-                                viewModel.dispatch(FileManagerIntent.RequestCopy(file))
+                                viewModel.dispatch(
+                                    FileManagerIntent.ExportFile(
+                                        file.fileName,
+                                        File(localDirectory, file.fileName).absolutePath
+                                    )
+                                )
                             },
                             onMoveFile = {
-                                viewModel.dispatch(FileManagerIntent.RequestMove(file))
-                            },
-                            modifier = Modifier.adbDndSource(
-                                selectedFile = "/${viewModel.directoryList.joinToString("/")}/${file.fileName}",
-                                onRequestExport = { destinationPath ->
-                                    // Synchronous pull for DND — ensures file is fully downloaded
-                                    // before the external drop target receives it
-                                    viewModel.exportFileSync(file.fileName, destinationPath)
-                                }
-                            )
+                                viewModel.dispatch(
+                                    FileManagerIntent.ExportFile(
+                                        file.fileName,
+                                        File(localDirectory, file.fileName).absolutePath,
+                                        deleteRemoteAfterExport = true
+                                    )
+                                )
+                            }
                         )
                     }
                 }
@@ -823,5 +1112,19 @@ private fun FileListView(viewModel: FileManagerViewModel) {
                 }
             }
         }
+    }
+}
+
+private fun chooseExportDirectory(): String? {
+    val chooser = JFileChooser().apply {
+        dialogTitle = "选择导出目录"
+        fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
+        isAcceptAllFileFilterUsed = false
+        currentDirectory = File(System.getProperty("user.home"), "Downloads")
+    }
+    return if (chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
+        chooser.selectedFile?.absolutePath
+    } else {
+        null
     }
 }
