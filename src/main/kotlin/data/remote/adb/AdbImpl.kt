@@ -160,22 +160,6 @@ class AdbImpl(
         result.forEach { send(it) }
     }.flowOn(Dispatchers.IO)
 
-    @Deprecated(
-        message = "Use shell(), push(), or pull() instead. String-based commands break with paths containing spaces.",
-        replaceWith = ReplaceWith("shell(adbDevice, *args, throwOnError)")
-    )
-    override suspend fun exec(
-        adbDevice: AdbDevice,
-        cmd: String,
-        throwOnError: Boolean
-    ): List<String> {
-        val args = mutableListOf(adbPath, "-s", adbDevice.deviceId)
-        // WARNING: split(" ") breaks quoted arguments with spaces.
-        // Use shell() / push() / pull() which accept List<String> args.
-        args.addAll(cmd.split(" "))
-        return terminal.runSafe(args, throwOnError)
-    }
-
     private fun deviceIdToAdbWifiState(deviceId: String): AdbWifiState? {
         val regex = """(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d+)""".toRegex()
         val matchResult = regex.find(deviceId)

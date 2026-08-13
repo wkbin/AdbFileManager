@@ -44,6 +44,8 @@ dependencies {
     implementation(libs.koin.compose)
     implementation(libs.koin.compose.viewmodel)
     implementation(libs.navigation.compose)
+
+    testImplementation(kotlin("test"))
 }
 
 compose.desktop {
@@ -89,6 +91,6 @@ compose.desktop {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }

@@ -15,7 +15,7 @@ class AdbDevicePoller(private val adb: Adb) {
     private val _currentDevice = MutableStateFlow<AdbDevice?>(null)
     val currentDevice: StateFlow<AdbDevice?> = _currentDevice
 
-    private val fileOperations = AdbFileOperations(adb) { _currentDevice.value }
+    private val fileOperations = AdbFileOperations(adb, { _currentDevice.value })
 
     fun startPolling(scope: CoroutineScope) = scope.launch(Dispatchers.IO) {
         while (isActive) {
@@ -71,10 +71,8 @@ class AdbDevicePoller(private val adb: Adb) {
         localPath: String,
         remotePath: String,
         progressCallback: AdbTransferProgress
-    ): kotlinx.coroutines.flow.Flow<String> {
-        val device = _currentDevice.value ?: throw AdbDeviceNotFoundException()
-        return adb.pushWithProgress(device, localPath, remotePath, progressCallback)
-    }
+    ): kotlinx.coroutines.flow.Flow<String> =
+        fileOperations.pushWithProgress(localPath, remotePath, progressCallback)
 
     fun pullWithProgress(
         remotePath: String,

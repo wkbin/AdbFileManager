@@ -2,47 +2,17 @@ package data.remote.adb
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
-import java.io.IOException
-import java.util.concurrent.TimeUnit
 import model.StringsManager
-import org.jetbrains.skiko.hostOs
 import kotlin.time.Duration.Companion.milliseconds
 
 class Terminal(
     private val defaultTimeoutMs: Long = DEFAULT_TIMEOUT_MS
 ) {
-    @Deprecated(
-        message = "Use runSafe() with List<String> args instead. String-based commands break with paths containing spaces.",
-        replaceWith = ReplaceWith("runSafe(command.split(\" \"), throwOnError, timeoutMs)")
-    )
-    suspend fun run(
-        command: String,
-        throwOnError: Boolean = false,
-        timeoutMs: Long = defaultTimeoutMs
-    ): List<String> = withContext(Dispatchers.IO) {
-        if (command.isEmpty()) {
-            logWarning("Command is null or empty.")
-            return@withContext emptyList()
-        }
-        // WARNING: split(" ") breaks quoted arguments with spaces.
-        // Use runSafe() which accepts List<String> args.
-        val commandArray = if (hostOs.isWindows) {
-            command.split(" ").toTypedArray()
-        } else {
-            val shell = System.getenv("SHELL")
-            arrayOf(shell, "-c", command)
-        }
-
-        executeProcess(commandArray.toList(), command, throwOnError, timeoutMs)
-    }
-
     suspend fun runSafe(
         commandArgs: List<String>,
         throwOnError: Boolean = false,
@@ -96,43 +66,6 @@ class Terminal(
         }
     }
 
-    @Deprecated(
-        message = "Use connectSafe() with List<String> args instead. String-based commands break with paths containing spaces.",
-        replaceWith = ReplaceWith("connectSafe(command.split(\" \"))")
-    )
-    fun connect(command: String): Flow<String> = channelFlow {
-        if (command.isEmpty()) {
-            logWarning("Command is null or empty.")
-            return@channelFlow
-        }
-
-        logInfo(command)
-
-        // WARNING: split(" ") breaks quoted arguments with spaces.
-        // Use connectSafe() which accepts List<String> args.
-        val process = ProcessBuilder(*command.split(" ").toTypedArray())
-            .redirectErrorStream(true)
-            .start()
-
-        withContext(Dispatchers.IO) {
-            process.inputStream.bufferedReader().useLines { lines ->
-                lines.forEach { line ->
-                    try {
-                        send(line)
-                    } catch (e: Exception) {
-                        logError("Error sending line to flow", e)
-                        cancel()
-                    }
-                }
-            }
-        }
-
-        awaitClose {
-            process.destroy()
-            logInfo("""COMPLETED EXECUTE ADB\n$command""".trimIndent())
-        }
-    }.flowOn(Dispatchers.IO)
-
     fun connectSafe(commandArgs: List<String>): Flow<String> = channelFlow {
         if (commandArgs.isEmpty()) {
             logWarning("Command args are empty.")
@@ -142,25 +75,27 @@ class Terminal(
         val commandLog = commandArgs.joinToString(" ")
         logInfo(commandLog)
 
-        val process = ProcessBuilder(commandArgs)
-            .redirectErrorStream(true)
-            .start()
-
-        withContext(Dispatchers.IO) {
-            process.inputStream.bufferedReader().useLines { lines ->
-                lines.forEach { line ->
-                    try {
+        val output = mutableListOf<String>()
+        val process = ProcessBuilder(commandArgs).redirectErrorStream(true).start()
+        try {
+            withContext(Dispatchers.IO) {
+                process.inputStream.bufferedReader().useLines { lines ->
+                    lines.forEach { line ->
+                        output += line
                         send(line)
-                    } catch (e: Exception) {
-                        logError("Error sending line to flow", e)
-                        cancel()
                     }
                 }
             }
-        }
-
-        awaitClose {
-            process.destroy()
+            val exitCode = withContext(Dispatchers.IO) { process.waitFor() }
+            if (exitCode != 0) {
+                throw AdbCommandException(
+                    exitCode,
+                    output,
+                    StringsManager.strings.value.terminalCommandFailed(exitCode, output.joinToString("\n"))
+                )
+            }
+        } finally {
+            if (process.isAlive) process.destroyForcibly()
             logInfo("""COMPLETED EXECUTE ADB\n$commandLog""".trimIndent())
         }
     }.flowOn(Dispatchers.IO)
@@ -184,11 +119,6 @@ class Terminal(
 
     private fun logWarning(message: String) {
         println("[WARNING] $message")
-    }
-
-    private fun logError(message: String, cause: Throwable? = null) {
-        println("[ERROR] $message")
-        cause?.printStackTrace()
     }
 
     companion object {

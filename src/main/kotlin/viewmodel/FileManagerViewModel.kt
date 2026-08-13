@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import model.AppInfo
 import model.Bookmark
 import model.FileItem
@@ -229,11 +230,14 @@ class FileManagerViewModel(
 
 
     private fun resetDirectory(directoryPath: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             try {
                 val newPath = directoryPath.trim()
                 if (newPath.isNotEmpty()) {
-                    if (!adbDevicePoller.checkPermission(newPath)) {
+                    val hasPermission = withContext(Dispatchers.IO) {
+                        adbDevicePoller.checkPermission(newPath)
+                    }
+                    if (!hasPermission) {
                         _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.pathInvalid(newPath)))
                         return@launch
                     }
@@ -241,7 +245,6 @@ class FileManagerViewModel(
                         .filter { it.isNotEmpty() }
 
                     if (pathSegments.isNotEmpty()) {
-                        adbDevicePoller.checkPermission(newPath)
                         _directoryList.clear()
                         _directoryList.addAll(pathSegments)
                         loadFiles()
@@ -312,7 +315,7 @@ class FileManagerViewModel(
                     val destPath = if (file.isDirectory) {
                         "${directoryPath}/${file.name}"
                     } else {
-                        directoryPath
+                        "${directoryPath}/${file.name}"
                     }
                     val fileSize = file.length()
                     _transferProgress.startTransfer(file.name, fileSize)
@@ -406,9 +409,7 @@ class FileManagerViewModel(
                     when (component) {
                         "." -> continue
                         ".." -> {
-                            if (_directoryList.isNotEmpty()) {
-                                _directoryList.removeLast()
-                            }
+                            removeLastDirectory()
                         }
 
                         else -> _directoryList.add(component)
@@ -435,7 +436,7 @@ class FileManagerViewModel(
             _directoryList.clear()
         } else {
             while (_directoryList.size > index + 1) {
-                _directoryList.removeLast()
+                if (!removeLastDirectory()) break
             }
         }
         loadFiles()
@@ -443,8 +444,7 @@ class FileManagerViewModel(
     }
 
     private fun navigateUp() {
-        if (_directoryList.isNotEmpty()) {
-            _directoryList.removeLast()
+        if (removeLastDirectory()) {
             loadFiles()
             checkCurrentPathBookmarked()
         } else {
@@ -452,6 +452,13 @@ class FileManagerViewModel(
                 _effect.emit(FileManagerEffect.ShowErrorTips(StringsManager.strings.value.pathAlreadyRoot))
             }
         }
+    }
+
+    private fun removeLastDirectory(): Boolean {
+        val lastIndex = _directoryList.lastIndex
+        if (lastIndex < 0) return false
+        _directoryList.removeAt(lastIndex)
+        return true
     }
 
     private fun loadFiles() {
@@ -692,7 +699,7 @@ class FileManagerViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val packages = adbDevicePoller.getInstalledPackages().sorted()
-                _state.update { it.copy(appList = packages.map { AppInfo(it) }, appListLoading = false) }
+                _state.update { it.copy(appList = packages.map(::AppInfo)) }
                 // Resolve labels in background, one by one
                 packages.forEach { pkg ->
                     val label = adbDevicePoller.getAppLabel(pkg)
@@ -703,6 +710,7 @@ class FileManagerViewModel(
                         state.copy(appList = updated)
                     }
                 }
+                _state.update { it.copy(appListLoading = false) }
             } catch (e: Exception) {
                 _state.update { it.copy(appListLoading = false) }
                 _effect.emit(FileManagerEffect.ShowErrorTips(e.message ?: "Failed to load apps"))
@@ -711,6 +719,7 @@ class FileManagerViewModel(
     }
 
     private fun uninstallApp(packageName: String) {
+        if (packageName.isBlank()) return
         _state.update { it.copy(operationInProgress = true) }
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -726,6 +735,7 @@ class FileManagerViewModel(
     }
 
     private fun backupApk(packageName: String, destinationPath: String) {
+        if (packageName.isBlank() || destinationPath.isBlank()) return
         _transferProgress.startTransfer("$packageName.apk", 0L)
         _state.update { it.copy(operationInProgress = true, isTransferring = true, transferringFileName = "$packageName.apk", showTransferDialog = true) }
         viewModelScope.launch(Dispatchers.IO) {
@@ -765,6 +775,7 @@ class FileManagerViewModel(
     // ── Clipboard ───────────────────────────────────────────────────
 
     private fun pushClipboard(text: String) {
+        if (text.isBlank()) return
         _state.update { it.copy(operationInProgress = true, showClipboardDialog = false) }
         viewModelScope.launch(Dispatchers.IO) {
             try {
