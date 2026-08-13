@@ -2,141 +2,103 @@
 
 *Read this in [English](README.md) | [中文](README_zh.md)*
 
-A Material You designed Android device file manager that enables remote file operations via ADB connection.
+A desktop file manager for browsing and managing Android devices through ADB, built with Kotlin and Compose Desktop.
 
-![Kotlin](https://img.shields.io/badge/kotlin-2.1.20-blue.svg)
-![Compose](https://img.shields.io/badge/compose-1.8.0-green.svg)
-![Version](https://img.shields.io/badge/version-v2.6.0-orange.svg)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.1.20-blue.svg)
+![Compose](https://img.shields.io/badge/Compose-1.8.0-green.svg)
+![Version](https://img.shields.io/badge/version-v3.1.0-orange.svg)
+![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)
 
-## 📖 Introduction
+## Highlights
 
-ADB File Manager is a desktop application that allows you to remotely browse and manage Android device file systems via ADB connection. Built with a modern Material You interface using Jetpack Compose, it offers a smooth user experience and elegant animation effects.
+- **Dual-pane file manager** — browse the local computer on the left and the Android device on the right, then copy files in either direction.
+- **Collapsible local pane** — collapse the local pane for a compact, device-focused layout. The preference is remembered between launches.
+- **Reliable Windows transfers** — paths are passed as structured process arguments, and uploads use an ASCII staging file plus an Android-side rename to preserve spaces, Chinese, Japanese, and other Unicode names on legacy Windows code pages.
+- **Drag and drop** — drag files between the local and Android panes or between the application and the operating system. Dedicated drag handles prevent accidental transfers when opening folders.
+- **Cancellable transfers** — cancelling a transfer stops its coroutine and ADB child process, resets the UI, and removes newly created incomplete files.
+- **Built-in code editor** — edit remote text files with syntax highlighting, find/replace, undo/redo, encoding selection, cursor position, and lossless UTF-8 saving.
+- **ADB terminal** — open multiple interactive terminal tabs, run commands, switch shell modes, and drop local files into commands.
+- **Device tools** — application list, APK backup and uninstall, screenshots, clipboard transfer, bookmarks, search, sorting, permissions, rename, copy, move, delete, and batch operations.
+- **Adaptive desktop UI** — responsive initial window sizing, light/dark/system themes, and Chinese/English interfaces.
 
-## 📸 Preview
+## Changes since v2.6.1
 
-<div align="center">
-  <img src="docs/images/1.png" alt="ADB File Manager Preview" width="800">
-  <img src="docs/images/2.png" alt="ADB File Manager Edit Preview" width="800">
-  <img src="docs/images/3.png" alt="ADB File Manager Search Preview" width="800">
-</div>
+Version 3.1.0 replaces the former device-only file view with a dual-pane workflow and adds a full editor and terminal experience. It also fixes the Windows CP936/GBK transfer failures that affected filenames containing spaces or non-ASCII characters.
 
-## ✨ Features
+See [Release notes for v3.1.0](RELEASE_NOTES_v3.1.0.md) for the detailed comparison, fixes, and upgrade notes.
 
-- 🎨 **Material You Design** - Modern UI design following Google's latest design language
-- 📱 **Multi-device Support** - Connect to and manage multiple Android devices
-- 📂 **Intuitive File Navigation** - File browser with path navigation bar, supporting path jump by clicking
-- 🔍 **Directory Navigation** - Easy directory traversal with breadcrumb navigation, allowing instant jumps to parent directories
-- 📝 **File Editing** - Built-in text editor for editing text files on the device
-- 🔒 **Permission Check** - Smart detection and prompting for file operation permission issues
-- 🔄 **Real-time Feedback** - Real-time status feedback for all operations
-- 📥 **File Transfer** - Support for downloading files from and uploading files to devices
-- 🌓 **Dark/Light Theme** - Toggle between dark and light themes for comfortable viewing in any environment
-- 📄 **File Creation** - Create new text files with custom content directly on the device
-- 🔍 **File Search** - Search for files and directories within the current directory
-- 🔄 **Advanced Sorting** - Sort files by name, type (folders first or files first), date, and size in ascending or descending order
-- 📁 **Folder Import** - Import entire folders from local system to device with a single click
-- 🔖 **Bookmarks** - Save frequently accessed directories as bookmarks for quick navigation
-- 📊 **Grid View** - Toggle between list and grid view modes for better visual representation of files
-- 🖼️ **Drag and Drop File Upload/Download** - Easily upload files by dragging and dropping them into the application, and download files by dragging them out
+## Requirements
 
-## 🔧 Technology Stack
+- Windows, macOS, or Linux desktop
+- An Android device or emulator with ADB debugging enabled
+- Java 21 when building from source
 
-- **Kotlin** - Primary development language
-- **Jetpack Compose** - Modern UI toolkit
-- **ADB** - Android Debug Bridge tool
-- **Coroutines** - Handling asynchronous operations
-- **Flow** - Reactive data streams
+ADB is bundled with the application. On Windows, the bundled runtime is verified with SHA-256 before use, so an identical or currently running `adb.exe` is not overwritten during startup.
 
-## 🚀 Installation
+## Install
 
-### Building from Source
+Download the package for your operating system from the [GitHub Releases](https://github.com/wkbin/AdbFileManager/releases) page. Windows users can install the `.msi` package directly.
 
-1. Clone the repository
-   ```bash
-   git clone https://github.com/AdbFileManager.git
-   cd AdbFileManager
-   ```
+### Build from source
 
-2. Build with Gradle
-   ```bash
-   ./gradlew build
-   ```
+```bash
+git clone https://github.com/wkbin/AdbFileManager.git
+cd AdbFileManager
+./gradlew run
+```
 
-3. Run the application
-   ```bash
-   ./gradlew run
-   ```
+Run tests:
 
-## 💡 Usage Instructions
+```bash
+./gradlew test
+```
 
-1. **Connect a device**:
-   - Ensure USB debugging is enabled on your device
-   - Connect the device to your computer
-   - Select your device from the dropdown menu
+Build a native installer for the current operating system:
 
-2. **Browse files**:
-   - Click on folders to enter them
-   - Use the path navigation bar to quickly jump to parent directories
-   - Click the refresh button to update the file list
+```bash
+# Windows
+./gradlew packageMsi
 
-3. **File operations**:
-   - Click the menu button next to a file to see available actions
-   - Edit: Modify text file content
-   - Download: Save the file to your local computer
-   - Delete: Remove the file from the device
+# macOS
+./gradlew packageDmg
 
-4. **Create folder**:
-   - Click the "New Folder" button in the toolbar
-   - Enter a folder name and confirm
+# Linux
+./gradlew packageDeb
+```
 
-5. **Create file**:
-   - Click the "New File" button in the toolbar
-   - Enter a file name and optional content
-   - Confirm to create the file in the current directory
+## Usage
 
-6. **Import files and folders**:
-   - Click the "Import File" button to upload a single file
-   - Click the "Import Folder" button to upload an entire folder
-   - Select the file or folder from your local system
-   - The content will be automatically uploaded to the current directory
+1. Enable USB debugging on the Android device and connect it by USB or wireless ADB.
+2. Select the device in ADB File Manager.
+3. Browse local folders in the left pane and Android storage in the right pane.
+4. Use the arrow action on a row to copy it to the opposite pane, or drag from the row's drag handle.
+5. Open supported text files on the Android side to edit them directly.
+6. Use the terminal button for interactive ADB or device-shell commands.
 
-7. **Toggle theme**:
-   - Click the theme icon in the toolbar
-   - Select between system default, light theme, or dark theme
+The local pane intentionally focuses on navigation and transfer. Destructive local operations such as delete, rename, and permission changes are not exposed there.
 
-8. **Search files**:
-   - Click the search icon in the toolbar
-   - Enter your search query
-   - Results will be displayed in real-time
+## Notes for Windows
 
-9. **Sort files**:
-   - Click the sort icon in the toolbar
-   - Choose from various sorting options:
-     - Type (folders first or files first)
-     - Name (A-Z or Z-A)
-     - Date (oldest or newest)
-     - Size (smallest or largest)
+- Avoid exporting into protected folders such as `C:\Users` itself. Open your own user directory, Downloads, Desktop, or another writable folder first.
+- The application checks the destination before export and disables opposite-pane copy actions for read-only local folders.
+- Unicode and spaced filenames are supported even when the Windows ANSI code page is GBK/CP936.
 
-## 📋 Upcoming Features
+## Technology
 
-- [ ] File permission modification
-- [ ] File preview functionality
-- [ ] Multiple files selection for batch operations
+- Kotlin and Kotlin Coroutines/Flow
+- Jetpack Compose for Desktop / Material 3
+- Android Debug Bridge (ADB)
+- Koin dependency injection
+- Mozilla Universal Charset Detector
 
-## 🤝 Contributing
+## Contributing
 
-Contributions, issue reports, and feature suggestions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
+Contributions, issue reports, and feature suggestions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-1. Fork this repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Submit a Pull Request
-
-## 📈 Star History
+## Star History
 
 [![Star History Chart](https://starchart.cc/wkbin/AdbFileManager.svg)](https://starchart.cc/wkbin/AdbFileManager)
 
-## 📄 License
+## License
 
-This project is released under the MIT License - see the [LICENSE](LICENSE) file for details.
+Released under the [MIT License](LICENSE).
