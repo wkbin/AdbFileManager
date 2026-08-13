@@ -4,8 +4,8 @@
 
 A desktop file manager for browsing and managing Android devices through ADB, built with Kotlin and Compose Desktop.
 
-![Kotlin](https://img.shields.io/badge/Kotlin-2.1.20-blue.svg)
-![Compose](https://img.shields.io/badge/Compose-1.8.0-green.svg)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-blue.svg)
+![Compose](https://img.shields.io/badge/Compose-1.9.0-green.svg)
 ![Version](https://img.shields.io/badge/version-v3.1.0-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)
 
@@ -94,10 +94,6 @@ The local pane intentionally focuses on navigation and transfer. Destructive loc
 ## Contributing
 
 Contributions, issue reports, and feature suggestions are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
-
-## Star History
-
-[![Star History Chart](https://starchart.cc/wkbin/AdbFileManager.svg)](https://starchart.cc/wkbin/AdbFileManager)
 
 ## License
 

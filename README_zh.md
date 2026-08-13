@@ -4,8 +4,8 @@
 
 一款使用 Kotlin 和 Compose Desktop 构建、通过 ADB 浏览和管理 Android 设备的桌面文件管理器。
 
-![Kotlin](https://img.shields.io/badge/Kotlin-2.1.20-blue.svg)
-![Compose](https://img.shields.io/badge/Compose-1.8.0-green.svg)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.4.10-blue.svg)
+![Compose](https://img.shields.io/badge/Compose-1.9.0-green.svg)
 ![Version](https://img.shields.io/badge/version-v3.1.0-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)
 
@@ -94,10 +94,6 @@ cd AdbFileManager
 ## 贡献
 
 欢迎贡献代码、报告问题或提出功能建议，详情请查看[贡献指南](CONTRIBUTING_zh.md)。
-
-## Star 趋势
-
-[![Star History Chart](https://starchart.cc/wkbin/AdbFileManager.svg)](https://starchart.cc/wkbin/AdbFileManager)
 
 ## 许可证
 
