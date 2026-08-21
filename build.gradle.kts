@@ -60,11 +60,22 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "AdbFileManager"
-            packageVersion = "3.1.1"
+            packageVersion = "3.1.2"
             description = "FileManager For Desktop"
             copyright = "Copyright 2023 Kebin Wang. All rights reserved."
             vendor = "Kebin Wang"
-            modules("jdk.unsupported")
+            modules(
+                "java.base",
+                "java.desktop",
+                "java.prefs",
+                "java.logging",
+                "java.management",
+                "java.naming",
+                "java.sql",
+                "java.xml",
+                "jdk.unsupported",
+                "jdk.crypto.ec"
+            )
 
             // 自定义打包输出配置
             macOS {
@@ -78,7 +89,9 @@ compose.desktop {
                 packageName = "AdbFileManager-win"
                 // 不设置 msiPackageVersion，避免重复添加版本号
                 shortcut = true
+                menu = true
                 dirChooser = true
+                perUserInstall = true
             }
 
             linux {

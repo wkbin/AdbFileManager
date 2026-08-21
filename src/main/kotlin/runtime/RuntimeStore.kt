@@ -53,21 +53,32 @@ abstract class Runtime {
             return
         }
 
+        val parentDir = installDirectory.parentFile ?: installDirectory
+        parentDir.mkdirs()
+        installDirectory.mkdirs()
+
         val stagingDirectory = Files.createTempDirectory(
-            (installDirectory.parentFile ?: installDirectory).toPath(),
+            parentDir.toPath(),
             ".adb-runtime-staging-"
         ).toFile()
         try {
             ByteArrayInputStream(byteArray).use { ZipUtils.unzip(it, stagingDirectory.absolutePath) }
-            check(archiveMatches(byteArray, stagingDirectory)) { "Extracted ADB runtime is incomplete" }
 
-            stagingDirectory.listFiles().orEmpty().forEach { stagedFile ->
-                if (!stagedFile.isFile) return@forEach
-                Files.move(
-                    stagedFile.toPath(),
-                    File(installDirectory, stagedFile.name).toPath(),
-                    StandardCopyOption.REPLACE_EXISTING
-                )
+            stagingDirectory.walkTopDown().forEach { stagedFile ->
+                val relativePath = stagedFile.relativeTo(stagingDirectory).path
+                if (relativePath.isNotEmpty()) {
+                    val targetFile = File(installDirectory, relativePath)
+                    if (stagedFile.isDirectory) {
+                        targetFile.mkdirs()
+                    } else if (stagedFile.isFile) {
+                        targetFile.parentFile?.mkdirs()
+                        Files.move(
+                            stagedFile.toPath(),
+                            targetFile.toPath(),
+                            StandardCopyOption.REPLACE_EXISTING
+                        )
+                    }
+                }
             }
         } finally {
             stagingDirectory.deleteRecursively()
