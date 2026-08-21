@@ -79,6 +79,15 @@ fun isEditableFile(fileName: String): Boolean {
 }
 
 /**
+ * 判断文件是否为图片
+ */
+fun isImageFile(fileName: String): Boolean {
+    if (fileName.isBlank()) return false
+    val extension = fileName.substringAfterLast('.', "").lowercase()
+    return extension in setOf("png", "jpg", "jpeg", "webp", "bmp", "gif", "ico")
+}
+
+/**
  * 文件列表项组件
  */
 @Composable
@@ -93,8 +102,10 @@ fun FileListItem(
     onInstallApk: () -> Unit = {},
     onCopyFile: () -> Unit = {},
     onMoveFile: () -> Unit = {},
+    onPreviewImage: () -> Unit = {},
     selectionMode: Boolean = false,
     isSelected: Boolean = false,
+    isHighlighted: Boolean = false,
     onSelectionChange: () -> Unit = {},
     compact: Boolean = false,
     allowEdit: Boolean = true,
@@ -113,13 +124,16 @@ fun FileListItem(
 
     val strings by StringsManager.strings.collectAsState()
 
-    val backgroundColor = if (isSelected) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else if (isHovered) {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-    } else {
-        MaterialTheme.colorScheme.surface
+    val backgroundColor = when {
+        isSelected -> MaterialTheme.colorScheme.primaryContainer
+        isHighlighted -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
+        isHovered -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        else -> MaterialTheme.colorScheme.surface
     }
+
+    val border = if (isHighlighted && !isSelected) {
+        androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+    } else null
 
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -147,6 +161,7 @@ fun FileListItem(
             ) {
                 if (selectionMode) onSelectionChange() else onFileClick()
             },
+        border = border,
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         ),
@@ -377,6 +392,10 @@ fun FileListItem(
                         if (isApk) DropdownMenuItem(
                             text = { Text(strings.fileInstallApk) },
                             onClick = { showMoreMenu = false; onInstallApk() }
+                        )
+                        if (isImageFile(file.fileName)) DropdownMenuItem(
+                            text = { Text("预览图片") },
+                            onClick = { showMoreMenu = false; onPreviewImage() }
                         )
                         DropdownMenuItem(
                             text = { Text(strings.fileRename) },

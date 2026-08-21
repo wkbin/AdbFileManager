@@ -18,6 +18,8 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import model.AppInfo
 import model.Bookmark
@@ -41,6 +43,8 @@ import view.intent.FileManagerIntent
 import view.state.FileManagerState
 import java.io.File
 import java.nio.charset.Charset
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 
 class FileManagerViewModel(
     private val adbDevicePoller: AdbDevicePoller,
@@ -50,7 +54,7 @@ class FileManagerViewModel(
     private val _state = MutableStateFlow(FileManagerState())
     val state: StateFlow<FileManagerState> = _state.asStateFlow()
 
-    private val _effect = MutableSharedFlow<FileManagerEffect>(replay = 1)
+    private val _effect = MutableSharedFlow<FileManagerEffect>(replay = 0, extraBufferCapacity = 64)
     val effect: SharedFlow<FileManagerEffect> = _effect.asSharedFlow()
 
     private val _directoryList = mutableStateListOf<String>()
@@ -59,6 +63,11 @@ class FileManagerViewModel(
     private val _transferProgress = FileTransferProgress()
     val transferProgress: StateFlow<FileTransferState> = _transferProgress.state
     private var transferJob: Job? = null
+    private var screenMirrorJob: Job? = null
+    private val appLabelSemaphore = Semaphore(2)
+    private val appIconSemaphore = Semaphore(2)
+    private val appDetailsRequested = Collections.synchronizedSet(mutableSetOf<String>())
+    private val appInfoCache = ConcurrentHashMap<String, AppInfo>()
 
     private val directoryPath get() = _directoryList.joinToString("/")
     val currentDirectoryPath get() = if (directoryPath.isEmpty()) "/" else "/$directoryPath"
@@ -190,12 +199,40 @@ class FileManagerViewModel(
             is FileManagerIntent.BatchMoveTo -> batchCopyMoveTo(intent.destinationPath, move = true)
             FileManagerIntent.ShowAppManager -> showAppManager()
             FileManagerIntent.DismissAppManager -> _state.update { it.copy(showAppManager = false) }
+            is FileManagerIntent.LoadAppDetails -> loadAppDetails(intent.packageName)
             is FileManagerIntent.UninstallApp -> uninstallApp(intent.packageName)
             is FileManagerIntent.BackupApk -> backupApk(intent.packageName, intent.destinationPath)
+            is FileManagerIntent.LaunchApp -> launchApp(intent.packageName)
+            is FileManagerIntent.ForceStopApp -> forceStopApp(intent.packageName)
+            is FileManagerIntent.ClearAppData -> clearAppData(intent.packageName)
+            FileManagerIntent.ShowDeviceInfo -> {
+                _state.update { it.copy(showDeviceInfoDialog = true) }
+                loadDeviceInfo()
+            }
+            FileManagerIntent.DismissDeviceInfo -> _state.update { it.copy(showDeviceInfoDialog = false) }
+            FileManagerIntent.RefreshDeviceInfo -> loadDeviceInfo()
+            is FileManagerIntent.RebootDevice -> rebootDevice(intent.mode)
             FileManagerIntent.TakeScreenshot -> takeScreenshot()
             FileManagerIntent.ShowClipboardDialog -> _state.update { it.copy(showClipboardDialog = true) }
             FileManagerIntent.DismissClipboardDialog -> _state.update { it.copy(showClipboardDialog = false) }
             is FileManagerIntent.PushClipboard -> pushClipboard(intent.text)
+            FileManagerIntent.ClearHighlightedFile -> _state.update { it.copy(highlightedFileName = null) }
+            is FileManagerIntent.PreviewImage -> previewImage(intent.fileName)
+            FileManagerIntent.DismissImagePreview -> dismissImagePreview()
+            FileManagerIntent.ShowSearchDialog -> _state.update { it.copy(showSearchDialog = true) }
+            FileManagerIntent.DismissSearchDialog -> _state.update { it.copy(showSearchDialog = false, recursiveSearchResults = emptyList(), isRecursiveSearching = false) }
+            is FileManagerIntent.SearchRecursive -> searchRecursive(intent.query)
+            is FileManagerIntent.NavigateToFileLocation -> navigateToFileLocation(intent.fullPath)
+            // Scrcpy
+            FileManagerIntent.StartScreenMirror -> startScreenMirror()
+            FileManagerIntent.DismissScrcpyDialog -> {
+                screenMirrorJob?.cancel()
+                screenMirrorJob = null
+                _state.update {
+                    it.copy(showScrcpyDialog = false, scrcpyError = null, scrcpyPhase = view.state.ScrcpyPhase.IDLE)
+                }
+            }
+            FileManagerIntent.RetryScrcpy -> startScreenMirror()
         }
     }
 
@@ -356,6 +393,10 @@ class FileManagerViewModel(
                         adbDevicePoller.push(file.canonicalPath, destPath)
                     }
                     _transferProgress.complete()
+                }
+                val firstImportedFileName = files.firstOrNull()?.name
+                if (firstImportedFileName != null) {
+                    _state.update { it.copy(highlightedFileName = firstImportedFileName) }
                 }
                 loadFiles()
                 _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.fileImportSuccess))
@@ -634,6 +675,7 @@ class FileManagerViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 adbDevicePoller.createDirectory(directoryPath, dirName)
+                _state.update { it.copy(highlightedFileName = dirName) }
                 loadFiles()
                 _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.folderCreatedSuccess))
             } catch (e: Exception) {
@@ -649,6 +691,7 @@ class FileManagerViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 adbDevicePoller.createFile(directoryPath, fileName, content)
+                _state.update { it.copy(highlightedFileName = fileName) }
                 loadFiles()
                 _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.fileCreatedSuccess))
             } catch (e: Exception) {
@@ -664,6 +707,7 @@ class FileManagerViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 adbDevicePoller.renameFile(directoryPath, oldName, newName)
+                _state.update { it.copy(highlightedFileName = newName) }
                 loadFiles()
                 _effect.emit(FileManagerEffect.ShowSuccessTips(StringsManager.strings.value.renameSuccess))
             } catch (e: Exception) {
@@ -923,25 +967,59 @@ class FileManagerViewModel(
     // ── App management ──────────────────────────────────────────────
 
     private fun showAppManager() {
+        appDetailsRequested.clear()
         _state.update { it.copy(showAppManager = true, appListLoading = true, appList = emptyList()) }
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val packages = adbDevicePoller.getInstalledPackages().sorted()
-                _state.update { it.copy(appList = packages.map(::AppInfo)) }
-                // Resolve labels in background, one by one
-                packages.forEach { pkg ->
-                    val label = adbDevicePoller.getAppLabel(pkg)
-                    _state.update { state ->
-                        val updated = state.appList.map { a ->
-                            if (a.packageName == pkg) a.copy(label = label) else a
-                        }
-                        state.copy(appList = updated)
-                    }
+                _state.update {
+                    it.copy(
+                        appList = packages.map { packageName ->
+                            appInfoCache[packageName] ?: AppInfo(packageName)
+                        },
+                        appListLoading = false
+                    )
                 }
-                _state.update { it.copy(appListLoading = false) }
+                packages.filterNot { appInfoCache.containsKey(it) }
+                    .forEach { loadAppDetails(it, includeIcon = false) }
             } catch (e: Exception) {
                 _state.update { it.copy(appListLoading = false) }
                 _effect.emit(FileManagerEffect.ShowErrorTips(e.message ?: "Failed to load apps"))
+            }
+        }
+    }
+
+    private fun loadAppDetails(packageName: String, includeIcon: Boolean = true) {
+        val requestKey = "${if (includeIcon) "icon" else "label"}:$packageName"
+        if (packageName.isBlank() || !appDetailsRequested.add(requestKey)) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val appInfo = try {
+                val semaphore = if (includeIcon) appIconSemaphore else appLabelSemaphore
+                semaphore.withPermit {
+                    adbDevicePoller.getAppInfo(packageName, includeIcon)
+                }
+            } catch (_: Exception) {
+                AppInfo(packageName = packageName, detailsLoaded = includeIcon)
+            }
+            appInfoCache.compute(packageName) { _, cached ->
+                cached?.copy(
+                    label = appInfo.label.takeUnless { it == packageName } ?: cached.label,
+                    iconData = appInfo.iconData ?: cached.iconData,
+                    detailsLoaded = cached.detailsLoaded || appInfo.detailsLoaded
+                ) ?: appInfo
+            }
+            _state.update { state ->
+                state.copy(
+                    appList = state.appList.map { current ->
+                        if (current.packageName == packageName) {
+                            current.copy(
+                                label = appInfo.label.takeUnless { it == packageName } ?: current.label,
+                                iconData = appInfo.iconData ?: current.iconData,
+                                detailsLoaded = current.detailsLoaded || appInfo.detailsLoaded
+                            )
+                        } else current
+                    }
+                )
             }
         }
     }
@@ -952,6 +1030,7 @@ class FileManagerViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 adbDevicePoller.uninstallApp(packageName)
+                appInfoCache.remove(packageName)
                 _state.update { it.copy(appList = it.appList.filter { a -> a.packageName != packageName }) }
                 _effect.emit(FileManagerEffect.ShowSuccessTips("Uninstalled $packageName"))
             } catch (e: Exception) {
@@ -984,6 +1063,63 @@ class FileManagerViewModel(
         }
     }
 
+    private fun launchApp(packageName: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.launchApp(packageName)
+                _effect.emit(FileManagerEffect.ShowSuccessTips("已发送启动指令: $packageName"))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips("启动失败: ${e.message}"))
+            }
+        }
+    }
+
+    private fun forceStopApp(packageName: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.forceStopApp(packageName)
+                _effect.emit(FileManagerEffect.ShowSuccessTips("已强制停止: $packageName"))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips("停止失败: ${e.message}"))
+            }
+        }
+    }
+
+    private fun clearAppData(packageName: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.clearAppData(packageName)
+                _effect.emit(FileManagerEffect.ShowSuccessTips("已清除数据与缓存: $packageName"))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips("清除数据失败: ${e.message}"))
+            }
+        }
+    }
+
+    private fun loadDeviceInfo() {
+        _state.update { it.copy(isDeviceInfoLoading = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val info = adbDevicePoller.getDeviceDetailedInfo()
+                _state.update { it.copy(detailedDeviceInfo = info, isDeviceInfoLoading = false) }
+            } catch (e: Exception) {
+                _state.update { it.copy(isDeviceInfoLoading = false) }
+                _effect.emit(FileManagerEffect.ShowErrorTips("获取设备信息失败: ${e.message}"))
+            }
+        }
+    }
+
+    private fun rebootDevice(mode: model.RebootMode) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                adbDevicePoller.rebootDevice(mode)
+                _effect.emit(FileManagerEffect.ShowSuccessTips("已执行${mode.displayName}"))
+            } catch (e: Exception) {
+                _effect.emit(FileManagerEffect.ShowErrorTips("重启失败: ${e.message}"))
+            }
+        }
+    }
+
     // ── Screenshot ──────────────────────────────────────────────────
 
     private fun takeScreenshot() {
@@ -1012,11 +1148,215 @@ class FileManagerViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 adbDevicePoller.pushClipboard(text)
-                _effect.emit(FileManagerEffect.ShowSuccessTips("Clipboard pushed"))
+                _effect.emit(FileManagerEffect.ShowSuccessTips("已写入设备剪贴板"))
             } catch (e: Exception) {
-                _effect.emit(FileManagerEffect.ShowErrorTips(e.message ?: "Clipboard push failed"))
+                _effect.emit(FileManagerEffect.ShowErrorTips("写入设备剪贴板失败：${e.message ?: "未知错误"}"))
             } finally {
                 _state.update { it.copy(operationInProgress = false) }
+            }
+        }
+    }
+
+    // ── Image Preview ───────────────────────────────────────────────
+
+    private fun previewImage(fileName: String) {
+        val fileSize = (_state.value.files as? LoadState.Success)?.data
+            ?.find { it.fileName == fileName }?.size ?: ""
+        _state.update {
+            it.copy(
+                showImagePreviewDialog = true,
+                previewImageName = fileName,
+                previewImageSize = fileSize,
+                previewImageFile = null,
+                isPreviewImageLoading = true
+            )
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val tempFile = File.createTempFile("preview_", ".tmp")
+            try {
+                val fullPath = if (directoryPath.isEmpty()) fileName else "$directoryPath/$fileName"
+                adbDevicePoller.pull(fullPath, tempFile.absolutePath)
+                _state.update {
+                    it.copy(
+                        previewImageFile = tempFile,
+                        isPreviewImageLoading = false
+                    )
+                }
+            } catch (e: Exception) {
+                tempFile.delete()
+                _state.update { it.copy(isPreviewImageLoading = false) }
+                _effect.emit(FileManagerEffect.ShowErrorTips("无法预览图片: ${e.message ?: ""}"))
+            }
+        }
+    }
+
+    private fun dismissImagePreview() {
+        _state.value.previewImageFile?.delete()
+        _state.update {
+            it.copy(
+                showImagePreviewDialog = false,
+                previewImageFile = null,
+                previewImageName = null,
+                isPreviewImageLoading = false
+            )
+        }
+    }
+
+    // ── Recursive Search ────────────────────────────────────────────
+
+    private fun searchRecursive(query: String) {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty()) {
+            _state.update { it.copy(recursiveSearchResults = emptyList(), isRecursiveSearching = false) }
+            return
+        }
+        _state.update { it.copy(isRecursiveSearching = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val raw = adbDevicePoller.searchFiles(directoryPath, trimmed)
+                val parsed = FileUtils.parseStatOutput(raw)
+                _state.update {
+                    it.copy(
+                        recursiveSearchResults = parsed,
+                        isRecursiveSearching = false
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(isRecursiveSearching = false) }
+                _effect.emit(FileManagerEffect.ShowErrorTips("搜索失败: ${e.message ?: ""}"))
+            }
+        }
+    }
+
+    private fun navigateToFileLocation(fullPath: String) {
+        _state.update { it.copy(showSearchDialog = false, recursiveSearchResults = emptyList()) }
+        val cleanPath = fullPath.trim().removePrefix("/")
+        if (cleanPath.isEmpty()) {
+            resetDirectory("")
+            return
+        }
+        val isDirectory = (_state.value.recursiveSearchResults.find { it.fileName == fullPath || it.fileName == cleanPath }?.isDir) == true
+        if (isDirectory) {
+            resetDirectory(cleanPath)
+        } else {
+            val parentDir = if (cleanPath.contains('/')) cleanPath.substringBeforeLast('/') else ""
+            val targetFileName = cleanPath.substringAfterLast('/')
+            _state.update { it.copy(highlightedFileName = targetFileName) }
+            resetDirectory(parentDir)
+        }
+    }
+
+    // ── Scrcpy 投屏 ─────────────────────────────────────────────────
+
+    private fun startScreenMirror() {
+        val deviceId = adbDevicePoller.currentDevice.value?.deviceId ?: run {
+            viewModelScope.launch {
+                _effect.emit(view.effect.FileManagerEffect.ShowErrorTips("未找到已连接的设备，请先连接 Android 设备"))
+            }
+            return
+        }
+
+        // 先检查是否手动指定了路径
+        val customPath = model.AppSettings.scrcpyCustomPath.trim()
+        if (customPath.isNotEmpty()) {
+            if (!java.io.File(customPath).isFile) {
+                viewModelScope.launch {
+                    _effect.emit(view.effect.FileManagerEffect.ShowErrorTips("自定义 scrcpy 路径无效，请在设置中重新选择"))
+                }
+                return
+            }
+            try {
+                model.ScrcpyManager.launch(customPath, deviceId)
+            } catch (e: Exception) {
+                viewModelScope.launch {
+                    _effect.emit(view.effect.FileManagerEffect.ShowErrorTips("启动投屏失败：${e.message}"))
+                }
+            }
+            return
+        }
+
+        // 已安装时离线直接启动；强制更新由设置页执行。
+        model.ScrcpyManager.findCachedExecutable()?.let { cachedPath ->
+            try {
+                model.ScrcpyManager.launch(cachedPath, deviceId)
+            } catch (e: Exception) {
+                viewModelScope.launch {
+                    _effect.emit(view.effect.FileManagerEffect.ShowErrorTips("启动投屏失败：${e.message}"))
+                }
+            }
+            return
+        }
+
+        if (screenMirrorJob?.isActive == true) return
+
+        // 显示对话框并开始检查/下载
+        _state.update {
+            it.copy(
+                showScrcpyDialog = true,
+                scrcpyPhase = view.state.ScrcpyPhase.CHECKING,
+                scrcpyDownloadProgress = 0f,
+                scrcpyDownloadedBytes = 0L,
+                scrcpyTotalBytes = 0L,
+                scrcpyStatusText = "正在检查 scrcpy 最新版本…",
+                scrcpyError = null,
+                scrcpyVersion = ""
+            )
+        }
+
+        screenMirrorJob = viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val status = model.ScrcpyManager.checkStatus()
+                _state.update { it.copy(scrcpyVersion = status.version) }
+
+                if (status.executablePath != null) {
+                    // 已缓存，直接启动
+                    _state.update { it.copy(showScrcpyDialog = false) }
+                    model.ScrcpyManager.launch(status.executablePath, deviceId)
+                } else {
+                    // 需要下载
+                    _state.update {
+                        it.copy(
+                            scrcpyPhase = view.state.ScrcpyPhase.DOWNLOADING,
+                            scrcpyStatusText = "正在下载 scrcpy v${status.version}…"
+                        )
+                    }
+                    val executablePath = model.ScrcpyManager.downloadAndExtract(
+                        status = status,
+                        onProgress = { progress ->
+                            _state.update {
+                                it.copy(
+                                    scrcpyDownloadProgress = progress.fraction,
+                                    scrcpyDownloadedBytes = progress.downloadedBytes,
+                                    scrcpyTotalBytes = progress.totalBytes
+                                )
+                            }
+                        },
+                        onStatusText = { text ->
+                            _state.update {
+                                it.copy(
+                                    scrcpyStatusText = text,
+                                    scrcpyPhase = if (text.contains("解压")) {
+                                        view.state.ScrcpyPhase.EXTRACTING
+                                    } else it.scrcpyPhase
+                                )
+                            }
+                        }
+                    )
+                    // 下载完成，启动
+                    _state.update { it.copy(showScrcpyDialog = false) }
+                    model.ScrcpyManager.launch(executablePath, deviceId)
+                }
+            } catch (_: CancellationException) {
+                // User closed the checking dialog.
+            } catch (e: Exception) {
+                _state.update {
+                    it.copy(
+                        scrcpyPhase = view.state.ScrcpyPhase.ERROR,
+                        scrcpyError = e.message ?: "未知错误"
+                    )
+                }
+            } finally {
+                screenMirrorJob = null
             }
         }
     }

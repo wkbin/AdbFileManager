@@ -144,6 +144,7 @@ class AdbShellSession internal constructor(
                 shellProcess = process
                 shellWriter = BufferedWriter(OutputStreamWriter(process.outputStream))
                 _state.update { it.copy(mode = TerminalMode.SHELL) }
+                writeShellLine(PWD_INIT_COMMAND)
                 writeShellLine(PWD_COMMAND)
                 streamShellOutput(process)
                 val exitCode = process.waitFor()
@@ -220,20 +221,16 @@ class AdbShellSession internal constructor(
     }
 
     private fun streamShellOutput(process: Process) {
+        val filter = ShellOutputFilter { directory ->
+            _state.update { it.copy(currentDirectory = directory) }
+        }
         process.inputStream.bufferedReader().useLines { lines ->
-            var pendingLine: String? = null
-            lines.forEach { line ->
-                if (line.startsWith(PWD_MARKER)) {
-                    pendingLine?.takeIf { it.isNotEmpty() }?.let { appendOutput("$it\n") }
-                    pendingLine = null
-                    val directory = line.removePrefix(PWD_MARKER).trim().ifEmpty { "/" }
-                    _state.update { it.copy(currentDirectory = directory) }
-                } else {
-                    pendingLine?.let { appendOutput("$it\n") }
-                    pendingLine = line
+            lines.forEach { rawLine ->
+                val filtered = filter.filter(rawLine)
+                if (filtered != null) {
+                    appendOutput("$filtered\n")
                 }
             }
-            pendingLine?.let { appendOutput("$it\n") }
         }
     }
 
@@ -312,10 +309,39 @@ class AdbShellSession internal constructor(
 
     companion object {
         private val ADB_SHELL_REGEX = Regex("(?i)^adb\\s+shell(?:\\s+(.*))?$")
-        private const val PWD_MARKER = "__AFM_PWD__="
-        private const val PWD_COMMAND = "printf '\\n${PWD_MARKER}%s\\n' \"\$PWD\""
+        internal const val PWD_INIT_COMMAND = "stty -echo 2>/dev/null; export PS1=''"
+        internal const val PWD_MARKER = "__AFM_PWD__="
+        internal const val PWD_COMMAND = "printf '${PWD_MARKER}%s\\n' \"\$PWD\""
         private const val OUTPUT_BUFFER_SIZE = 1024
         private const val MAX_OUTPUT_CHARS = 500_000
+    }
+}
+
+internal class ShellOutputFilter(
+    private val onDirectoryDetected: (String) -> Unit
+) {
+    private val promptPattern = Regex("^(?:\\[?[a-zA-Z0-9_./~-]+@[a-zA-Z0-9_./~-]+.*[]#$]|(?:/[^\\s]*)?\\s*[$#])\\s*$")
+
+    fun filter(rawLine: String): String? {
+        val line = rawLine.replace("\r", "").trimEnd()
+        if (line.contains(AdbShellSession.PWD_MARKER)) {
+            val dir = line.substringAfter(AdbShellSession.PWD_MARKER).trim().ifEmpty { "/" }
+            onDirectoryDetected(dir)
+            return null
+        }
+        if (line.contains("__AFM_PWD__") ||
+            line.contains("stty -echo") ||
+            line.contains("export PS1=") ||
+            line.contains("\$PWD\"") ||
+            line.contains("'%s\\n'") ||
+            line.contains("%s\\n")
+        ) {
+            return null
+        }
+        if (promptPattern.matches(line.trim())) {
+            return null
+        }
+        return line
     }
 }
 

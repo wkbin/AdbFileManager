@@ -38,6 +38,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.swing)
     implementation(libs.juniversalchardet)
     implementation(libs.okhttp)
+    implementation(libs.apk.parser)
 
     implementation(platform(libs.koin.bom))
     implementation(libs.koin.core)

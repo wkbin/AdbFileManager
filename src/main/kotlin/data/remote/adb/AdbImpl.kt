@@ -12,13 +12,14 @@ import data.remote.adb.env.Environment
 import java.io.File
 
 class AdbImpl(
-    private val adbPath: String,
+    private val defaultAdbPath: String,
     private val terminal: Terminal
 ) : Adb {
-    override fun getAdbPath(): String = adbPath
+    override fun getAdbPath(): String = model.AppSettings.getEffectiveAdbPath(defaultAdbPath)
+    private val executablePath get() = getAdbPath()
 
     override suspend fun devices(): List<String> {
-        val result = terminal.runSafe(listOf(adbPath, "devices"))
+        val result = terminal.runSafe(listOf(executablePath, "devices"))
         val regex = """(.+)(device)""".toRegex()
         if (result.firstOrNull()?.trim() != "List of devices attached") {
             return emptyList()
@@ -32,7 +33,7 @@ class AdbImpl(
 
     override suspend fun wifiState(deviceId: String): AdbWifiState {
         deviceIdToAdbWifiState(deviceId)?.let { return it }
-        val result = terminal.runSafe(listOf(adbPath, "-s", deviceId, "shell", "ip", "route"))
+        val result = terminal.runSafe(listOf(executablePath, "-s", deviceId, "shell", "ip", "route"))
 
         val regex = """(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)$""".toRegex()
         val ipAddress = result
@@ -48,7 +49,7 @@ class AdbImpl(
         ipAddress: String,
         port: String
     ): AdbWifiState {
-        terminal.runSafe(listOf(adbPath, "connect", "$ipAddress:$port"))
+        terminal.runSafe(listOf(executablePath, "connect", "$ipAddress:$port"))
         return AdbWifiState(false, ipAddress, port)
     }
 
@@ -57,7 +58,7 @@ class AdbImpl(
         port: String,
         code: String
     ): List<String> {
-        return terminal.runSafe(listOf(adbPath, "pair", "$ipAddress:$port", code))
+        return terminal.runSafe(listOf(executablePath, "pair", "$ipAddress:$port", code))
     }
 
     override suspend fun listAvds(): List<AndroidVirtualDevice> {
@@ -80,7 +81,7 @@ class AdbImpl(
         vararg args: String,
         throwOnError: Boolean
     ): List<String> {
-        val commandArgs = mutableListOf(adbPath, "-s", adbDevice.deviceId, "shell")
+        val commandArgs = mutableListOf(executablePath, "-s", adbDevice.deviceId, "shell")
         commandArgs.addAll(args)
         return terminal.runSafe(commandArgs, throwOnError)
     }
@@ -92,7 +93,7 @@ class AdbImpl(
         throwOnError: Boolean
     ): List<String> {
         return terminal.runSafe(
-            listOf(adbPath, "-s", adbDevice.deviceId, "push", localPath, remotePath),
+            listOf(executablePath, "-s", adbDevice.deviceId, "push", localPath, remotePath),
             throwOnError
         )
     }
@@ -104,7 +105,7 @@ class AdbImpl(
         throwOnError: Boolean
     ): List<String> {
         return terminal.runSafe(
-            listOf(adbPath, "-s", adbDevice.deviceId, "pull", remotePath, localPath),
+            listOf(executablePath, "-s", adbDevice.deviceId, "pull", remotePath, localPath),
             throwOnError
         )
     }
@@ -115,7 +116,7 @@ class AdbImpl(
         remotePath: String,
         progressCallback: AdbTransferProgress
     ): Flow<String> {
-        val commandArgs = listOf(adbPath, "-s", adbDevice.deviceId, "push", "-p", localPath, remotePath)
+        val commandArgs = listOf(executablePath, "-s", adbDevice.deviceId, "push", "-p", localPath, remotePath)
         val progressRegex = Regex("""\[(\d+)%]""")
         return terminal.connectSafe(commandArgs).onEach { line ->
             progressRegex.find(line)?.groupValues?.get(1)?.toIntOrNull()?.let {
@@ -132,14 +133,14 @@ class AdbImpl(
     ): Flow<String> = channelFlow {
         // ponytail: poll local file size while adb pull runs, since adb pull has no -p flag
         val sizeOutput = terminal.runSafe(
-            listOf(adbPath, "-s", adbDevice.deviceId, "shell", "stat", "-c", "%s", remotePath),
+            listOf(executablePath, "-s", adbDevice.deviceId, "shell", "stat", "-c", "%s", remotePath),
             throwOnError = false
         )
         val totalSize = sizeOutput.firstOrNull()?.trim()?.toLongOrNull() ?: 0L
 
         val pullDeferred = async(Dispatchers.IO) {
             terminal.runSafe(
-                listOf(adbPath, "-s", adbDevice.deviceId, "pull", remotePath, localPath),
+                listOf(executablePath, "-s", adbDevice.deviceId, "pull", remotePath, localPath),
                 throwOnError = true
             )
         }

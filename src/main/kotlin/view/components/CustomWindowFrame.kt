@@ -13,6 +13,7 @@ import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.LightMode
 import androidx.compose.material.icons.outlined.Smartphone
 import androidx.compose.material.icons.outlined.Terminal
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ElectricalServices
 import androidx.compose.material3.*
@@ -38,6 +39,7 @@ fun FrameWindowScope.CustomWindowFrame(
     devices: List<AdbDevice>,
     onConnect: (device: AdbDevice) -> Unit,
     onTerminalClick: () -> Unit,
+    onSettingsClick: () -> Unit = {},
     onCloseRequest: () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -112,6 +114,19 @@ fun FrameWindowScope.CustomWindowFrame(
                             Icon(
                                 imageVector = Icons.Outlined.Terminal,
                                 contentDescription = strings.terminalOpen,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(4.dp))
+                        // 设置按钮
+                        IconButton(
+                            onClick = onSettingsClick,
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Settings,
+                                contentDescription = "设置",
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }

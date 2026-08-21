@@ -41,7 +41,7 @@ import navigation.Screen
 import org.koin.compose.viewmodel.koinViewModel
 import view.components.CustomWindowFrame
 import view.components.DeviceConnectionWizard
-import view.components.UpdateDialog
+import view.components.SettingsDialog
 import viewmodel.MainViewModel
 import data.remote.adb.AdbShellSession
 import data.remote.adb.AdbShellSessionFactory
@@ -57,6 +57,11 @@ fun FrameWindowScope.MainScreen(
     val currentDevice by viewModel.currentDevice.collectAsState()
     val updateInfo by viewModel.updateInfo.collectAsState()
     var showUpdateDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    val adbStore = org.koin.compose.koinInject<runtime.AdbStore>()
+    val bundledAdbPath = remember(adbStore) {
+        java.io.File(adbStore.adbHostFile, if (org.jetbrains.skiko.hostOs.isWindows) "adb.exe" else "adb").absolutePath
+    }
     val terminalSessions = remember { mutableStateListOf<AdbShellSession>() }
     var selectedTerminalIndex by remember { mutableIntStateOf(-1) }
 
@@ -107,6 +112,7 @@ fun FrameWindowScope.MainScreen(
             viewModel.connect(it)
         },
         onTerminalClick = ::openTerminal,
+        onSettingsClick = { showSettingsDialog = true },
         onCloseRequest = onCloseRequest
     ) {
         Column(Modifier.fillMaxSize()) {
@@ -136,7 +142,7 @@ fun FrameWindowScope.MainScreen(
                             )
                         }
                         composable(Screen.FileManager.name) {
-                            FileManagerScreen()
+                            FileManagerScreen(onOpenSettings = { showSettingsDialog = true })
                         }
                     }
                 }
@@ -145,9 +151,17 @@ fun FrameWindowScope.MainScreen(
     }
 
     if (showUpdateDialog) {
-        UpdateDialog(
+        view.components.UpdateDialog(
             updateInfo = updateInfo!!,
             onDismiss = { showUpdateDialog = false }
+        )
+    }
+
+    if (showSettingsDialog) {
+        SettingsDialog(
+            visible = showSettingsDialog,
+            bundledAdbPath = bundledAdbPath,
+            onDismiss = { showSettingsDialog = false }
         )
     }
 }

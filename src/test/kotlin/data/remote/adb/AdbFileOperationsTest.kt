@@ -10,6 +10,7 @@ import kotlin.io.path.createTempDirectory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class AdbFileOperationsTest {
@@ -156,6 +157,140 @@ class AdbFileOperationsTest {
             ),
             adb.shellCalls[3].args
         )
+    }
+
+    @Test
+    fun `searchFiles constructs find command with maxdepth and stat format`() = runBlocking {
+        val adb = RecordingAdb()
+        val operations = AdbFileOperations(
+            adb = adb,
+            currentDeviceProvider = { device },
+            windowsPushWorkaroundEnabled = false
+        )
+
+        operations.searchFiles("sdcard/Download", "photo", maxDepth = 3)
+
+        val searchCall = adb.shellCalls.single()
+        assertEquals("find", searchCall.args[0])
+        assertEquals("'/sdcard/Download'", searchCall.args[1])
+        assertEquals("-maxdepth", searchCall.args[2])
+        assertEquals("3", searchCall.args[3])
+        assertEquals("-iname", searchCall.args[4])
+        assertEquals("'*photo*'", searchCall.args[5])
+    }
+
+    @Test
+    fun `launchApp invokes monkey with package and launcher category`() = runBlocking {
+        val adb = RecordingAdb()
+        val operations = AdbFileOperations(
+            adb = adb,
+            currentDeviceProvider = { device },
+            windowsPushWorkaroundEnabled = false
+        )
+
+        operations.launchApp("com.example.app")
+
+        val call = adb.shellCalls.single()
+        assertEquals(listOf("monkey", "-p", "'com.example.app'", "-c", "android.intent.category.LAUNCHER", "1"), call.args)
+    }
+
+    @Test
+    fun `forceStopApp invokes am force-stop`() = runBlocking {
+        val adb = RecordingAdb()
+        val operations = AdbFileOperations(
+            adb = adb,
+            currentDeviceProvider = { device },
+            windowsPushWorkaroundEnabled = false
+        )
+
+        operations.forceStopApp("com.example.app")
+
+        val call = adb.shellCalls.single()
+        assertEquals(listOf("am", "force-stop", "'com.example.app'"), call.args)
+        assertTrue(call.throwOnError)
+    }
+
+    @Test
+    fun `clearAppData invokes pm clear`() = runBlocking {
+        val adb = RecordingAdb()
+        val operations = AdbFileOperations(
+            adb = adb,
+            currentDeviceProvider = { device },
+            windowsPushWorkaroundEnabled = false
+        )
+
+        operations.clearAppData("com.example.app")
+
+        val call = adb.shellCalls.single()
+        assertEquals(listOf("pm", "clear", "'com.example.app'"), call.args)
+        assertTrue(call.throwOnError)
+    }
+
+    @Test
+    fun `rebootDevice invokes reboot with specified mode`() = runBlocking {
+        val adb = RecordingAdb()
+        val operations = AdbFileOperations(
+            adb = adb,
+            currentDeviceProvider = { device },
+            windowsPushWorkaroundEnabled = false
+        )
+
+        operations.rebootDevice(model.RebootMode.RECOVERY)
+
+        val call = adb.shellCalls.single()
+        assertEquals(listOf("reboot", "recovery"), call.args)
+    }
+
+    @Test
+    fun `clipboard text is transferred as utf8 file and confirmed by helper`() = runBlocking {
+        val adb = RecordingAdb().apply {
+            shellResponse = { args ->
+                when (args.firstOrNull()) {
+                    "am" -> listOf("10")
+                    else -> if (args.any { it == "top.wkbin.clipboard.ClipboardHelper" }) {
+                        listOf("CLIPBOARD_SET_OK")
+                    } else emptyList()
+                }
+            }
+        }
+        val operations = AdbFileOperations(
+            adb = adb,
+            currentDeviceProvider = { device },
+            windowsPushWorkaroundEnabled = false,
+            clipboardHelperLoader = { "fake-dex".encodeToByteArray() }
+        )
+        val expected = "中文 with spaces, quotes ' and\nnew line"
+
+        operations.pushClipboard(expected)
+
+        assertEquals(2, adb.pushes.size)
+        assertEquals("fake-dex", adb.pushes[0].content)
+        assertEquals(expected, adb.pushes[1].content)
+        val helperCall = adb.shellCalls.single { call ->
+            call.args.any { it == "top.wkbin.clipboard.ClipboardHelper" }
+        }
+        assertTrue(helperCall.args[0].startsWith("CLASSPATH=/data/local/tmp/"))
+        assertEquals("app_process", helperCall.args[1])
+        assertEquals("10", helperCall.args.last())
+        assertTrue(helperCall.throwOnError)
+    }
+
+    @Test
+    fun `clipboard operation does not report success without helper acknowledgement`() = runBlocking {
+        val adb = RecordingAdb().apply {
+            shellResponse = { args -> if (args.firstOrNull() == "am") listOf("0") else emptyList() }
+        }
+        val operations = AdbFileOperations(
+            adb = adb,
+            currentDeviceProvider = { device },
+            windowsPushWorkaroundEnabled = false,
+            clipboardHelperLoader = { "fake-dex".encodeToByteArray() }
+        )
+
+        assertFailsWith<AdbException> {
+            operations.pushClipboard("must be acknowledged")
+        }
+        Unit
     }
 
     private data class PushCall(val localPath: String, val remotePath: String, val content: String)

@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class AdbDevicePoller(private val adb: Adb) {
     private val _devices = MutableStateFlow<List<AdbDevice>>(emptyList())
@@ -31,7 +32,7 @@ class AdbDevicePoller(private val adb: Adb) {
             } catch (e: Exception) {
                 println("ADB polling error: ${e.message}")
             }
-            delay(POLLING_INTERVAL_MS)
+            delay(POLLING_INTERVAL_MS.milliseconds)
         }
     }
 
@@ -49,6 +50,7 @@ class AdbDevicePoller(private val adb: Adb) {
 
     suspend fun delete(filePath: String) = fileOperations.delete(filePath)
     suspend fun loadFiles(directoryPath: String): List<String> = fileOperations.loadFiles(directoryPath)
+    suspend fun searchFiles(directoryPath: String, query: String, maxDepth: Int = 4): List<String> = fileOperations.searchFiles(directoryPath, query, maxDepth)
     suspend fun push(originPath: String, destinationPath: String) = fileOperations.push(originPath, destinationPath)
     suspend fun pull(originPath: String, destinationPath: String) = fileOperations.pull(originPath, destinationPath)
     suspend fun checkPermission(directoryPath: String): Boolean = fileOperations.checkPermission(directoryPath)
@@ -60,10 +62,17 @@ class AdbDevicePoller(private val adb: Adb) {
     suspend fun copyFile(sourcePath: String, destDirectory: String) = fileOperations.copyFile(sourcePath, destDirectory)
     suspend fun moveFile(sourcePath: String, destDirectory: String) = fileOperations.moveFile(sourcePath, destDirectory)
     suspend fun getInstalledPackages() = fileOperations.getInstalledPackages()
-    suspend fun getAppLabel(packageName: String) = fileOperations.getAppLabel(packageName)
+    suspend fun getAppInfo(packageName: String, includeIcon: Boolean = true) =
+        fileOperations.getAppInfo(packageName, includeIcon)
     suspend fun getAppApkPath(packageName: String) = fileOperations.getAppApkPath(packageName)
     suspend fun uninstallApp(packageName: String) = fileOperations.uninstallApp(packageName)
     suspend fun backupApk(packageName: String, destinationPath: String) = fileOperations.backupApk(packageName, destinationPath)
+    suspend fun launchApp(packageName: String) = fileOperations.launchApp(packageName)
+    suspend fun forceStopApp(packageName: String) = fileOperations.forceStopApp(packageName)
+    suspend fun clearAppData(packageName: String) = fileOperations.clearAppData(packageName)
+    suspend fun setAppEnabled(packageName: String, enabled: Boolean) = fileOperations.setAppEnabled(packageName, enabled)
+    suspend fun rebootDevice(mode: model.RebootMode) = fileOperations.rebootDevice(mode)
+    suspend fun getDeviceDetailedInfo(): model.DeviceDetailedInfo = fileOperations.getDeviceDetailedInfo()
     suspend fun takeScreenshot(destinationPath: String) = fileOperations.takeScreenshot(destinationPath)
     suspend fun pushClipboard(text: String) = fileOperations.pushClipboard(text)
 

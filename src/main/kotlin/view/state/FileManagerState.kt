@@ -5,6 +5,7 @@ import model.Bookmark
 import model.FileItem
 import model.SortType
 import view.LoadState
+import java.io.File
 
 data class FileManagerState(
     val sortType: SortType = SortType.TYPE_ASC,
@@ -35,5 +36,42 @@ data class FileManagerState(
     val showAppManager: Boolean = false,
     val appList: List<AppInfo> = emptyList(),
     val appListLoading: Boolean = false,
-    val showClipboardDialog: Boolean = false
+    val showClipboardDialog: Boolean = false,
+    val highlightedFileName: String? = null,
+
+    // Image preview
+    val showImagePreviewDialog: Boolean = false,
+    val previewImageFile: File? = null,
+    val previewImageName: String? = null,
+    val previewImageSize: String = "",
+    val isPreviewImageLoading: Boolean = false,
+
+    // Search dialog & recursive search
+    val showSearchDialog: Boolean = false,
+    val recursiveSearchResults: List<FileItem> = emptyList(),
+    val isRecursiveSearching: Boolean = false,
+
+    // Device info dashboard
+    val showDeviceInfoDialog: Boolean = false,
+    val detailedDeviceInfo: model.DeviceDetailedInfo? = null,
+    val isDeviceInfoLoading: Boolean = false,
+
+    // Scrcpy screen mirroring
+    val showScrcpyDialog: Boolean = false,
+    val scrcpyPhase: ScrcpyPhase = ScrcpyPhase.IDLE,
+    val scrcpyDownloadProgress: Float = 0f,
+    val scrcpyDownloadedBytes: Long = 0L,
+    val scrcpyTotalBytes: Long = 0L,
+    val scrcpyStatusText: String = "",
+    val scrcpyError: String? = null,
+    val scrcpyVersion: String = ""
 )
+
+/** Scrcpy 下载 / 启动流程阶段 */
+enum class ScrcpyPhase {
+    IDLE,
+    CHECKING,    // 正在检查最新版本
+    DOWNLOADING, // 正在下载
+    EXTRACTING,  // 正在解压
+    ERROR
+}

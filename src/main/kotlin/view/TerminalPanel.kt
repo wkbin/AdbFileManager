@@ -132,8 +132,11 @@ fun TerminalPanel(session: AdbShellSession) {
                 modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(scrollState).padding(12.dp)
             ) {
                 SelectionContainer {
+                    val annotatedOutput = remember(state.output) {
+                        view.components.AnsiTextParser.parse(state.output)
+                    }
                     Text(
-                        text = state.output,
+                        text = annotatedOutput,
                         color = Color(0xFFC9D1D9),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp,

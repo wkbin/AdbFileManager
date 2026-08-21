@@ -35,8 +35,10 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Deselect
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material3.Icon
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Cast
+import androidx.compose.material3.Icon
 import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.ContentPaste
@@ -82,6 +84,10 @@ import view.components.CreateDirectoryDialog
 import view.components.CreateFileDialog
 import view.components.EmptyView
 import view.components.ErrorView
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.key.*
 import view.components.FileListItem
 import view.components.LoadingView
 import view.components.ChangePermissionsDialog
@@ -95,19 +101,23 @@ import view.components.ToolbarButton
 import view.components.dnd.adbDndSource
 import view.components.dnd.adbDndTarget
 import view.components.isEditableFile
+import view.components.isImageFile
 import view.effect.FileManagerEffect
 import view.intent.FileManagerIntent
 import viewmodel.FileManagerViewModel
 import view.components.SearchDialog
+import view.components.ImagePreviewDialog
 import view.components.AppManagerDialog
+import view.components.DeviceInfoDialog
 import view.components.ClipboardDialog
+import view.components.ScrcpyDialog
 import view.components.CodeEditorDialog
 import view.components.LocalFilePane
 import java.io.File
 import javax.swing.JFileChooser
 
 @Composable
-fun FileManagerScreen() {
+fun FileManagerScreen(onOpenSettings: () -> Unit = {}) {
     val remoteViewModel = koinViewModel<FileManagerViewModel>(key = "remote-file-pane")
     var activePane by remember { mutableStateOf(FilePaneSide.LEFT) }
     var localDirectory by remember { mutableStateOf(File(System.getProperty("user.home"))) }
@@ -158,6 +168,7 @@ fun FileManagerScreen() {
             isActive = activePane == FilePaneSide.RIGHT,
             onActivate = { activePane = FilePaneSide.RIGHT },
             onLocalFilesChanged = { localRefreshVersion++ },
+            onOpenSettings = onOpenSettings,
             modifier = Modifier.weight(1f).fillMaxSize()
         )
     }
@@ -173,6 +184,7 @@ private fun FileManagerPane(
     isActive: Boolean,
     onActivate: () -> Unit,
     onLocalFilesChanged: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showSearch by remember { mutableStateOf(false) }
@@ -189,8 +201,58 @@ private fun FileManagerPane(
         isLikelyWritableLocalDirectory(localDirectory)
     }
 
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(isActive) {
+        if (isActive) {
+            try {
+                focusRequester.requestFocus()
+            } catch (_: Exception) {}
+        }
+    }
+
     Surface(
         modifier = modifier
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { keyEvent ->
+                if (keyEvent.type == KeyEventType.KeyDown) {
+                    when {
+                        keyEvent.key == Key.F5 || (keyEvent.isCtrlPressed && keyEvent.key == Key.R) -> {
+                            viewModel.dispatch(FileManagerIntent.LoadFiles)
+                            true
+                        }
+                        keyEvent.isCtrlPressed && keyEvent.key == Key.F -> {
+                            showSearch = true
+                            true
+                        }
+                        keyEvent.isCtrlPressed && keyEvent.key == Key.A -> {
+                            if (!state.selectionMode) {
+                                viewModel.dispatch(FileManagerIntent.ToggleSelectionMode)
+                            }
+                            viewModel.dispatch(FileManagerIntent.SelectAllFiles)
+                            true
+                        }
+                        keyEvent.key == Key.Backspace || (keyEvent.isAltPressed && keyEvent.key == Key.DirectionLeft) -> {
+                            viewModel.dispatch(FileManagerIntent.NavigateUp)
+                            true
+                        }
+                        keyEvent.key == Key.Delete -> {
+                            if (state.selectedFiles.isNotEmpty()) {
+                                viewModel.dispatch(FileManagerIntent.RequestBatchDeleteConfirmation)
+                                true
+                            } else false
+                        }
+                        keyEvent.key == Key.Escape -> {
+                            if (state.selectionMode) {
+                                viewModel.dispatch(FileManagerIntent.ClearFileSelection)
+                                viewModel.dispatch(FileManagerIntent.ToggleSelectionMode)
+                                true
+                            } else false
+                        }
+                        else -> false
+                    }
+                } else false
+            }
             .border(
                 width = if (isActive) 2.dp else 1.dp,
                 color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
@@ -321,6 +383,8 @@ private fun FileManagerPane(
                 onBatchMoveToOtherClick = {
                     viewModel.dispatch(FileManagerIntent.BatchMoveToLocal(localDirectory.absolutePath))
                 },
+                onDeviceInfoClick = { viewModel.dispatch(FileManagerIntent.ShowDeviceInfo) },
+                onMirrorClick = { viewModel.dispatch(FileManagerIntent.StartScreenMirror) },
                 onAppsClick = { viewModel.dispatch(FileManagerIntent.ShowAppManager) },
                 onScreenshotClick = { viewModel.dispatch(FileManagerIntent.TakeScreenshot) },
                 onClipboardClick = { viewModel.dispatch(FileManagerIntent.ShowClipboardDialog) },
@@ -575,17 +639,62 @@ private fun FileManagerPane(
         visible = state.showAppManager,
         appList = state.appList,
         isLoading = state.appListLoading,
+        onRequestDetails = { viewModel.dispatch(FileManagerIntent.LoadAppDetails(it)) },
         onDismiss = { viewModel.dispatch(FileManagerIntent.DismissAppManager) },
         onUninstall = { viewModel.dispatch(FileManagerIntent.UninstallApp(it)) },
         onBackup = { pkg, dest ->
             viewModel.dispatch(FileManagerIntent.BackupApk(pkg, dest))
-        }
+        },
+        onLaunch = { viewModel.dispatch(FileManagerIntent.LaunchApp(it)) },
+        onForceStop = { viewModel.dispatch(FileManagerIntent.ForceStopApp(it)) },
+        onClearData = { viewModel.dispatch(FileManagerIntent.ClearAppData(it)) }
+    )
+
+    DeviceInfoDialog(
+        visible = state.showDeviceInfoDialog,
+        deviceInfo = state.detailedDeviceInfo,
+        isLoading = state.isDeviceInfoLoading,
+        onRefresh = { viewModel.dispatch(FileManagerIntent.RefreshDeviceInfo) },
+        onReboot = { viewModel.dispatch(FileManagerIntent.RebootDevice(it)) },
+        onDismiss = { viewModel.dispatch(FileManagerIntent.DismissDeviceInfo) }
     )
 
     ClipboardDialog(
         visible = state.showClipboardDialog,
         onDismiss = { viewModel.dispatch(FileManagerIntent.DismissClipboardDialog) },
         onPush = { viewModel.dispatch(FileManagerIntent.PushClipboard(it)) }
+    )
+
+    ImagePreviewDialog(
+        visible = state.showImagePreviewDialog,
+        imageFile = state.previewImageFile,
+        fileName = state.previewImageName ?: "",
+        fileSize = state.previewImageSize,
+        isLoading = state.isPreviewImageLoading,
+        onDismiss = { viewModel.dispatch(FileManagerIntent.DismissImagePreview) },
+        onExport = { dest ->
+            val target = state.previewImageName
+            if (target != null) {
+                viewModel.dispatch(FileManagerIntent.ExportFile(target, dest))
+            }
+        }
+    )
+
+    ScrcpyDialog(
+        visible = state.showScrcpyDialog,
+        phase = state.scrcpyPhase,
+        downloadProgress = state.scrcpyDownloadProgress,
+        downloadedBytes = state.scrcpyDownloadedBytes,
+        totalBytes = state.scrcpyTotalBytes,
+        statusText = state.scrcpyStatusText,
+        version = state.scrcpyVersion,
+        error = state.scrcpyError,
+        onDismiss = { viewModel.dispatch(FileManagerIntent.DismissScrcpyDialog) },
+        onRetry = { viewModel.dispatch(FileManagerIntent.RetryScrcpy) },
+        onOpenSettings = {
+            viewModel.dispatch(FileManagerIntent.DismissScrcpyDialog)
+            onOpenSettings()
+        }
     )
 }
 
@@ -673,6 +782,8 @@ private fun FileToolBar(
     onBatchCopyToOtherClick: () -> Unit,
     onBatchMoveToOtherClick: () -> Unit,
     otherPaneWritable: Boolean = true,
+    onDeviceInfoClick: () -> Unit = {},
+    onMirrorClick: () -> Unit = {},
     onAppsClick: () -> Unit = {},
     onScreenshotClick: () -> Unit = {},
     onClipboardClick: () -> Unit = {},
@@ -921,6 +1032,20 @@ private fun FileToolBar(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 ToolbarButton(
+                    onClick = onDeviceInfoClick,
+                    icon = Icons.Outlined.Info,
+                    text = "Info",
+                    tint = MaterialTheme.colorScheme.primary,
+                    compact = compact
+                )
+                ToolbarButton(
+                    onClick = onMirrorClick,
+                    icon = Icons.Outlined.Cast,
+                    text = "投屏",
+                    tint = MaterialTheme.colorScheme.primary,
+                    compact = compact
+                )
+                ToolbarButton(
                     onClick = onAppsClick,
                     icon = Icons.Outlined.Apps,
                     text = "Apps",
@@ -1000,6 +1125,19 @@ private fun FileListView(
         is LoadState.Success -> {
             val data = (state.files as LoadState.Success<FileItem>).data
             val listState = rememberLazyListState()
+
+            LaunchedEffect(state.highlightedFileName, data) {
+                val target = state.highlightedFileName
+                if (target != null) {
+                    val targetIndex = data.indexOfFirst { it.fileName == target }
+                    if (targetIndex >= 0) {
+                        listState.animateScrollToItem(targetIndex)
+                    }
+                    kotlinx.coroutines.delay(3500)
+                    viewModel.dispatch(FileManagerIntent.ClearHighlightedFile)
+                }
+            }
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1038,8 +1176,12 @@ private fun FileListView(
                             copyEnabled = localDirectoryWritable,
                             moveEnabled = localDirectoryWritable,
                             isSelected = file.fileName in state.selectedFiles,
+                            isHighlighted = file.fileName == state.highlightedFileName,
                             onSelectionChange = {
                                 viewModel.dispatch(FileManagerIntent.ToggleFileSelection(file.fileName))
+                            },
+                            onPreviewImage = {
+                                viewModel.dispatch(FileManagerIntent.PreviewImage(file.fileName))
                             },
                             onFileClick = {
                                 onActivate()
@@ -1050,7 +1192,9 @@ private fun FileListView(
                                         viewModel.dispatch(FileManagerIntent.NavigateTo(file.fileName))
                                     }
                                 } else {
-                                    if (isEditableFile(file.fileName)) {
+                                    if (isImageFile(file.fileName)) {
+                                        viewModel.dispatch(FileManagerIntent.PreviewImage(file.fileName))
+                                    } else if (isEditableFile(file.fileName)) {
                                         viewModel.dispatch(FileManagerIntent.LoadFileContent(file.fileName))
                                     }
                                 }

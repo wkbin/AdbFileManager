@@ -5,7 +5,6 @@ import model.FileItem
 import model.SortType
 import java.io.File
 
-
 sealed class FileManagerIntent {
     data class ResetDirectory(val path: String) : FileManagerIntent()
     object NavigateUp : FileManagerIntent()
@@ -76,8 +75,18 @@ sealed class FileManagerIntent {
     // App management
     object ShowAppManager : FileManagerIntent()
     object DismissAppManager : FileManagerIntent()
+    data class LoadAppDetails(val packageName: String) : FileManagerIntent()
     data class UninstallApp(val packageName: String) : FileManagerIntent()
     data class BackupApk(val packageName: String, val destinationPath: String) : FileManagerIntent()
+    data class LaunchApp(val packageName: String) : FileManagerIntent()
+    data class ForceStopApp(val packageName: String) : FileManagerIntent()
+    data class ClearAppData(val packageName: String) : FileManagerIntent()
+
+    // Device info & reboot
+    object ShowDeviceInfo : FileManagerIntent()
+    object DismissDeviceInfo : FileManagerIntent()
+    object RefreshDeviceInfo : FileManagerIntent()
+    data class RebootDevice(val mode: model.RebootMode) : FileManagerIntent()
 
     // Screenshot
     object TakeScreenshot : FileManagerIntent()
@@ -86,4 +95,21 @@ sealed class FileManagerIntent {
     object ShowClipboardDialog : FileManagerIntent()
     object DismissClipboardDialog : FileManagerIntent()
     data class PushClipboard(val text: String) : FileManagerIntent()
+
+    object ClearHighlightedFile : FileManagerIntent()
+
+    // Image preview
+    data class PreviewImage(val fileName: String) : FileManagerIntent()
+    object DismissImagePreview : FileManagerIntent()
+
+    // Search
+    object ShowSearchDialog : FileManagerIntent()
+    object DismissSearchDialog : FileManagerIntent()
+    data class SearchRecursive(val query: String) : FileManagerIntent()
+    data class NavigateToFileLocation(val fullPath: String) : FileManagerIntent()
+
+    // Scrcpy screen mirroring
+    object StartScreenMirror : FileManagerIntent()
+    object DismissScrcpyDialog : FileManagerIntent()
+    object RetryScrcpy : FileManagerIntent()
 }
