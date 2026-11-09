@@ -103,7 +103,7 @@ compose.desktop {
 
             linux {
                 // Linux 特定配置
-                packageName = "AdbFileManager-linux"
+                packageName = "adbfilemanager-linux"
                 // 不设置 debPackageVersion，避免重复添加版本号
             }
         }

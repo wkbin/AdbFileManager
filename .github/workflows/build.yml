@@ -80,7 +80,7 @@ jobs:
         if: runner.os == 'Linux' && github.event_name != 'push' && github.event_name != 'pull_request'
         run: sudo apt-get update && sudo apt-get install --yes fakeroot
 
-      - name: Add Windows WiX tools to PATH
+      - name: Configure preinstalled Windows WiX tools
         if: runner.os == 'Windows' && github.event_name != 'push' && github.event_name != 'pull_request'
         shell: pwsh
         run: |
@@ -89,6 +89,22 @@ jobs:
             throw "WiX 3.14 is missing from the runner image"
           }
           $wixBin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          "WIX_PATH=$wixBin" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Compile with dependency download retries
+        run: |
+          for attempt in 1 2 3; do
+            if bash ./gradlew compileKotlin --no-daemon --stacktrace 2>&1 | tee compile.log; then
+              exit 0
+            fi
+            if ! grep -Eiq 'HTTP status code: (429|50[234])|status code (429|50[234])|Gateway Time-out|Read timed out|Connect timed out|Connection reset' compile.log; then
+              exit 1
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep "$((attempt * 15))"
+          done
 
       - name: Run tests
         run: bash ./gradlew test --no-daemon --stacktrace
@@ -96,6 +112,18 @@ jobs:
       - name: Build native installer
         if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
         run: bash ./gradlew packageReleaseDistributionForCurrentOS --no-daemon --stacktrace
+
+      - name: Print packaging diagnostics
+        if: failure()
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          logs = sorted(Path('build/compose/logs').rglob('*.txt'))
+          logs += sorted(Path('build/compose/tmp').glob('*.args.txt'))
+          for path in logs:
+              print(f'\n--- {path} ---', flush=True)
+              print(path.read_text(encoding='utf-8', errors='replace'), flush=True)
+          PY
 
       - name: Collect installer
         if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
