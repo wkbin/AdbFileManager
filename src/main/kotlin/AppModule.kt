@@ -5,6 +5,7 @@ import org.koin.dsl.module
 import runtime.AdbStore
 import data.remote.adb.Adb
 import data.remote.adb.AdbDevicePoller
+import data.remote.adb.KadbAdb
 import data.remote.adb.AdbImpl
 import data.remote.adb.AdbShellSessionFactory
 import data.remote.adb.Terminal
@@ -21,7 +22,9 @@ val adbModule = module {
             if (hostOs.isWindows) "adb.exe" else "adb"
         ).absolutePath
     }
-    single<Adb> { AdbImpl(get(named("adbPath")), get()) }
+    single<Adb> {
+        KadbAdb(AdbImpl(get(named("adbPath")), get()), File(System.getProperty("user.home"), ".adbfilemanager/kadb"))
+    }
     single { AdbDevicePoller(get()) }
     single { AdbShellSessionFactory(get()) }
     single { BookmarkRepository() }

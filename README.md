@@ -31,7 +31,7 @@ See [Release notes for v3.1.0](RELEASE_NOTES_v3.1.0.md) for the detailed compari
 
 - Windows, macOS, or Linux desktop
 - An Android device or emulator with ADB debugging enabled
-- Java 21 when building from source
+- Java 25 when building from source
 
 ADB is bundled with the application. On Windows, the bundled runtime is verified with SHA-256 before use, so an identical or currently running `adb.exe` is not overwritten during startup.
 
@@ -65,6 +65,14 @@ Build a native installer for the current operating system:
 # Linux
 ./gradlew packageDeb
 ```
+
+## Automated builds and releases
+
+GitHub Actions runs tests on Windows, macOS, and Linux for pushes to `main` and pull requests.
+
+To publish installers, update `Constants.VERSION` in `src/main/kotlin/Constants.kt` and `nativeDistributions.packageVersion` in `build.gradle.kts` to the same `X.Y.Z` version. Commit those changes together with the workflow, then publish a GitHub Release with the matching `vX.Y.Z` or `X.Y.Z` tag. After all three builds pass, the workflow attaches x64 Windows `.msi`, macOS `.dmg`, and Linux `.deb` installers to that release.
+
+You can also run **Build and release desktop apps** manually from the Actions tab to build downloadable workflow artifacts. The installers include a Java runtime and are unsigned.
 
 ## Usage
 

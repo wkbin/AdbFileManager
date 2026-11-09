@@ -11,6 +11,9 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
+    maven("https://jitpack.io") {
+        content { includeGroup("com.github.Flyfish233") }
+    }
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
     google()
 }
@@ -28,6 +31,9 @@ kotlin {
 
 
 dependencies {
+    implementation("com.flyfishxu:kadb:2.1.5")
+    implementation("org.jmdns:jmdns:3.6.3")
+    implementation("org.conscrypt:conscrypt-openjdk-uber:2.5.2")
     implementation(compose.desktop.currentOs)
     implementation(compose.components.resources)
     implementation("io.github.compose-fluent:fluent:v0.1.0")
@@ -52,6 +58,7 @@ dependencies {
 compose.desktop {
     application {
         mainClass = "MainKt"
+        jvmArgs += "--enable-native-access=ALL-UNNAMED"
 
         buildTypes.release.proguard {
             isEnabled.set(false)
@@ -105,6 +112,6 @@ compose.desktop {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(25))
     }
 }

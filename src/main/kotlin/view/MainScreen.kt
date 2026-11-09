@@ -59,6 +59,7 @@ fun FrameWindowScope.MainScreen(
     val devices by viewModel.devices.collectAsState()
     val currentDevice by viewModel.currentDevice.collectAsState()
     val updateInfo by viewModel.updateInfo.collectAsState()
+    val connectionError by viewModel.connectionError.collectAsState()
     var showUpdateDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     val adbStore = org.koin.compose.koinInject<runtime.AdbStore>()
@@ -151,6 +152,17 @@ fun FrameWindowScope.MainScreen(
                 }
             }
         }
+    }
+
+    connectionError?.let { message ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissConnectionError,
+            title = { Text(strings.deviceConnectionFailed) },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = viewModel::dismissConnectionError) { Text(strings.appClose) }
+            }
+        )
     }
 
     if (showUpdateDialog) {

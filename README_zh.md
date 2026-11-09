@@ -31,7 +31,7 @@ v3.1.0 将原来的设备单栏文件视图升级为双栏工作流，并加入�
 
 - Windows、macOS 或 Linux 桌面系统
 - 已启用 ADB 调试的 Android 设备或模拟器
-- 从源码构建时需要 Java 21
+- 从源码构建时需要 Java 25
 
 应用已经内置 ADB。Windows 启动时会先用 SHA-256 校验内置与本地运行时；内容一致或 `adb.exe` 正在运行时不会强行覆盖。
 
@@ -65,6 +65,14 @@ cd AdbFileManager
 # Linux
 ./gradlew packageDeb
 ```
+
+## 自动构建与发布
+
+GitHub Actions 会在向 `main` 推送代码及创建 Pull Request 时，运行 Windows、macOS 和 Linux 三个平台的测试。
+
+发布前，将 `src/main/kotlin/Constants.kt` 中的 `Constants.VERSION` 与 `build.gradle.kts` 中的 `nativeDistributions.packageVersion` 更新为相同的 `X.Y.Z` 版本。将这些改动与工作流一起提交后，创建并发布标签为 `vX.Y.Z` 或 `X.Y.Z` 的 GitHub Release。三端构建全部通过后，工作流会将 x64 Windows `.msi`、macOS `.dmg` 和 Linux `.deb` 安装包上传到该 Release。
+
+也可以在 Actions 页面手动运行 **Build and release desktop apps**，下载构建产物进行验证。安装包包含 Java 运行时，当前产物为未签名版本。
 
 ## 使用方式
 

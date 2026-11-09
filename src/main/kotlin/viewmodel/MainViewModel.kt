@@ -20,12 +20,22 @@ class MainViewModel(
     val devices: StateFlow<List<AdbDevice>> get() = adbDevicePoller.devices
     val currentDevice: StateFlow<AdbDevice?> get() = adbDevicePoller.currentDevice
 
+    private val _connectionError = MutableStateFlow<String?>(null)
+    val connectionError: StateFlow<String?> = _connectionError
+
+    fun dismissConnectionError() { _connectionError.value = null }
+
     private val _updateInfo = MutableStateFlow<UpdateInfo?>(null)
     val updateInfo: StateFlow<UpdateInfo?> get() = _updateInfo
 
     init {
         adbDevicePoller.startPolling(viewModelScope)
         checkUpdate()
+    }
+
+    override fun onCleared() {
+        (adb as? AutoCloseable)?.close()
+        super.onCleared()
     }
 
     private fun checkUpdate() {
@@ -36,19 +46,23 @@ class MainViewModel(
 
     fun pairAndConnectDevice(ipAddress: String, port: String, pairingPort: String, pairingCode: String) {
         viewModelScope.launch(Dispatchers.IO) {
+            _connectionError.value = null
             try {
+                require(pairingPort.isBlank() == pairingCode.isBlank()) { "请同时填写配对端口和配对码" }
                 if (pairingPort.isNotEmpty() && pairingCode.isNotEmpty()) {
                     // Pair first using Adb directly
                     adb.pair(ipAddress, pairingPort, pairingCode)
                 }
                 // Connect using Adb directly
-                val ipPort = port.ifEmpty { "5555" }
+                val ipPort = if (adb is data.remote.adb.KadbAdb && model.AppSettings.useKadbWireless) port else port.ifEmpty { "5555" }
                 adb.connect(ipAddress, ipPort)
                 
                 // Update device list manually or wait for poller to pick it up
                 // The poller should detect the new connection
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
             } catch (e: Exception) {
-                println("Error pairing/connecting device: ${e.message}")
+                _connectionError.value = e.message ?: "Connection failed"
             }
         }
     }

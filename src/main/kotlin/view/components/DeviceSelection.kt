@@ -211,7 +211,7 @@ fun DeviceConnectionWizard(
                         OutlinedTextField(
                             value = port,
                             onValueChange = { port = it },
-                            label = { Text(strings.deviceWirelessGuidePort) },
+                            label = { Text(if (model.AppSettings.useKadbWireless) strings.deviceWirelessAutoPort else strings.deviceWirelessGuidePort) },
                             modifier = Modifier.wrapContentWidth()
                         )
                     }

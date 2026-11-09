@@ -207,6 +207,10 @@ interface Strings {
     val deviceUSBGuide: String
     val deviceWirelessGuide: String
     val deviceRefresh: String
+    val kadbWirelessTitle: String
+    val kadbWirelessDescription: String
+    val deviceConnectionFailed: String
+    val deviceWirelessAutoPort: String
     val deviceConnect: String
     
     fun deviceUSBGuideStep1(): String

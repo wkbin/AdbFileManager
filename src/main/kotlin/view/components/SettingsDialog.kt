@@ -52,6 +52,8 @@ fun SettingsDialog(
     val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
 
+    val strings by model.StringsManager.strings.collectAsState()
+    var useKadbWireless by remember(visible) { mutableStateOf(AppSettings.useKadbWireless) }
     var adbMode by remember(visible) { mutableStateOf(AppSettings.adbMode) }
     var customPath by remember(visible) { mutableStateOf(AppSettings.customAdbPath) }
     var defaultExportDir by remember(visible) { mutableStateOf(AppSettings.defaultExportDir) }
@@ -192,6 +194,19 @@ fun SettingsDialog(
                     }
 
                     // Custom path input (shown when CUSTOM is selected)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(strings.kadbWirelessTitle, style = FluentTheme.typography.bodyStrong)
+                            Text(strings.kadbWirelessDescription,
+                                style = FluentTheme.typography.caption)
+                        }
+                        Switch(checked = useKadbWireless, onCheckedChange = { useKadbWireless = it })
+                    }
+
                     if (adbMode == AdbMode.CUSTOM) {
                         Spacer(Modifier.height(10.dp))
                         Row(
@@ -510,6 +525,7 @@ fun SettingsDialog(
                     TextButton(
                         onClick = {
                             AppSettings.resetToDefaults()
+                            useKadbWireless = AppSettings.useKadbWireless
                             adbMode = AppSettings.adbMode
                             customPath = AppSettings.customAdbPath
                             defaultExportDir = AppSettings.defaultExportDir
@@ -534,6 +550,7 @@ fun SettingsDialog(
                         }
                         Button(
                             onClick = {
+                                AppSettings.useKadbWireless = useKadbWireless
                                 AppSettings.adbMode = adbMode
                                 AppSettings.customAdbPath = customPath
                                 AppSettings.defaultExportDir = defaultExportDir

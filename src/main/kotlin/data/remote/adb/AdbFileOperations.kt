@@ -589,6 +589,7 @@ class AdbFileOperations(
 
     suspend fun takeScreenshot(destinationPath: String) {
         val device = currentDeviceProvider() ?: throw AdbDeviceNotFoundException()
+        if ((adb as? KadbAdb)?.screenshot(device, File(destinationPath)) == true) return
         withContext(Dispatchers.IO) {
             val file = File(destinationPath)
             file.parentFile?.mkdirs()

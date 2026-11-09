@@ -39,12 +39,14 @@ data class TerminalCompletion(
  */
 class AdbShellSession internal constructor(
     private val adbPath: String,
-    val device: AdbDevice
+    val device: AdbDevice,
+    private val directClient: (() -> com.flyfishxu.kadb.Kadb?)? = null
 ) : Closeable {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val isClosed = AtomicBoolean(false)
     private val childProcesses = Collections.synchronizedSet(mutableSetOf<Process>())
     private val writerLock = Any()
+    private val directCommands = Collections.synchronizedSet(mutableSetOf<com.flyfishxu.kadb.Kadb>())
 
     private val _state = MutableStateFlow(
         AdbShellSessionState(
@@ -58,6 +60,9 @@ class AdbShellSession internal constructor(
 
     @Volatile
     private var shellWriter: BufferedWriter? = null
+
+    @Volatile
+    private var kadbClient: com.flyfishxu.kadb.Kadb? = null
 
     fun send(command: String) {
         val normalizedCommand = command.trim()
@@ -133,7 +138,30 @@ class AdbShellSession internal constructor(
     }
 
     private fun startShell() {
-        if (shellProcess?.isAlive == true) return
+        if (shellProcess?.isAlive == true || kadbClient != null) return
+        val client = directClient?.invoke()
+        if (client != null) {
+            kadbClient = client
+            scope.launch {
+                try {
+                    client.open("shell:").use { stream ->
+                        shellWriter = BufferedWriter(OutputStreamWriter(stream.sink.outputStream()))
+                        _state.update { it.copy(mode = TerminalMode.SHELL) }
+                        writeShellLine(PWD_INIT_COMMAND)
+                        writeShellLine(PWD_COMMAND)
+                        stream.source.inputStream().bufferedReader().use { streamShellLines(it) }
+                    }
+                } catch (exception: Exception) {
+                    if (!isClosed.get()) appendOutput("Kadb shell: ${exception.message}\n")
+                } finally {
+                    client.close()
+                    kadbClient = null
+                    shellWriter = null
+                    if (!isClosed.get()) _state.update { it.copy(mode = TerminalMode.ADB, currentDirectory = "/") }
+                }
+            }
+            return
+        }
 
         scope.launch {
             try {
@@ -169,7 +197,7 @@ class AdbShellSession internal constructor(
     private fun sendToShell(command: String) {
         scope.launch {
             val writer = shellWriter
-            if (writer == null || shellProcess?.isAlive != true) {
+            if (writer == null || (shellProcess?.isAlive != true && kadbClient == null)) {
                 appendOutput("Shell is not ready.\n")
                 return@launch
             }
@@ -190,6 +218,22 @@ class AdbShellSession internal constructor(
             var process: Process? = null
             try {
                 val arguments = CommandLineTokenizer.tokenize(command).drop(1)
+                if (arguments.firstOrNull() == "shell") {
+                    val client = directClient?.invoke()
+                    if (client != null) {
+                        directCommands += client
+                        try {
+                            client.use {
+                                val response = it.shell(arguments.drop(1).joinToString(" "))
+                                appendOutput(response.output + response.errorOutput)
+                                if (response.exitCode != 0) appendOutput("\nShell exited with code ${response.exitCode}.\n")
+                            }
+                        } finally {
+                            directCommands -= client
+                        }
+                        return@launch
+                    }
+                }
                 process = ProcessBuilder(listOf(adbPath) + arguments)
                     .redirectErrorStream(true)
                     .start()
@@ -221,10 +265,14 @@ class AdbShellSession internal constructor(
     }
 
     private fun streamShellOutput(process: Process) {
+        process.inputStream.bufferedReader().use { streamShellLines(it) }
+    }
+
+    private fun streamShellLines(reader: java.io.BufferedReader) {
         val filter = ShellOutputFilter { directory ->
             _state.update { it.copy(currentDirectory = directory) }
         }
-        process.inputStream.bufferedReader().useLines { lines ->
+        reader.useLines { lines ->
             lines.forEach { rawLine ->
                 val filtered = filter.filter(rawLine)
                 if (filtered != null) {
@@ -244,6 +292,10 @@ class AdbShellSession internal constructor(
     }
 
     private fun listDirectory(directory: String): List<String> {
+        directClient?.invoke()?.use {
+            return it.shell("ls -1 -a -- ${shellQuote(directory)}").output.lines()
+                .filter { name -> name.isNotEmpty() && name != "." && name != ".." }
+        }
         val process = ProcessBuilder(
             adbPath,
             "-s",
@@ -260,6 +312,7 @@ class AdbShellSession internal constructor(
     }
 
     private fun isRemoteDirectory(path: String): Boolean {
+        directClient?.invoke()?.use { return it.shell("test -d ${shellQuote(path)}").exitCode == 0 }
         val process = ProcessBuilder(
             adbPath,
             "-s",
@@ -297,6 +350,11 @@ class AdbShellSession internal constructor(
         if (!isClosed.compareAndSet(false, true)) return
         synchronized(writerLock) {
             runCatching { shellWriter?.close() }
+        }
+        kadbClient?.close()
+        synchronized(directCommands) {
+            directCommands.forEach { it.close() }
+            directCommands.clear()
         }
         shellProcess?.destroyForcibly()
         synchronized(childProcesses) {
@@ -392,7 +450,7 @@ private fun quoteForShellInput(path: String): String = when {
 private fun shellQuote(value: String): String = "'${value.replace("'", "'\\''")}'"
 
 class AdbShellSessionFactory(private val adb: Adb) {
-    fun create(device: AdbDevice): AdbShellSession = AdbShellSession(adb.getAdbPath(), device)
+    fun create(device: AdbDevice): AdbShellSession = AdbShellSession(adb.getAdbPath(), device) { (adb as? KadbAdb)?.openClient(device) }
 }
 
 /** Splits ADB arguments without invoking the host operating system shell. */

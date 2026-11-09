@@ -42,6 +42,10 @@ object AppSettings {
             runCatching { preferences.put(KEY_ADB_MODE, value.name) }
         }
 
+    var useKadbWireless: Boolean
+        get() = preferences.getBoolean("useKadbWireless", false)
+        set(value) { preferences.putBoolean("useKadbWireless", value) }
+
     var customAdbPath: String
         get() = runCatching { preferences.get(KEY_CUSTOM_ADB_PATH, "") }.getOrDefault("")
         set(value) {
@@ -105,6 +109,7 @@ object AppSettings {
     }
 
     fun resetToDefaults() {
+        useKadbWireless = false
         adbMode = AdbMode.BUNDLED
         customAdbPath = ""
         defaultExportDir = File(System.getProperty("user.home"), "Downloads").absolutePath
