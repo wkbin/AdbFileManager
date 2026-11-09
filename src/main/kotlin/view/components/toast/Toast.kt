@@ -1,5 +1,20 @@
 package view.components.toast
 
+import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.getValue
+
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.Alert
+import io.github.composefluent.icons.regular.Checkmark
+import io.github.composefluent.icons.regular.ErrorCircle
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.LocalContentColor
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.EaseOut
 import androidx.compose.animation.core.calculateTargetValue
@@ -15,20 +30,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Error
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material3.Icon
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -69,24 +73,24 @@ fun Toast(
 
     val colorData = when (toastData.type) {
         ToastModel.Type.Normal -> ColorData(
-            backgroundColor = MaterialTheme.colorScheme.background,
-            textColor = Color.White,
-            iconColor = Color.White,
-            icon = Icons.Rounded.Notifications,
+            backgroundColor = FluentTheme.colors.background.solid.base,
+            textColor = FluentTheme.colors.text.text.primary,
+            iconColor = FluentTheme.colors.text.text.primary,
+            icon = Icons.Regular.Alert,
         )
 
         ToastModel.Type.Success -> ColorData(
-            backgroundColor = Color(0xFF248067),
-            textColor = Color.White,
-            iconColor = Color.White,
-            icon = Icons.Rounded.Check,
+            backgroundColor = FluentTheme.colors.system.successBackground,
+            textColor = FluentTheme.colors.text.text.primary,
+            iconColor = FluentTheme.colors.system.success,
+            icon = Icons.Regular.Checkmark,
         )
 
         ToastModel.Type.Error -> ColorData(
-            backgroundColor = Color(0xFFED5126),
-            textColor = Color.White,
-            iconColor = Color.White,
-            icon = Icons.Rounded.Error,
+            backgroundColor = FluentTheme.colors.system.criticalBackground,
+            textColor = FluentTheme.colors.text.text.primary,
+            iconColor = FluentTheme.colors.system.critical,
+            icon = Icons.Regular.ErrorCircle,
         )
     }
     val icon = toastData.icon ?: colorData.icon
@@ -117,7 +121,6 @@ private fun Toast(
     onResume: () -> Unit = {},
     onDismissed: () -> Unit = {},
 ) {
-    val roundedValue = 26.dp
     Surface(
         modifier = Modifier
             .systemBarsPadding()
@@ -126,8 +129,8 @@ private fun Toast(
             .fillMaxWidth()
             .toastGesturesDetector(onPause, onResume, onDismissed),
         color = backgroundColor,
-        shape = RoundedCornerShape(roundedValue),
-        tonalElevation = 2.dp,
+        shape = FluentTheme.shapes.overlay,
+
     ) {
         val progress = remember { Animatable(0f) }
         LaunchedEffect(animateDuration) {
@@ -154,7 +157,7 @@ private fun Toast(
                     drawRoundRect(
                         color = color,
                         size = Size(width = fraction, height = size.height),
-                        cornerRadius = CornerRadius(roundedValue.toPx()),
+                        cornerRadius = CornerRadius(8.dp.toPx()),
                         alpha = 0.1f,
                     )
                 }

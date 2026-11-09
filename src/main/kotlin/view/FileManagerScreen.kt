@@ -1,5 +1,36 @@
 package view
 
+import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.getValue
+
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.Add
+import io.github.composefluent.icons.regular.Apps
+import io.github.composefluent.icons.regular.ArrowClockwise
+import io.github.composefluent.icons.regular.ArrowDownload
+import io.github.composefluent.icons.regular.ArrowLeft
+import io.github.composefluent.icons.regular.ArrowSort
+import io.github.composefluent.icons.filled.Bookmark
+import io.github.composefluent.icons.regular.Bookmark
+import io.github.composefluent.icons.regular.Camera
+import io.github.composefluent.icons.regular.Cast
+import io.github.composefluent.icons.regular.CheckboxChecked
+import io.github.composefluent.icons.regular.Checkmark
+import io.github.composefluent.icons.regular.ClipboardPaste
+import io.github.composefluent.icons.regular.Delete
+import io.github.composefluent.icons.regular.DocumentAdd
+import io.github.composefluent.icons.regular.FolderAdd
+import io.github.composefluent.icons.regular.FolderArrowRight
+import io.github.composefluent.icons.regular.Info
+import io.github.composefluent.icons.regular.Search
+import io.github.composefluent.icons.regular.SelectAllOff
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,55 +50,11 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.NoteAdd
-import androidx.compose.material.icons.automirrored.outlined.Sort
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.CreateNewFolder
-import androidx.compose.material.icons.outlined.NoteAdd
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.CheckBox
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material.icons.outlined.Deselect
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.Cast
-import androidx.compose.material3.Icon
-import androidx.compose.material.icons.outlined.Apps
-import androidx.compose.material.icons.outlined.CameraAlt
-import androidx.compose.material.icons.outlined.ContentPaste
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.West
-import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
-import androidx.compose.material.icons.rounded.DeleteForever
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -159,7 +146,7 @@ fun FileManagerScreen(onOpenSettings: () -> Unit = {}) {
         VerticalDivider(
             modifier = Modifier.fillMaxHeight().padding(vertical = 4.dp),
             thickness = 1.dp,
-            color = MaterialTheme.colorScheme.outlineVariant
+            color = FluentTheme.colors.stroke.divider.default
         )
         FileManagerPane(
             viewModel = remoteViewModel,
@@ -255,26 +242,25 @@ private fun FileManagerPane(
             }
             .border(
                 width = if (isActive) 2.dp else 1.dp,
-                color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                shape = RoundedCornerShape(10.dp)
+                color = if (isActive) FluentTheme.colors.text.accent.primary else FluentTheme.colors.stroke.divider.default,
+                shape = FluentTheme.shapes.control
             )
             .shadow(
                 elevation = 2.dp,
-                shape = RoundedCornerShape(10.dp)
+                shape = FluentTheme.shapes.control
             ),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp
+        color = FluentTheme.colors.background.solid.tertiary
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Surface(
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onActivate),
-                color = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                color = if (isActive) FluentTheme.colors.subtleFill.secondary else FluentTheme.colors.subtleFill.secondary
             ) {
                 Text(
                     text = paneTitle,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (isActive) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    style = FluentTheme.typography.bodyStrong,
+                    color = if (isActive) FluentTheme.colors.text.accent.primary else FluentTheme.colors.text.text.secondary
                 )
             }
             Row(
@@ -310,9 +296,9 @@ private fun FileManagerPane(
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        imageVector = if (state.currentPathBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                        imageVector = if (state.currentPathBookmarked) Icons.Filled.Bookmark else Icons.Regular.Bookmark,
                          contentDescription = if (state.currentPathBookmarked) strings.removeBookmark else strings.addBookmark,
-                        tint = if (state.currentPathBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (state.currentPathBookmarked) FluentTheme.colors.text.accent.primary else FluentTheme.colors.text.text.secondary
                     )
                 }
                 // 搜索按钮放在路径导航旁边
@@ -321,16 +307,16 @@ private fun FileManagerPane(
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Search,
+                        imageVector = Icons.Regular.Search,
                         contentDescription = strings.searchTitle,
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = FluentTheme.colors.text.accent.primary
                     )
                 }
             }
             HorizontalDivider(
                 modifier = Modifier.padding(horizontal = 8.dp),
                 thickness = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                color = FluentTheme.colors.stroke.divider.default.copy(alpha = 0.5f)
             )
             FileToolBar(
                 currentSortType = state.sortType,
@@ -410,21 +396,21 @@ private fun FileManagerPane(
             },
             icon = {
                 Icon(
-                    imageVector = Icons.Rounded.DeleteForever,
+                    imageVector = Icons.Regular.Delete,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
+                    tint = FluentTheme.colors.system.critical
                 )
             },
             title = {
                 Text(
                     text = strings.fileDeleteConfirm,
-                    style = MaterialTheme.typography.titleLarge
+                    style = FluentTheme.typography.subtitle
                 )
             },
             text = {
                 Text(
                     text = strings.fileDeleteMessage(fileName),
-                    style = MaterialTheme.typography.bodyMedium
+                    style = FluentTheme.typography.body
                 )
             },
             confirmButton = {
@@ -435,7 +421,7 @@ private fun FileManagerPane(
                 ) {
                     Text(
                         text = strings.fileDelete,
-                        color = MaterialTheme.colorScheme.error
+                        color = FluentTheme.colors.system.critical
                     )
                 }
             },
@@ -448,11 +434,11 @@ private fun FileManagerPane(
                     Text(strings.fileCancel)
                 }
             },
-            shape = RoundedCornerShape(28.dp),
-            tonalElevation = 6.dp,
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            titleContentColor = MaterialTheme.colorScheme.onSurface,
-            textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+            shape = FluentTheme.shapes.overlay,
+
+            containerColor = FluentTheme.colors.background.solid.base,
+            titleContentColor = FluentTheme.colors.text.text.primary,
+            textContentColor = FluentTheme.colors.text.text.secondary
         )
     }
 
@@ -463,9 +449,9 @@ private fun FileManagerPane(
             },
             icon = {
                 Icon(
-                    imageVector = Icons.Rounded.DeleteForever,
+                    imageVector = Icons.Regular.Delete,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
+                    tint = FluentTheme.colors.system.critical
                 )
             },
             title = { Text("批量删除") },
@@ -473,7 +459,7 @@ private fun FileManagerPane(
             confirmButton = {
                 Button(
                     onClick = { viewModel.dispatch(FileManagerIntent.BatchDeleteFiles) },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.buttonColors(containerColor = FluentTheme.colors.system.critical)
                 ) { Text("删除") }
             },
             dismissButton = {
@@ -572,15 +558,15 @@ private fun FileManagerPane(
             title = {
                 Text(
                     text = if (isCopy) strings.fileCopyTo else strings.fileMoveTo,
-                    style = MaterialTheme.typography.titleLarge
+                    style = FluentTheme.typography.subtitle
                 )
             },
             text = {
                 Column {
                     Text(
                         text = "${strings.fileName}: ${state.pendingCopyMoveFile!!.fileName}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = FluentTheme.typography.body,
+                        color = FluentTheme.colors.text.text.secondary
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     OutlinedTextField(
@@ -719,15 +705,15 @@ private fun AddBookmarkDialog(
         title = {
             Text(
                 text = strings.addBookmark,
-                style = MaterialTheme.typography.headlineSmall
+                style = FluentTheme.typography.subtitle
             )
         },
         text = {
             Column {
                 Text(
                     text = strings.bookmarkPath(currentPath),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = FluentTheme.typography.caption,
+                    color = FluentTheme.colors.text.text.secondary
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
@@ -795,8 +781,7 @@ private fun FileToolBar(
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 0.dp
+        color = FluentTheme.colors.background.solid.tertiary
     ) {
         Row(
             modifier = Modifier
@@ -812,61 +797,61 @@ private fun FileToolBar(
                 if (selectionMode) {
                     Text(
                         text = "已选择 $selectedCount 项",
-                        style = MaterialTheme.typography.titleSmall,
+                        style = FluentTheme.typography.bodyStrong,
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
                     ToolbarButton(
                         onClick = if (selectedCount == totalCount && totalCount > 0) onClearSelectionClick else onSelectAllClick,
-                        icon = if (selectedCount == totalCount && totalCount > 0) Icons.Outlined.Deselect else Icons.Outlined.CheckBox,
+                        icon = if (selectedCount == totalCount && totalCount > 0) Icons.Regular.SelectAllOff else Icons.Regular.CheckboxChecked,
                         text = if (selectedCount == totalCount && totalCount > 0) "取消全选" else "全选",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = FluentTheme.colors.text.accent.primary,
                         compact = compact
                     )
                     ToolbarButton(
                         onClick = onBatchExportClick,
-                        icon = Icons.Outlined.Download,
+                        icon = Icons.Regular.ArrowDownload,
                         text = "导出",
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = FluentTheme.colors.text.accent.primary,
                         enabled = selectedCount > 0,
                         compact = compact
                     )
                     ToolbarButton(
                         onClick = onBatchCopyToOtherClick,
-                        icon = Icons.Outlined.West,
+                        icon = Icons.Regular.ArrowLeft,
                         text = strings.panelCopyToOther,
-                        tint = MaterialTheme.colorScheme.secondary,
+                        tint = FluentTheme.colors.text.accent.secondary,
                         enabled = selectedCount > 0 && otherPaneWritable,
                         compact = compact
                     )
                     ToolbarButton(
                         onClick = onBatchMoveToOtherClick,
-                        icon = Icons.AutoMirrored.Outlined.DriveFileMove,
+                        icon = Icons.Regular.FolderArrowRight,
                         text = strings.panelMoveToOther,
-                        tint = MaterialTheme.colorScheme.secondary,
+                        tint = FluentTheme.colors.text.accent.secondary,
                         enabled = selectedCount > 0 && otherPaneWritable,
                         compact = compact
                     )
                     ToolbarButton(
                         onClick = onBatchDeleteClick,
-                        icon = Icons.Outlined.Delete,
+                        icon = Icons.Regular.Delete,
                         text = "删除",
-                        tint = MaterialTheme.colorScheme.error,
+                        tint = FluentTheme.colors.system.critical,
                         enabled = selectedCount > 0,
                         compact = compact
                     )
                     ToolbarButton(
                         onClick = onToggleSelectionMode,
-                        icon = Icons.Outlined.Deselect,
+                        icon = Icons.Regular.SelectAllOff,
                         text = "退出",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = FluentTheme.colors.text.text.secondary,
                         compact = compact
                     )
                 } else {
                 ToolbarButton(
                     onClick = onBackClick,
-                    icon = Icons.AutoMirrored.Rounded.ArrowBack,
+                    icon = Icons.Regular.ArrowLeft,
                     text = strings.navBack,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = FluentTheme.colors.text.accent.primary,
                     compact = compact
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -874,9 +859,9 @@ private fun FileToolBar(
                 Box {
                     ToolbarButton(
                         onClick = { showCreateMenu = true },
-                        icon = Icons.Outlined.Add,
+                        icon = Icons.Regular.Add,
                         text = strings.fileCreate,
-                        tint = MaterialTheme.colorScheme.secondary,
+                        tint = FluentTheme.colors.text.accent.secondary,
                         compact = compact
                     )
                     DropdownMenu(
@@ -891,9 +876,9 @@ private fun FileToolBar(
                             },
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.Outlined.CreateNewFolder,
+                                    imageVector = Icons.Regular.FolderAdd,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.secondary
+                                    tint = FluentTheme.colors.text.accent.secondary
                                 )
                             }
                         )
@@ -905,9 +890,9 @@ private fun FileToolBar(
                             },
                             leadingIcon = {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Outlined.NoteAdd,
+                                    imageVector = Icons.Regular.DocumentAdd,
                                     contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.tertiary
+                                    tint = FluentTheme.colors.text.accent.primary
                                 )
                             }
                         )
@@ -918,9 +903,9 @@ private fun FileToolBar(
                 Box {
                     ToolbarButton(
                         onClick = onBookmarkMenuClick,
-                        icon = if (currentPathBookmarked) Icons.Filled.Bookmark else Icons.Filled.BookmarkBorder,
+                        icon = if (currentPathBookmarked) Icons.Filled.Bookmark else Icons.Regular.Bookmark,
                         text = strings.bookmark,
-                        tint = if (currentPathBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = if (currentPathBookmarked) FluentTheme.colors.text.accent.primary else FluentTheme.colors.text.text.secondary,
                         compact = compact
                     )
                     DropdownMenu(
@@ -944,9 +929,9 @@ private fun FileToolBar(
                                             onClick = { onRemoveBookmarkClick(bookmark) }
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Outlined.Delete,
+                                                imageVector = Icons.Regular.Delete,
                                                 contentDescription = strings.fileDelete,
-                                                tint = MaterialTheme.colorScheme.error
+                                                tint = FluentTheme.colors.system.critical
                                             )
                                         }
                                     }
@@ -964,9 +949,9 @@ private fun FileToolBar(
                                 },
                                 leadingIcon = {
                                     Icon(
-                                        imageVector = Icons.Filled.BookmarkBorder,
+                                        imageVector = Icons.Regular.Bookmark,
                                         contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary
+                                        tint = FluentTheme.colors.text.accent.primary
                                     )
                                 }
                             )
@@ -978,9 +963,9 @@ private fun FileToolBar(
                 Box {
                     ToolbarButton(
                         onClick = { showSortMenu = true },
-                        icon = Icons.AutoMirrored.Outlined.Sort,
+                        icon = Icons.Regular.ArrowSort,
                         text = strings.sortTitle,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = FluentTheme.colors.text.accent.primary,
                         compact = compact
                     )
                     DropdownMenu(
@@ -997,9 +982,9 @@ private fun FileToolBar(
                                 leadingIcon = {
                                     if (currentSortType == sortType) {
                                         Icon(
-                                            imageVector = Icons.Outlined.Check,
+                                            imageVector = Icons.Regular.Checkmark,
                                             contentDescription = null,
-                                            tint = MaterialTheme.colorScheme.primary
+                                            tint = FluentTheme.colors.text.accent.primary
                                         )
                                     }
                                 }
@@ -1010,16 +995,16 @@ private fun FileToolBar(
 
                 ToolbarButton(
                     onClick = onRefreshClick,
-                    icon = Icons.Outlined.Refresh,
+                    icon = Icons.Regular.ArrowClockwise,
                     text = "刷新",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = FluentTheme.colors.text.accent.primary,
                     compact = compact
                 )
                 ToolbarButton(
                     onClick = onToggleSelectionMode,
-                    icon = Icons.Outlined.CheckBox,
+                    icon = Icons.Regular.CheckboxChecked,
                     text = "多选",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = FluentTheme.colors.text.accent.primary,
                     compact = compact
                 )
 
@@ -1033,37 +1018,37 @@ private fun FileToolBar(
             ) {
                 ToolbarButton(
                     onClick = onDeviceInfoClick,
-                    icon = Icons.Outlined.Info,
+                    icon = Icons.Regular.Info,
                     text = "Info",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = FluentTheme.colors.text.accent.primary,
                     compact = compact
                 )
                 ToolbarButton(
                     onClick = onMirrorClick,
-                    icon = Icons.Outlined.Cast,
+                    icon = Icons.Regular.Cast,
                     text = "投屏",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = FluentTheme.colors.text.accent.primary,
                     compact = compact
                 )
                 ToolbarButton(
                     onClick = onAppsClick,
-                    icon = Icons.Outlined.Apps,
+                    icon = Icons.Regular.Apps,
                     text = "Apps",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = FluentTheme.colors.text.accent.primary,
                     compact = compact
                 )
                 ToolbarButton(
                     onClick = onScreenshotClick,
-                    icon = Icons.Outlined.CameraAlt,
+                    icon = Icons.Regular.Camera,
                     text = "Shot",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = FluentTheme.colors.text.accent.primary,
                     compact = compact
                 )
                 ToolbarButton(
                     onClick = onClipboardClick,
-                    icon = Icons.Outlined.ContentPaste,
+                    icon = Icons.Regular.ClipboardPaste,
                     text = "Clip",
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = FluentTheme.colors.text.accent.primary,
                     compact = compact
                 )
             }
@@ -1071,7 +1056,6 @@ private fun FileToolBar(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FileListView(
     viewModel: FileManagerViewModel,
@@ -1165,7 +1149,7 @@ private fun FileListView(
                             file = file,
                             selectionMode = state.selectionMode,
                             compact = true,
-                            copyIcon = Icons.Outlined.West,
+                            copyIcon = Icons.Regular.ArrowLeft,
                             showDragHandle = true,
                             dragHandleModifier = Modifier.adbDndSource(
                                 selectedFile = "/${viewModel.directoryList.joinToString("/")}/${file.fileName}",

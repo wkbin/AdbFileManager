@@ -1,14 +1,18 @@
 package view.components
 
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.Edit
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -126,8 +130,8 @@ fun PathNavigator(
                     ) {
                         Text(
                             text = strings.pathCollapse,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
+                            style = FluentTheme.typography.caption,
+                            color = FluentTheme.colors.text.accent.primary
                         )
                     }
                 }
@@ -139,9 +143,9 @@ fun PathNavigator(
                 modifier = Modifier.size(28.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Edit,
+                    imageVector = Icons.Regular.Edit,
                     contentDescription = strings.pathEdit,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = FluentTheme.colors.text.text.secondary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -174,14 +178,14 @@ fun PathNavigator(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
-                shape = RoundedCornerShape(16.dp),
-                color = MaterialTheme.colorScheme.surface
+                shape = FluentTheme.shapes.overlay,
+                color = FluentTheme.colors.background.solid.tertiary
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = strings.pathInput,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        style = FluentTheme.typography.bodyStrong,
+                        color = FluentTheme.colors.text.text.primary
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
@@ -235,19 +239,19 @@ private fun PathItem(
     isSpecial: Boolean = false
 ) {
     val backgroundColor = when {
-        isLast -> MaterialTheme.colorScheme.primaryContainer
-        isSpecial -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.6f)
+        isLast -> FluentTheme.colors.subtleFill.secondary
+        isSpecial -> FluentTheme.colors.subtleFill.secondary
         else -> Color.Transparent
     }
 
     val contentColor = when {
-        isLast -> MaterialTheme.colorScheme.onPrimaryContainer
-        isSpecial -> MaterialTheme.colorScheme.onTertiaryContainer
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+        isLast -> FluentTheme.colors.text.accent.primary
+        isSpecial -> FluentTheme.colors.text.accent.primary
+        else -> FluentTheme.colors.text.text.secondary
     }
 
     Surface(
-        shape = RoundedCornerShape(16.dp),
+        shape = FluentTheme.shapes.overlay,
         color = backgroundColor,
         modifier = Modifier.padding(horizontal = 2.dp)
     ) {
@@ -260,7 +264,7 @@ private fun PathItem(
             // 文本
             Text(
                 text = text,
-                style = MaterialTheme.typography.labelMedium.copy(
+                style = FluentTheme.typography.caption.copy(
                     fontWeight = if (isLast) FontWeight.SemiBold else FontWeight.Normal
                 ),
                 color = contentColor,

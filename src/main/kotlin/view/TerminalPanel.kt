@@ -1,5 +1,16 @@
 package view
 
+import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.getValue
+
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.Delete
+
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,26 +22,18 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.DeleteSweep
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
+import io.github.composefluent.FluentTheme
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -51,6 +54,9 @@ import kotlinx.coroutines.launch
 fun TerminalPanel(session: AdbShellSession) {
     val strings by StringsManager.strings.collectAsState()
     val state by session.state.collectAsState()
+    val colors = FluentTheme.colors
+    val textColor = colors.text.text.primary
+    val darkTheme = colors.darkMode
     val scrollState = rememberScrollState()
     val focusRequester = remember { FocusRequester() }
     val coroutineScope = rememberCoroutineScope()
@@ -100,30 +106,30 @@ fun TerminalPanel(session: AdbShellSession) {
                 historyIndex = -1
                 focusRequester.requestFocus()
             },
-        color = Color(0xFF0D1117)
+        color = colors.background.solid.base
     ) {
         Column(Modifier.fillMaxSize()) {
             Row(
-                modifier = Modifier.fillMaxWidth().background(Color(0xFF161B22)).padding(horizontal = 12.dp),
+                modifier = Modifier.fillMaxWidth().background(colors.background.solid.tertiary).padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = session.device.deviceId,
-                    color = Color(0xFFC9D1D9),
+                    color = textColor,
                     fontFamily = FontFamily.Monospace,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
                 Text(
                     text = if (state.mode == TerminalMode.SHELL) "  SHELL" else "  ADB",
-                    color = if (state.mode == TerminalMode.SHELL) Color(0xFF7EE787) else Color(0xFF58A6FF),
+                    color = if (state.mode == TerminalMode.SHELL) colors.system.success else colors.text.accent.primary,
                     fontFamily = FontFamily.Monospace
                 )
                 Box(Modifier.weight(1f))
                 IconButton(onClick = session::clear) {
                     Icon(
-                        Icons.Outlined.DeleteSweep,
+                        Icons.Regular.Delete,
                         contentDescription = strings.terminalClear,
-                        tint = Color(0xFFC9D1D9)
+                        tint = textColor
                     )
                 }
             }
@@ -132,12 +138,12 @@ fun TerminalPanel(session: AdbShellSession) {
                 modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(scrollState).padding(12.dp)
             ) {
                 SelectionContainer {
-                    val annotatedOutput = remember(state.output) {
-                        view.components.AnsiTextParser.parse(state.output)
+                    val annotatedOutput = remember(state.output, textColor, darkTheme) {
+                        view.components.AnsiTextParser.parse(state.output, defaultColor = textColor, darkTheme = darkTheme)
                     }
                     Text(
                         text = annotatedOutput,
-                        color = Color(0xFFC9D1D9),
+                        color = textColor,
                         fontFamily = FontFamily.Monospace,
                         fontSize = 14.sp,
                         lineHeight = 20.sp
@@ -146,12 +152,12 @@ fun TerminalPanel(session: AdbShellSession) {
             }
 
             Row(
-                modifier = Modifier.fillMaxWidth().background(Color(0xFF0D1117)).padding(12.dp),
+                modifier = Modifier.fillMaxWidth().background(colors.background.solid.base).padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = session.prompt(),
-                    color = if (state.mode == TerminalMode.SHELL) Color(0xFF7EE787) else Color(0xFF58A6FF),
+                    color = if (state.mode == TerminalMode.SHELL) colors.system.success else colors.text.accent.primary,
                     fontFamily = FontFamily.Monospace,
                     fontSize = 15.sp
                 )
@@ -193,11 +199,11 @@ fun TerminalPanel(session: AdbShellSession) {
                             }
                         },
                     textStyle = TextStyle(
-                        color = Color(0xFFC9D1D9),
+                        color = textColor,
                         fontFamily = FontFamily.Monospace,
                         fontSize = 15.sp
                     ),
-                    cursorBrush = androidx.compose.ui.graphics.SolidColor(Color(0xFFC9D1D9)),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(textColor),
                     singleLine = true
                 )
             }

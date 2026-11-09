@@ -1,5 +1,20 @@
 package view
 
+import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.getValue
+
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.Add
+import io.github.composefluent.icons.regular.Code
+import io.github.composefluent.icons.regular.Dismiss
+import io.github.composefluent.icons.regular.Folder
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -8,26 +23,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.Terminal
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.FrameWindowScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -176,7 +179,7 @@ private fun TerminalTabBar(
     onNewTerminal: () -> Unit
 ) {
     val strings by StringsManager.strings.collectAsState()
-    Surface(color = MaterialTheme.colorScheme.surfaceVariant, tonalElevation = 2.dp) {
+    Surface(color = FluentTheme.colors.subtleFill.secondary) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -184,14 +187,14 @@ private fun TerminalTabBar(
             Row(
                 modifier = Modifier
                     .background(
-                        if (selectedIndex == -1) MaterialTheme.colorScheme.surface else Color.Transparent,
-                        MaterialTheme.shapes.small
+                        if (selectedIndex == -1) FluentTheme.colors.background.solid.tertiary else Color.Transparent,
+                        FluentTheme.shapes.control
                     )
                     .clickable(onClick = onSelectFiles)
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Outlined.Folder, contentDescription = null)
+                Icon(Icons.Regular.Folder, contentDescription = null)
                 Text(strings.terminalFilesTab, modifier = Modifier.padding(start = 6.dp))
             }
 
@@ -200,23 +203,23 @@ private fun TerminalTabBar(
                     modifier = Modifier
                         .padding(start = 4.dp)
                         .background(
-                            if (selectedIndex == index) MaterialTheme.colorScheme.surface else Color.Transparent,
-                            MaterialTheme.shapes.small
+                            if (selectedIndex == index) FluentTheme.colors.background.solid.tertiary else Color.Transparent,
+                            FluentTheme.shapes.control
                         )
                         .clickable { onSelectTerminal(index) }
                         .padding(start = 12.dp, end = 2.dp, top = 4.dp, bottom = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Outlined.Terminal, contentDescription = null)
+                    Icon(Icons.Regular.Code, contentDescription = null)
                     Text("${strings.terminalTitle} ${index + 1}", modifier = Modifier.padding(start = 6.dp))
                     IconButton(onClick = { onCloseTerminal(index) }) {
-                        Icon(Icons.Outlined.Close, contentDescription = strings.terminalClose)
+                        Icon(Icons.Regular.Dismiss, contentDescription = strings.terminalClose)
                     }
                 }
             }
 
             IconButton(onClick = onNewTerminal) {
-                Icon(Icons.Outlined.Add, contentDescription = strings.terminalNew)
+                Icon(Icons.Regular.Add, contentDescription = strings.terminalNew)
             }
         }
     }

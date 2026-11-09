@@ -1,15 +1,27 @@
 package view.components
 
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.ArrowSync
+import io.github.composefluent.icons.regular.CheckmarkCircle
+import io.github.composefluent.icons.regular.CloudArrowDown
+import io.github.composefluent.icons.regular.Dismiss
+import io.github.composefluent.icons.regular.ErrorCircle
+import io.github.composefluent.icons.regular.FolderOpen
+import io.github.composefluent.icons.regular.Save
+import io.github.composefluent.icons.regular.Settings
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import io.github.composefluent.component.RadioButton
+import view.fluent.*
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,10 +37,8 @@ import kotlinx.coroutines.launch
 import model.AdbMode
 import model.AppSettings
 import model.ScrcpyManager
-import model.SortType
 import java.io.File
 import javax.swing.JFileChooser
-import javax.swing.filechooser.FileNameExtensionFilter
 
 @Composable
 fun SettingsDialog(
@@ -75,9 +85,9 @@ fun SettingsDialog(
             modifier = Modifier
                 .fillMaxWidth(0.78f)
                 .fillMaxHeight(0.85f),
-            shape = RoundedCornerShape(20.dp),
-            tonalElevation = 6.dp,
-            color = MaterialTheme.colorScheme.surface
+            shape = FluentTheme.shapes.overlay,
+
+            color = FluentTheme.colors.background.solid.tertiary
         ) {
             Column(
                 modifier = Modifier
@@ -90,25 +100,25 @@ fun SettingsDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Outlined.Settings,
+                        Icons.Regular.Settings,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = FluentTheme.colors.text.accent.primary,
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(Modifier.width(12.dp))
                     Text(
                         text = "应用设置",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = FluentTheme.typography.subtitle,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Outlined.Close, contentDescription = "关闭")
+                        Icon(Icons.Regular.Dismiss, contentDescription = "关闭")
                     }
                 }
 
                 Spacer(Modifier.height(16.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                HorizontalDivider(color = FluentTheme.colors.stroke.divider.default.copy(alpha = 0.5f))
                 Spacer(Modifier.height(16.dp))
 
                 // Scrollable Content
@@ -121,15 +131,15 @@ fun SettingsDialog(
                     // ── ADB Configuration ──────────────────────────────────
                     Text(
                         text = "ADB 运行与版本配置",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = FluentTheme.typography.bodyStrong,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = FluentTheme.colors.text.accent.primary
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = "选择 ADB 服务的执行源。可使用内置经过兼容性适配的版本，或指定系统自备版本。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = FluentTheme.typography.caption,
+                        color = FluentTheme.colors.text.text.secondary
                     )
                     Spacer(Modifier.height(12.dp))
 
@@ -140,17 +150,17 @@ fun SettingsDialog(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp)
-                                .clip(RoundedCornerShape(12.dp))
+                                .clip(FluentTheme.shapes.control)
                                 .border(
                                     width = if (isSelected) 1.5.dp else 1.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-                                    shape = RoundedCornerShape(12.dp)
+                                    color = if (isSelected) FluentTheme.colors.text.accent.primary else FluentTheme.colors.stroke.divider.default,
+                                    shape = FluentTheme.shapes.control
                                 )
                                 .clickable { adbMode = mode },
                             color = if (isSelected)
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                                FluentTheme.colors.subtleFill.secondary
                             else
-                                MaterialTheme.colorScheme.surface
+                                FluentTheme.colors.background.solid.tertiary
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -164,7 +174,7 @@ fun SettingsDialog(
                                 Column {
                                     Text(
                                         text = mode.displayName,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = FluentTheme.typography.body,
                                         fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                                     )
                                     Text(
@@ -173,8 +183,8 @@ fun SettingsDialog(
                                             AdbMode.CUSTOM -> "手动选择自定义的 adb 或 adb.exe 绝对路径"
                                             AdbMode.SYSTEM -> "直接通过系统全局 PATH 环境变量调用 adb"
                                         },
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        style = FluentTheme.typography.caption,
+                                        color = FluentTheme.colors.text.text.secondary
                                     )
                                 }
                             }
@@ -208,7 +218,7 @@ fun SettingsDialog(
                                     }
                                 }
                             ) {
-                                Icon(Icons.Outlined.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Regular.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                                 Spacer(Modifier.width(6.dp))
                                 Text("浏览...")
                             }
@@ -237,7 +247,7 @@ fun SettingsDialog(
                             if (isTestingAdb) {
                                 CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
                             } else {
-                                Icon(Icons.Outlined.CheckCircleOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Regular.CheckmarkCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                             }
                             Spacer(Modifier.width(8.dp))
                             Text("测试 ADB 状态与版本")
@@ -247,24 +257,24 @@ fun SettingsDialog(
                     testResult?.let { (success, msg) ->
                         Spacer(Modifier.height(10.dp))
                         Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = if (success) Color(0xFF1E3A2F) else Color(0xFF3B2020),
+                            shape = FluentTheme.shapes.control,
+                            color = if (success) FluentTheme.colors.system.successBackground else FluentTheme.colors.system.criticalBackground,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
-                                        imageVector = if (success) Icons.Outlined.CheckCircle else Icons.Outlined.ErrorOutline,
+                                        imageVector = if (success) Icons.Regular.CheckmarkCircle else Icons.Regular.ErrorCircle,
                                         contentDescription = null,
-                                        tint = if (success) Color(0xFF4CAF50) else Color(0xFFEF5350),
+                                        tint = if (success) FluentTheme.colors.system.success else FluentTheme.colors.system.critical,
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(Modifier.width(8.dp))
                                     Text(
                                         text = if (success) "ADB 测试通过，服务正常" else "ADB 测试失败",
                                         fontWeight = FontWeight.Bold,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = if (success) Color(0xFF81C784) else Color(0xFFE57373)
+                                        style = FluentTheme.typography.body,
+                                        color = if (success) FluentTheme.colors.system.success else FluentTheme.colors.system.critical
                                     )
                                 }
                                 Spacer(Modifier.height(4.dp))
@@ -272,22 +282,22 @@ fun SettingsDialog(
                                     text = msg,
                                     fontFamily = FontFamily.Monospace,
                                     fontSize = 12.sp,
-                                    color = Color(0xFFE0E0E0)
+                                    color = FluentTheme.colors.text.text.primary
                                 )
                             }
                         }
                     }
 
                     Spacer(Modifier.height(24.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    HorizontalDivider(color = FluentTheme.colors.stroke.divider.default.copy(alpha = 0.5f))
                     Spacer(Modifier.height(16.dp))
 
                     // ── General Preferences ────────────────────────────────
                     Text(
                         text = "通用与导出偏好",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = FluentTheme.typography.bodyStrong,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = FluentTheme.colors.text.accent.primary
                     )
                     Spacer(Modifier.height(12.dp))
 
@@ -316,7 +326,7 @@ fun SettingsDialog(
                                 }
                             }
                         ) {
-                            Icon(Icons.Outlined.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Regular.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("更改...")
                         }
@@ -328,17 +338,17 @@ fun SettingsDialog(
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(FluentTheme.shapes.control)
                             .clickable { showHiddenFiles = !showHiddenFiles },
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+                        color = FluentTheme.colors.subtleFill.secondary
                     ) {
                         Row(
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text("显示隐藏文件", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                                Text("列出以点 (.) 开头的隐藏文件与文件夹", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("显示隐藏文件", style = FluentTheme.typography.body, fontWeight = FontWeight.Medium)
+                                Text("列出以点 (.) 开头的隐藏文件与文件夹", style = FluentTheme.typography.caption, color = FluentTheme.colors.text.text.secondary)
                             }
                             Switch(
                                 checked = showHiddenFiles,
@@ -348,20 +358,20 @@ fun SettingsDialog(
                     }
 
                     Spacer(Modifier.height(24.dp))
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                    HorizontalDivider(color = FluentTheme.colors.stroke.divider.default.copy(alpha = 0.5f))
                     Spacer(Modifier.height(16.dp))
 
                     Text(
                         text = "Scrcpy 投屏配置",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = FluentTheme.typography.bodyStrong,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = FluentTheme.colors.text.accent.primary
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = "留空自定义路径时，首次投屏会自动下载官方最新版本。",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = FluentTheme.typography.caption,
+                        color = FluentTheme.colors.text.text.secondary
                     )
                     Spacer(Modifier.height(12.dp))
 
@@ -434,7 +444,7 @@ fun SettingsDialog(
                                 }
                             }
                         ) {
-                            Icon(Icons.Outlined.FolderOpen, contentDescription = null)
+                            Icon(Icons.Regular.FolderOpen, contentDescription = null)
                             Spacer(Modifier.width(6.dp))
                             Text("浏览")
                         }
@@ -470,7 +480,7 @@ fun SettingsDialog(
                         if (isUpdatingScrcpy) {
                             CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                         } else {
-                            Icon(Icons.Outlined.CloudDownload, contentDescription = null, Modifier.size(18.dp))
+                            Icon(Icons.Regular.CloudArrowDown, contentDescription = null, Modifier.size(18.dp))
                         }
                         Spacer(Modifier.width(8.dp))
                         Text("重新下载 scrcpy（强制检查）")
@@ -479,16 +489,16 @@ fun SettingsDialog(
                         Spacer(Modifier.height(8.dp))
                         Text(
                             status,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = FluentTheme.typography.caption,
                             color = if (status.startsWith("更新失败")) {
-                                MaterialTheme.colorScheme.error
-                            } else MaterialTheme.colorScheme.onSurfaceVariant
+                                FluentTheme.colors.system.critical
+                            } else FluentTheme.colors.text.text.secondary
                         )
                     }
                 }
 
                 Spacer(Modifier.height(16.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                HorizontalDivider(color = FluentTheme.colors.stroke.divider.default.copy(alpha = 0.5f))
                 Spacer(Modifier.height(16.dp))
 
                 // Footer Buttons
@@ -513,7 +523,7 @@ fun SettingsDialog(
                             testResult = null
                         }
                     ) {
-                        Icon(Icons.Outlined.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Regular.ArrowSync, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text("恢复默认")
                     }
@@ -538,7 +548,7 @@ fun SettingsDialog(
                                 onDismiss()
                             }
                         ) {
-                            Icon(Icons.Outlined.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Regular.Save, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(6.dp))
                             Text("保存设置")
                         }
@@ -558,15 +568,15 @@ private fun ScrcpySettingSwitch(
 ) {
     Surface(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(FluentTheme.shapes.control)
             .clickable { onCheckedChange(!checked) },
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        color = FluentTheme.colors.subtleFill.secondary
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(title, style = MaterialTheme.typography.bodySmall, modifier = Modifier.weight(1f))
+            Text(title, style = FluentTheme.typography.caption, modifier = Modifier.weight(1f))
             Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
     }

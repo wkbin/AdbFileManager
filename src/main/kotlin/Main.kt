@@ -1,3 +1,7 @@
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import view.fluent.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -6,9 +10,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -124,7 +125,7 @@ private fun launchApplication(adbStore: AdbStore, koin: Koin) = application {
                     Box(
                         modifier = Modifier
                             .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.surface),
+                            .background(FluentTheme.colors.background.solid.tertiary),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(
@@ -133,13 +134,13 @@ private fun launchApplication(adbStore: AdbStore, koin: Koin) = application {
                         ) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(44.dp),
-                                color = MaterialTheme.colorScheme.primary
+                                color = FluentTheme.colors.text.accent.primary
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
                                 text = "正在准备 ADB 运行环境…",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                style = FluentTheme.typography.body,
+                                color = FluentTheme.colors.text.text.secondary
                             )
                         }
                     }

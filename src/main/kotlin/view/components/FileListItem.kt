@@ -1,5 +1,25 @@
 package view.components
 
+import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.getValue
+
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.ArrowDownload
+import io.github.composefluent.icons.regular.Copy
+import io.github.composefluent.icons.regular.Delete
+import io.github.composefluent.icons.regular.Edit
+import io.github.composefluent.icons.regular.FolderArrowRight
+import io.github.composefluent.icons.regular.LockClosed
+import io.github.composefluent.icons.regular.MoreVertical
+import io.github.composefluent.icons.regular.Play
+import io.github.composefluent.icons.regular.ReOrderDotsVertical
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -17,34 +37,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
-import androidx.compose.material.icons.outlined.ContentCopy
-import androidx.compose.material.icons.outlined.DriveFileMove
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.DragIndicator
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -115,7 +111,7 @@ fun FileListItem(
     moveEnabled: Boolean = true,
     showDragHandle: Boolean = false,
     dragHandleModifier: Modifier = Modifier,
-    copyIcon: ImageVector = Icons.Outlined.ContentCopy,
+    copyIcon: ImageVector = Icons.Regular.Copy,
     modifier: Modifier = Modifier
 ) {
     // 状态
@@ -125,14 +121,14 @@ fun FileListItem(
     val strings by StringsManager.strings.collectAsState()
 
     val backgroundColor = when {
-        isSelected -> MaterialTheme.colorScheme.primaryContainer
-        isHighlighted -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-        isHovered -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        else -> MaterialTheme.colorScheme.surface
+        isSelected -> FluentTheme.colors.fillAccent.default.copy(alpha = 0.12f)
+        isHighlighted -> FluentTheme.colors.fillAccent.default.copy(alpha = 0.08f)
+        isHovered -> FluentTheme.colors.subtleFill.secondary
+        else -> FluentTheme.colors.background.solid.tertiary
     }
 
     val border = if (isHighlighted && !isSelected) {
-        androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary)
+        androidx.compose.foundation.BorderStroke(1.5.dp, FluentTheme.colors.text.accent.primary)
     } else null
 
     val interactionSource = remember { MutableInteractionSource() }
@@ -165,13 +161,13 @@ fun FileListItem(
         colors = CardDefaults.cardColors(
             containerColor = backgroundColor
         ),
-        shape = RoundedCornerShape(12.dp)
+        shape = FluentTheme.shapes.control
     ) {
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(if (compact) 10.dp else 16.dp),
+                .padding(horizontal = if (compact) 8.dp else 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (selectionMode) {
@@ -185,7 +181,7 @@ fun FileListItem(
             // 文件图标容器
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(32.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .padding(4.dp),
                 contentAlignment = Alignment.Center
@@ -206,10 +202,10 @@ fun FileListItem(
                 // 文件名，如果是链接，显示链接信息
                 Text(
                     text = file.link?.let { "${file.fileName} → $it" } ?: file.fileName,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = FluentTheme.typography.bodyStrong,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = if (file.link != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                    color = if (file.link != null) FluentTheme.colors.text.accent.primary else FluentTheme.colors.text.text.primary
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -223,12 +219,12 @@ fun FileListItem(
                         Surface(
                             modifier = Modifier.padding(end = 8.dp),
                             shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                            color = FluentTheme.colors.text.accent.primary.copy(alpha = 0.1f)
                         ) {
                             Text(
                                 text = if (file.link != null) strings.fileLinkDirectory else strings.fileDirectory,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
+                                style = FluentTheme.typography.caption,
+                                color = FluentTheme.colors.text.accent.primary,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -236,12 +232,12 @@ fun FileListItem(
                         Surface(
                             modifier = Modifier.padding(end = 8.dp),
                             shape = RoundedCornerShape(4.dp),
-                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
+                            color = FluentTheme.colors.text.accent.secondary.copy(alpha = 0.1f)
                         ) {
                             Text(
                                 text = strings.fileLink,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.secondary,
+                                style = FluentTheme.typography.caption,
+                                color = FluentTheme.colors.text.accent.secondary,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -251,12 +247,12 @@ fun FileListItem(
                     if (!compact) Surface(
                         modifier = Modifier.padding(end = 8.dp),
                         shape = RoundedCornerShape(4.dp),
-                        color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
+                        color = FluentTheme.colors.text.accent.primary.copy(alpha = 0.1f)
                     ) {
                         Text(
                             text = file.permissions,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.tertiary,
+                            style = FluentTheme.typography.caption,
+                            color = FluentTheme.colors.text.accent.primary,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -264,8 +260,8 @@ fun FileListItem(
                     // 文件大小
                     Text(
                         text = file.size,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = FluentTheme.typography.body,
+                        color = FluentTheme.colors.text.text.secondary,
                         modifier = Modifier.alpha(0.8f)
                     )
 
@@ -275,14 +271,14 @@ fun FileListItem(
                             .padding(horizontal = 6.dp)
                             .size(4.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f))
+                            .background(FluentTheme.colors.text.text.secondary.copy(alpha = 0.3f))
                     )
 
                     // 修改日期
                     Text(
                         text = file.date,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = FluentTheme.typography.body,
+                        color = FluentTheme.colors.text.text.secondary,
                         modifier = Modifier.alpha(0.8f)
                     )
                 }
@@ -291,7 +287,7 @@ fun FileListItem(
             // 操作按钮
             Row(
                 modifier = Modifier
-                    .height(50.dp)
+                    .height(32.dp)
                     .alpha(if (!selectionMode && isHovered) 1f else 0f),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
@@ -300,14 +296,14 @@ fun FileListItem(
                 if (!selectionMode && showDragHandle) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(32.dp)
                             .then(dragHandleModifier),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Outlined.DragIndicator,
+                            imageVector = Icons.Regular.ReOrderDotsVertical,
                             contentDescription = strings.fileDragToCopy,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = FluentTheme.colors.text.text.secondary
                         )
                     }
                 }
@@ -319,9 +315,9 @@ fun FileListItem(
                         enabled = isHovered
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.Edit,
+                            imageVector = Icons.Regular.Edit,
                             contentDescription = strings.fileEdit,
-                            tint = MaterialTheme.colorScheme.tertiary
+                            tint = FluentTheme.colors.text.accent.primary
                         )
                     }
                 }
@@ -332,9 +328,9 @@ fun FileListItem(
                     enabled = isHovered
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Edit,
+                        imageVector = Icons.Regular.Edit,
                         contentDescription = strings.fileRename,
-                        tint = MaterialTheme.colorScheme.tertiary
+                        tint = FluentTheme.colors.text.accent.primary
                     )
                 }
 
@@ -346,9 +342,9 @@ fun FileListItem(
                         enabled = isHovered
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.PlayArrow,
+                            imageVector = Icons.Regular.Play,
                             contentDescription = strings.fileInstallApk,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = FluentTheme.colors.text.accent.primary
                         )
                     }
                 }
@@ -359,9 +355,9 @@ fun FileListItem(
                     enabled = isHovered
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Lock,
+                        imageVector = Icons.Regular.LockClosed,
                         contentDescription = strings.changePermissions,
-                        tint = MaterialTheme.colorScheme.secondary
+                        tint = FluentTheme.colors.text.accent.secondary
                     )
                 }
 
@@ -373,16 +369,16 @@ fun FileListItem(
                     Icon(
                         imageVector = copyIcon,
                         contentDescription = strings.fileCopy,
-                        tint = MaterialTheme.colorScheme.secondary
+                        tint = FluentTheme.colors.text.accent.secondary
                     )
                 }
 
                 if (!selectionMode && compact && allowAdministrativeActions) Box {
                     IconButton(onClick = { showMoreMenu = true }, enabled = isHovered) {
                         Icon(
-                            imageVector = Icons.Outlined.MoreVert,
+                            imageVector = Icons.Regular.MoreVertical,
                             contentDescription = "更多操作",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = FluentTheme.colors.text.text.secondary
                         )
                     }
                     DropdownMenu(
@@ -422,9 +418,9 @@ fun FileListItem(
                     enabled = isHovered && moveEnabled
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Outlined.DriveFileMove,
+                        imageVector = Icons.Regular.FolderArrowRight,
                         contentDescription = strings.fileMove,
-                        tint = MaterialTheme.colorScheme.secondary
+                        tint = FluentTheme.colors.text.accent.secondary
                     )
                 }
 
@@ -434,9 +430,9 @@ fun FileListItem(
                     enabled = isHovered
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Download,
+                        imageVector = Icons.Regular.ArrowDownload,
                         contentDescription = strings.fileDownload,
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = FluentTheme.colors.text.accent.primary
                     )
                 }
 
@@ -446,9 +442,9 @@ fun FileListItem(
                     enabled = isHovered
                 ) {
                     Icon(
-                        imageVector = Icons.Rounded.Delete,
+                        imageVector = Icons.Regular.Delete,
                         contentDescription = strings.fileDelete,
-                        tint = MaterialTheme.colorScheme.error
+                        tint = FluentTheme.colors.system.critical
                     )
                 }
             }

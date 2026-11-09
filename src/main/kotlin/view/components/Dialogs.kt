@@ -1,5 +1,19 @@
 package view.components
 
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.ArrowDownload
+import io.github.composefluent.icons.regular.ArrowSync
+import io.github.composefluent.icons.regular.Code
+import io.github.composefluent.icons.regular.Dismiss
+import io.github.composefluent.icons.regular.Edit
+import io.github.composefluent.icons.regular.FolderOpen
+import io.github.composefluent.icons.regular.Phone
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -7,11 +21,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,9 +77,8 @@ fun CreateDirectoryDialog(
                 .fillMaxWidth(0.6f)
                 .wrapContentHeight()
                 .padding(16.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
+            shape = FluentTheme.shapes.overlay,
+            color = FluentTheme.colors.background.solid.tertiary
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -82,25 +90,25 @@ fun CreateDirectoryDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.FolderOpen,
+                        imageVector = Icons.Regular.FolderOpen,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = FluentTheme.colors.text.accent.primary,
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
                         text = strings.fileNewFolder,
-                        style = MaterialTheme.typography.headlineSmall.copy(
+                        style = FluentTheme.typography.subtitle.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = FluentTheme.colors.text.text.primary
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     IconButton(onClick = onDismissRequest) {
                         Icon(
-                            imageVector = Icons.Outlined.Close,
+                            imageVector = Icons.Regular.Dismiss,
                             contentDescription = strings.editorClose,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = FluentTheme.colors.text.text.secondary
                         )
                     }
                 }
@@ -117,7 +125,7 @@ fun CreateDirectoryDialog(
                     placeholder = {
                         Text(
                             strings.fileFolderNameInput,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                            color = FluentTheme.colors.text.text.secondary.copy(alpha = 0.6f)
                         )
                     },
                     singleLine = true,
@@ -146,13 +154,13 @@ fun CreateDirectoryDialog(
                         if (dirName.isNotEmpty() && !isInputValid) {
                             Text(
                                 strings.fileFolderNameErrorInvalid,
-                                color = MaterialTheme.colorScheme.error
+                                color = FluentTheme.colors.system.critical
                             )
                         }
                     },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Outlined.Create,
+                            imageVector = Icons.Regular.Edit,
                             contentDescription = null
                         )
                     }
@@ -168,7 +176,7 @@ fun CreateDirectoryDialog(
                     TextButton(
                         onClick = onDismissRequest,
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            contentColor = FluentTheme.colors.text.text.secondary
                         )
                     ) {
                         Text(strings.fileCancel)
@@ -183,7 +191,7 @@ fun CreateDirectoryDialog(
                         },
                         enabled = isInputValid,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
+                            containerColor = FluentTheme.colors.text.accent.primary
                         )
                     ) {
                         Text(strings.fileCreate)
@@ -237,7 +245,7 @@ fun CreateFileDialog(
             title = {
                 Text(
                     text = strings.fileNewFile,
-                    style = MaterialTheme.typography.headlineSmall
+                    style = FluentTheme.typography.subtitle
                 )
             },
             text = {
@@ -261,7 +269,7 @@ fun CreateFileDialog(
                             if (isError) {
                                 Text(
                                     text = errorMessage,
-                                    color = MaterialTheme.colorScheme.error
+                                    color = FluentTheme.colors.system.critical
                                 )
                             }
                         },
@@ -324,10 +332,8 @@ fun AboutDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 8.dp,
-            shadowElevation = 8.dp
+            shape = FluentTheme.shapes.overlay,
+            color = FluentTheme.colors.background.solid.tertiary
         ) {
             Column(
                 modifier = Modifier
@@ -337,10 +343,10 @@ fun AboutDialog(
             ) {
                 // 应用图标
                 Icon(
-                    imageVector = Icons.Filled.Android,
+                    imageVector = Icons.Regular.Phone,
                     contentDescription = null,
                     modifier = Modifier.size(64.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = FluentTheme.colors.text.accent.primary
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -348,7 +354,7 @@ fun AboutDialog(
                 // 应用名称
                 Text(
                     text = strings.appTitle,
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = FluentTheme.typography.title,
                     fontWeight = FontWeight.Bold
                 )
 
@@ -357,8 +363,8 @@ fun AboutDialog(
                 // 版本信息
                 Text(
                     text = strings.appVersion(Constants.VERSION),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = FluentTheme.typography.body,
+                    color = FluentTheme.colors.text.text.secondary
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -366,9 +372,9 @@ fun AboutDialog(
                 // 描述
                 Text(
                     text = strings.aboutDescription,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = FluentTheme.typography.body,
                     textAlign = TextAlign.Center,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = FluentTheme.colors.text.text.secondary
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -388,13 +394,13 @@ fun AboutDialog(
                             }
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            containerColor = FluentTheme.colors.subtleFill.secondary,
+                            contentColor = FluentTheme.colors.text.accent.primary
                         ),
                         modifier = Modifier.width(200.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Code,
+                            imageVector = Icons.Regular.Code,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )
@@ -422,8 +428,8 @@ fun AboutDialog(
                         },
                         enabled = !isCheckingUpdate,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            containerColor = FluentTheme.colors.subtleFill.secondary,
+                            contentColor = FluentTheme.colors.text.accent.primary
                         ),
                         modifier = Modifier.width(200.dp)
                     ) {
@@ -431,13 +437,13 @@ fun AboutDialog(
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                color = FluentTheme.colors.text.accent.primary
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(strings.aboutChecking)
                         } else {
                             Icon(
-                                imageVector = Icons.Filled.Update,
+                                imageVector = Icons.Regular.ArrowSync,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -453,7 +459,7 @@ fun AboutDialog(
                 TextButton(
                     onClick = onDismiss,
                     colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.primary
+                        contentColor = FluentTheme.colors.text.accent.primary
                     )
                 ) {
                     Text(strings.aboutClose)
@@ -490,10 +496,8 @@ fun UpdateDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 8.dp,
-            shadowElevation = 8.dp
+            shape = FluentTheme.shapes.overlay,
+            color = FluentTheme.colors.background.solid.tertiary
         ) {
             Column(
                 modifier = Modifier
@@ -503,10 +507,10 @@ fun UpdateDialog(
             ) {
                 // 更新图标
                 Icon(
-                    imageVector = Icons.Filled.Update,
+                    imageVector = Icons.Regular.ArrowSync,
                     contentDescription = null,
                     modifier = Modifier.size(48.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = FluentTheme.colors.text.accent.primary
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -514,7 +518,7 @@ fun UpdateDialog(
                 // 标题
                 Text(
                     text = strings.appNewVersion,
-                    style = MaterialTheme.typography.headlineMedium,
+                    style = FluentTheme.typography.title,
                     fontWeight = FontWeight.Bold
                 )
 
@@ -523,8 +527,8 @@ fun UpdateDialog(
                 // 版本信息
                 Text(
                     text = strings.appNewVersionDetail(updateInfo.version),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = FluentTheme.typography.body,
+                    color = FluentTheme.colors.text.text.secondary
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -532,8 +536,8 @@ fun UpdateDialog(
                 // 更新说明
                 Text(
                     text = strings.appUpdateContent,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    style = FluentTheme.typography.bodyStrong,
+                    color = FluentTheme.colors.text.accent.primary
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -545,7 +549,7 @@ fun UpdateDialog(
                         .weight(1f, false)
                         .heightIn(max = 200.dp),
                     shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    color = FluentTheme.colors.subtleFill.secondary
                 ) {
                     Column(
                         modifier = Modifier
@@ -554,8 +558,8 @@ fun UpdateDialog(
                     ) {
                         Text(
                             text = updateInfo.releaseNotes,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = FluentTheme.typography.body,
+                            color = FluentTheme.colors.text.text.secondary
                         )
                     }
                 }
@@ -569,15 +573,12 @@ fun UpdateDialog(
                 ) {
                     Checkbox(
                         checked = neverShowUpdates,
-                        onCheckedChange = { neverShowUpdates = it },
-                        colors = CheckboxDefaults.colors(
-                            checkedColor = MaterialTheme.colorScheme.primary
-                        )
+                        onCheckedChange = { neverShowUpdates = it }
                     )
                     Text(
                         text = strings.appDontPromptAgain,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = FluentTheme.typography.body,
+                        color = FluentTheme.colors.text.text.secondary
                     )
                 }
 
@@ -601,7 +602,7 @@ fun UpdateDialog(
                             onDismiss()
                         },
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            contentColor = FluentTheme.colors.text.text.secondary
                         )
                     ) {
                         Text(strings.appLater)
@@ -622,11 +623,11 @@ fun UpdateDialog(
                             onDismiss()
                         },
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
+                            containerColor = FluentTheme.colors.text.accent.primary
                         )
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Download,
+                            imageVector = Icons.Regular.ArrowDownload,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp)
                         )

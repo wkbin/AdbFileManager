@@ -1,11 +1,16 @@
 package view.components
 
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.UsbPlug
+import io.github.composefluent.icons.regular.Wifi1
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,7 +39,7 @@ fun DeviceConnectionWizard(
 
     Surface(
         modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background
+        color = FluentTheme.colors.background.mica.base
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
@@ -57,7 +62,7 @@ fun DeviceConnectionWizard(
                 painter = painterResource(Res.drawable.ic_adb_disconnect),
                 contentDescription = null,
                 modifier = Modifier.size(150.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = iconAlpha)
+                tint = FluentTheme.colors.text.accent.primary.copy(alpha = iconAlpha)
             )
 
             Spacer(modifier = Modifier.height(32.dp))
@@ -65,9 +70,9 @@ fun DeviceConnectionWizard(
             // 标题和描述
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)
+                    containerColor = FluentTheme.colors.system.criticalBackground.copy(alpha = 0.8f)
                 ),
-                shape = RoundedCornerShape(16.dp),
+                shape = FluentTheme.shapes.overlay,
                 modifier = Modifier
                     .padding(horizontal = 32.dp)
                     .widthIn(max = 400.dp)
@@ -78,8 +83,8 @@ fun DeviceConnectionWizard(
                 ) {
                     Text(
                         text = strings.deviceNotConnected,
-                        style = MaterialTheme.typography.headlineMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = FluentTheme.typography.title,
+                        color = FluentTheme.colors.system.critical,
                         textAlign = TextAlign.Center
                     )
 
@@ -87,8 +92,8 @@ fun DeviceConnectionWizard(
 
                     Text(
                         text = strings.deviceSelectMethod,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.8f),
+                        style = FluentTheme.typography.body,
+                        color = FluentTheme.colors.system.critical.copy(alpha = 0.8f),
                         textAlign = TextAlign.Center
                     )
 
@@ -103,12 +108,12 @@ fun DeviceConnectionWizard(
                         Button(
                             onClick = { showWizard = true },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
+                                containerColor = FluentTheme.colors.system.critical
                             ),
                             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Usb,
+                                imageVector = Icons.Regular.UsbPlug,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp)
                             )
@@ -120,12 +125,12 @@ fun DeviceConnectionWizard(
                         Button(
                             onClick = { showWirelessDialog = true },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error
+                                containerColor = FluentTheme.colors.system.critical
                             ),
                             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 12.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.Wifi,
+                                imageVector = Icons.Regular.Wifi1,
                                 contentDescription = null,
                                 modifier = Modifier.size(20.dp)
                             )

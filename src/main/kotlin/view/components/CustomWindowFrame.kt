@@ -1,22 +1,25 @@
 package view.components
 
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.Checkmark
+import io.github.composefluent.icons.regular.Code
+import io.github.composefluent.icons.regular.DarkTheme
+import io.github.composefluent.icons.regular.Dismiss
+import io.github.composefluent.icons.regular.Phone
+import io.github.composefluent.icons.regular.PlugConnected
+import io.github.composefluent.icons.regular.Settings
+import io.github.composefluent.icons.regular.Subtract
+import io.github.composefluent.icons.regular.Translate
+import io.github.composefluent.icons.regular.WeatherMoon
+import io.github.composefluent.icons.regular.WeatherSunny
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.PhoneAndroid
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Minimize
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.outlined.Brightness6
-import androidx.compose.material.icons.outlined.DarkMode
-import androidx.compose.material.icons.outlined.Language
-import androidx.compose.material.icons.outlined.LightMode
-import androidx.compose.material.icons.outlined.Smartphone
-import androidx.compose.material.icons.outlined.Terminal
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.ElectricalServices
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,9 +46,6 @@ fun FrameWindowScope.CustomWindowFrame(
     onCloseRequest: () -> Unit,
     content: @Composable () -> Unit
 ) {
-    // 检测当前是否为暗色模式
-    val isDarkMode = ThemeState.isDark()
-
     // 关于对话框状态
     var showAboutDialog by remember { mutableStateOf(false) }
     val strings by StringsManager.strings.collectAsState()
@@ -53,18 +53,14 @@ fun FrameWindowScope.CustomWindowFrame(
     Surface(
         modifier = Modifier
             .fillMaxSize(),
-        shadowElevation = 4.dp,
-        color = MaterialTheme.colorScheme.background
+
+        color = FluentTheme.colors.background.mica.base
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             // 自定义标题栏 - 可拖动
             Surface(
-                color = if (isDarkMode)
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.95f)
-                else
-                    MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp,
-                shadowElevation = 4.dp,
+                color = FluentTheme.colors.background.mica.base,
+
                 modifier = Modifier.fillMaxWidth()
             ) {
                 // 可拖动区域
@@ -77,9 +73,9 @@ fun FrameWindowScope.CustomWindowFrame(
                     ) {
                         // 应用图标
                         Icon(
-                            imageVector = Icons.Filled.PhoneAndroid,
+                            imageVector = Icons.Regular.Phone,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = FluentTheme.colors.text.accent.primary,
                             modifier = Modifier.size(24.dp)
                         )
 
@@ -88,10 +84,10 @@ fun FrameWindowScope.CustomWindowFrame(
                         // 应用标题
                         Text(
                             text = "$title - ${currentDevice?.deviceId ?: strings.deviceNotConnected}",
-                            style = MaterialTheme.typography.titleMedium.copy(
+                            style = FluentTheme.typography.bodyStrong.copy(
                                 fontWeight = FontWeight.SemiBold
                             ),
-                            color = MaterialTheme.colorScheme.onSurface
+                            color = FluentTheme.colors.text.text.primary
                         )
 
                         Spacer(modifier = Modifier.weight(1f))
@@ -112,9 +108,9 @@ fun FrameWindowScope.CustomWindowFrame(
                             modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Terminal,
+                                imageVector = Icons.Regular.Code,
                                 contentDescription = strings.terminalOpen,
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = FluentTheme.colors.text.accent.primary
                             )
                         }
 
@@ -125,9 +121,9 @@ fun FrameWindowScope.CustomWindowFrame(
                             modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Outlined.Settings,
+                                imageVector = Icons.Regular.Settings,
                                 contentDescription = "设置",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = FluentTheme.colors.text.accent.primary
                             )
                         }
 
@@ -138,9 +134,9 @@ fun FrameWindowScope.CustomWindowFrame(
                             modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Code,
+                                imageVector = Icons.Regular.Code,
                                 contentDescription = strings.aboutTitle,
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = FluentTheme.colors.text.accent.primary
                             )
                         }
 
@@ -156,9 +152,9 @@ fun FrameWindowScope.CustomWindowFrame(
                                 modifier = Modifier.size(40.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Minimize,
+                                    imageVector = Icons.Regular.Subtract,
                                     contentDescription = strings.windowMinimize,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    tint = FluentTheme.colors.text.text.secondary
                                 )
                             }
 
@@ -167,16 +163,16 @@ fun FrameWindowScope.CustomWindowFrame(
                             // 关闭按钮
                             Surface(
                                 color = Color.Transparent,
-                                shape = MaterialTheme.shapes.small,
+                                shape = FluentTheme.shapes.control,
                                 modifier = Modifier.size(40.dp)
                             ) {
                                 IconButton(
                                     onClick = onCloseRequest
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Outlined.Close,
+                                        imageVector = Icons.Regular.Dismiss,
                                         contentDescription = strings.windowClose,
-                                        tint = MaterialTheme.colorScheme.error
+                                        tint = FluentTheme.colors.system.critical
                                     )
                                 }
                             }
@@ -216,9 +212,9 @@ private fun ThemeMenuView() {
 
     // 确定主题图标
     val themeIcon = when {
-        isDarkValue == null -> Icons.Outlined.Brightness6 // 跟随系统
-        isDark -> Icons.Outlined.DarkMode // 暗色模式
-        else -> Icons.Outlined.LightMode // 亮色模式
+        isDarkValue == null -> Icons.Regular.DarkTheme // 跟随系统
+        isDark -> Icons.Regular.WeatherMoon // 暗色模式
+        else -> Icons.Regular.WeatherSunny // 亮色模式
     }
     Box {
         IconButton(
@@ -227,7 +223,7 @@ private fun ThemeMenuView() {
             Icon(
                 imageVector = themeIcon,
                 contentDescription = strings.themeToggle,
-                tint = MaterialTheme.colorScheme.primary
+                tint = FluentTheme.colors.text.accent.primary
             )
         }
 
@@ -245,16 +241,16 @@ private fun ThemeMenuView() {
                 },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Outlined.Brightness6,
+                        imageVector = Icons.Regular.DarkTheme,
                         contentDescription = null
                     )
                 },
                 trailingIcon = if (isDarkValue == null) {
                     {
                         Icon(
-                            imageVector = Icons.Rounded.Check,
+                            imageVector = Icons.Regular.Checkmark,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = FluentTheme.colors.text.accent.primary
                         )
                     }
                 } else null
@@ -269,16 +265,16 @@ private fun ThemeMenuView() {
                 },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Outlined.LightMode,
+                        imageVector = Icons.Regular.WeatherSunny,
                         contentDescription = null
                     )
                 },
                 trailingIcon = if (isDarkValue == false) {
                     {
                         Icon(
-                            imageVector = Icons.Rounded.Check,
+                            imageVector = Icons.Regular.Checkmark,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = FluentTheme.colors.text.accent.primary
                         )
                     }
                 } else null
@@ -293,16 +289,16 @@ private fun ThemeMenuView() {
                 },
                 leadingIcon = {
                     Icon(
-                        imageVector = Icons.Outlined.DarkMode,
+                        imageVector = Icons.Regular.WeatherMoon,
                         contentDescription = null
                     )
                 },
                 trailingIcon = if (isDarkValue == true) {
                     {
                         Icon(
-                            imageVector = Icons.Rounded.Check,
+                            imageVector = Icons.Regular.Checkmark,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = FluentTheme.colors.text.accent.primary
                         )
                     }
                 } else null
@@ -321,9 +317,9 @@ private fun LanguageSwitchButton() {
             onClick = { showLanguageMenu = true }
         ) {
             Icon(
-                imageVector = Icons.Outlined.Language,
+                imageVector = Icons.Regular.Translate,
                 contentDescription = strings.languageToggle,
-                tint = MaterialTheme.colorScheme.primary
+                tint = FluentTheme.colors.text.accent.primary
             )
         }
 
@@ -340,9 +336,9 @@ private fun LanguageSwitchButton() {
                 trailingIcon = if (currentLanguage == Language.ZH) {
                     {
                         Icon(
-                            imageVector = Icons.Rounded.Check,
+                            imageVector = Icons.Regular.Checkmark,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = FluentTheme.colors.text.accent.primary
                         )
                     }
                 } else null
@@ -356,9 +352,9 @@ private fun LanguageSwitchButton() {
                 trailingIcon = if (currentLanguage == Language.EN) {
                     {
                         Icon(
-                            imageVector = Icons.Rounded.Check,
+                            imageVector = Icons.Regular.Checkmark,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = FluentTheme.colors.text.accent.primary
                         )
                     }
                 } else null
@@ -380,9 +376,9 @@ private fun DeviceMenuView(
             onClick = { showDevicesMenu = true }
         ) {
             Icon(
-                imageVector = Icons.Rounded.ElectricalServices,
+                imageVector = Icons.Regular.PlugConnected,
                 contentDescription = strings.deviceToggle,
-                tint = MaterialTheme.colorScheme.primary
+                tint = FluentTheme.colors.text.accent.primary
             )
         }
         DropdownMenu(
@@ -398,16 +394,16 @@ private fun DeviceMenuView(
                     },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Outlined.Smartphone,
+                            imageVector = Icons.Regular.Phone,
                             contentDescription = null
                         )
                     },
                     trailingIcon = if (device.deviceId == currentDevice?.deviceId) {
                         {
                             Icon(
-                                imageVector = Icons.Rounded.Check,
+                                imageVector = Icons.Regular.Checkmark,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = FluentTheme.colors.text.accent.primary
                             )
                         }
                     } else null

@@ -1,22 +1,32 @@
 package view.components
 
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.ArrowClockwise
+import io.github.composefluent.icons.regular.ArrowSync
+import io.github.composefluent.icons.regular.BatteryCharge
+import io.github.composefluent.icons.regular.Dismiss
+import io.github.composefluent.icons.regular.Flash
+import io.github.composefluent.icons.regular.Phone
+import io.github.composefluent.icons.regular.Power
+import io.github.composefluent.icons.regular.Storage
+import io.github.composefluent.icons.regular.Warning
+import io.github.composefluent.icons.regular.Wrench
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material.icons.rounded.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -49,9 +59,9 @@ fun DeviceInfoDialog(
             modifier = Modifier
                 .fillMaxWidth(0.82f)
                 .fillMaxHeight(0.88f),
-            shape = RoundedCornerShape(20.dp),
-            tonalElevation = 6.dp,
-            color = MaterialTheme.colorScheme.surface
+            shape = FluentTheme.shapes.overlay,
+
+            color = FluentTheme.colors.background.solid.tertiary
         ) {
             Column(
                 modifier = Modifier
@@ -64,40 +74,40 @@ fun DeviceInfoDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Outlined.PhoneAndroid,
+                        Icons.Regular.Phone,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = FluentTheme.colors.text.accent.primary,
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(Modifier.width(12.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = "设备状态与信息仪表盘",
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = FluentTheme.typography.subtitle,
                             fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = if (deviceInfo != null && deviceInfo.model.isNotEmpty())
                                 "${deviceInfo.manufacturer} ${deviceInfo.model} (${deviceInfo.deviceName})"
                             else "Android 设备",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = FluentTheme.typography.caption,
+                            color = FluentTheme.colors.text.text.secondary
                         )
                     }
                     IconButton(onClick = onRefresh, enabled = !isLoading) {
                         if (isLoading) {
                             CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                         } else {
-                            Icon(Icons.Outlined.Refresh, contentDescription = "刷新")
+                            Icon(Icons.Regular.ArrowClockwise, contentDescription = "刷新")
                         }
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Outlined.Close, contentDescription = "关闭")
+                        Icon(Icons.Regular.Dismiss, contentDescription = "关闭")
                     }
                 }
 
                 Spacer(Modifier.height(14.dp))
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+                HorizontalDivider(color = FluentTheme.colors.stroke.divider.default.copy(alpha = 0.5f))
                 Spacer(Modifier.height(14.dp))
 
                 if (isLoading && deviceInfo == null) {
@@ -105,7 +115,7 @@ fun DeviceInfoDialog(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             CircularProgressIndicator()
                             Spacer(Modifier.height(12.dp))
-                            Text("正在读取设备硬件与状态信息...", style = MaterialTheme.typography.bodyMedium)
+                            Text("正在读取设备硬件与状态信息...", style = FluentTheme.typography.body)
                         }
                     }
                 } else if (deviceInfo != null) {
@@ -119,24 +129,24 @@ fun DeviceInfoDialog(
                         // 1. Basic Device Specs Card
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                            shape = FluentTheme.shapes.overlay,
+                            colors = CardDefaults.cardColors(containerColor = FluentTheme.colors.subtleFill.secondary)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Outlined.Smartphone, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Icon(Icons.Regular.Phone, contentDescription = null, tint = FluentTheme.colors.text.accent.primary)
                                     Spacer(Modifier.width(8.dp))
-                                    Text("系统与硬件规格", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text("系统与硬件规格", style = FluentTheme.typography.bodyStrong, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.weight(1f))
                                     Surface(
                                         shape = RoundedCornerShape(6.dp),
-                                        color = if (deviceInfo.isRooted) Color(0xFF2E7D32) else MaterialTheme.colorScheme.surfaceVariant
+                                        color = if (deviceInfo.isRooted) FluentTheme.colors.system.successBackground else FluentTheme.colors.subtleFill.secondary
                                     ) {
                                         Text(
                                             text = if (deviceInfo.isRooted) "已 Root" else "未 Root (标准)",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.SemiBold,
-                                            color = if (deviceInfo.isRooted) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = if (deviceInfo.isRooted) Color.White else FluentTheme.colors.text.text.secondary,
                                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
                                         )
                                     }
@@ -170,14 +180,14 @@ fun DeviceInfoDialog(
                         // 4. Quick Power Controls
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+                            shape = FluentTheme.shapes.overlay,
+                            colors = CardDefaults.cardColors(containerColor = FluentTheme.colors.subtleFill.secondary)
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Outlined.PowerSettingsNew, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                                    Icon(Icons.Regular.Power, contentDescription = null, tint = FluentTheme.colors.text.accent.primary)
                                     Spacer(Modifier.width(8.dp))
-                                    Text("电源与重启控制", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text("电源与重启控制", style = FluentTheme.typography.bodyStrong, fontWeight = FontWeight.Bold)
                                 }
                                 Spacer(Modifier.height(12.dp))
                                 Row(
@@ -188,7 +198,7 @@ fun DeviceInfoDialog(
                                         onClick = { confirmRebootMode = RebootMode.NORMAL },
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Icon(Icons.Outlined.RestartAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Regular.ArrowSync, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(6.dp))
                                         Text("常规重启")
                                     }
@@ -196,7 +206,7 @@ fun DeviceInfoDialog(
                                         onClick = { confirmRebootMode = RebootMode.RECOVERY },
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Icon(Icons.Outlined.Build, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Regular.Wrench, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(6.dp))
                                         Text("重启 Recovery")
                                     }
@@ -204,7 +214,7 @@ fun DeviceInfoDialog(
                                         onClick = { confirmRebootMode = RebootMode.BOOTLOADER },
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Icon(Icons.Outlined.FlashOn, contentDescription = null, modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Regular.Flash, contentDescription = null, modifier = Modifier.size(18.dp))
                                         Spacer(Modifier.width(6.dp))
                                         Text("重启 Bootloader")
                                     }
@@ -231,12 +241,12 @@ fun DeviceInfoDialog(
     confirmRebootMode?.let { mode ->
         AlertDialog(
             onDismissRequest = { confirmRebootMode = null },
-            icon = { Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+            icon = { Icon(Icons.Regular.Warning, contentDescription = null, tint = FluentTheme.colors.system.critical) },
             title = { Text("确认执行${mode.displayName}？") },
             text = { Text("重启设备将导致 ADB 连接断开。请确保已保存所有未完成的工作。") },
             confirmButton = {
                 Button(
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    colors = ButtonDefaults.buttonColors(containerColor = FluentTheme.colors.system.critical),
                     onClick = {
                         val selected = confirmRebootMode
                         confirmRebootMode = null
@@ -261,8 +271,8 @@ fun DeviceInfoDialog(
 @Composable
 private fun InfoItem(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier.padding(end = 8.dp)) {
-        Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+        Text(label, style = FluentTheme.typography.caption, color = FluentTheme.colors.text.text.secondary)
+        Text(value, style = FluentTheme.typography.body, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -270,23 +280,23 @@ private fun InfoItem(label: String, value: String, modifier: Modifier = Modifier
 private fun BatteryCard(battery: BatteryInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+        shape = FluentTheme.shapes.overlay,
+        colors = CardDefaults.cardColors(containerColor = FluentTheme.colors.subtleFill.secondary)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.BatteryChargingFull, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Regular.BatteryCharge, contentDescription = null, tint = FluentTheme.colors.text.accent.primary)
                 Spacer(Modifier.width(8.dp))
-                Text("电池状态与健康", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("电池状态与健康", style = FluentTheme.typography.bodyStrong, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 Text(
                     text = if (battery.level >= 0) "${battery.percentage}%" else "未知",
-                    style = MaterialTheme.typography.titleLarge,
+                    style = FluentTheme.typography.subtitle,
                     fontWeight = FontWeight.Bold,
                     color = when {
-                        battery.percentage > 50 -> Color(0xFF4CAF50)
-                        battery.percentage > 20 -> Color(0xFFFFA726)
-                        else -> Color(0xFFEF5350)
+                        battery.percentage > 50 -> FluentTheme.colors.system.success
+                        battery.percentage > 20 -> FluentTheme.colors.system.caution
+                        else -> FluentTheme.colors.system.critical
                     }
                 )
             }
@@ -297,9 +307,9 @@ private fun BatteryCard(battery: BatteryInfo) {
                     progress = { (battery.percentage / 100f).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
                     color = when {
-                        battery.percentage > 50 -> Color(0xFF4CAF50)
-                        battery.percentage > 20 -> Color(0xFFFFA726)
-                        else -> Color(0xFFEF5350)
+                        battery.percentage > 50 -> FluentTheme.colors.system.success
+                        battery.percentage > 20 -> FluentTheme.colors.system.caution
+                        else -> FluentTheme.colors.system.critical
                     }
                 )
             }
@@ -323,20 +333,20 @@ private fun BatteryCard(battery: BatteryInfo) {
 private fun StorageCard(storage: StorageInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f))
+        shape = FluentTheme.shapes.overlay,
+        colors = CardDefaults.cardColors(containerColor = FluentTheme.colors.subtleFill.secondary)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Storage, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Regular.Storage, contentDescription = null, tint = FluentTheme.colors.text.accent.primary)
                 Spacer(Modifier.width(8.dp))
-                Text("内部存储容量 (/data)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("内部存储容量 (/data)", style = FluentTheme.typography.bodyStrong, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.weight(1f))
                 Text(
                     text = "${(storage.usedPercent * 100).toInt()}% 已使用",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = FluentTheme.typography.body,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (storage.usedPercent > 0.9f) Color(0xFFEF5350) else MaterialTheme.colorScheme.primary
+                    color = if (storage.usedPercent > 0.9f) FluentTheme.colors.system.critical else FluentTheme.colors.text.accent.primary
                 )
             }
 
@@ -344,7 +354,7 @@ private fun StorageCard(storage: StorageInfo) {
             LinearProgressIndicator(
                 progress = { storage.usedPercent },
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
-                color = if (storage.usedPercent > 0.9f) Color(0xFFEF5350) else MaterialTheme.colorScheme.primary
+                color = if (storage.usedPercent > 0.9f) FluentTheme.colors.system.critical else FluentTheme.colors.text.accent.primary
             )
 
             Spacer(Modifier.height(12.dp))

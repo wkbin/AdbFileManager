@@ -10,6 +10,20 @@ import kotlin.test.assertTrue
 class AnsiTextParserTest {
 
     @Test
+    fun `light theme uses readable ANSI colors and resets to theme text`() {
+        val textColor = Color(0xFF202020)
+        val parsed = AnsiTextParser.parse(
+            "\u001B[34mblue\u001B[0mplain",
+            defaultColor = textColor,
+            darkTheme = false
+        )
+        assertEquals(Color(0xFF005A9E), parsed.spanStyles.first().item.color)
+        assertEquals(textColor, parsed.spanStyles.last().item.color)
+        val indexed = AnsiTextParser.parse("\u001B[38;5;4mblue", darkTheme = false)
+        assertEquals(Color(0xFF005A9E), indexed.spanStyles.first().item.color)
+    }
+
+    @Test
     fun `plain text without ANSI remains unchanged`() {
         val input = "Hello, world!"
         val annotated = AnsiTextParser.parse(input)

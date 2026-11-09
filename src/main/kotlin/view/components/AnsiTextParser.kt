@@ -32,6 +32,16 @@ object AnsiTextParser {
         97 to Color(0xFFFFFFFF)  // Bright White
     )
 
+    // Darker ANSI foregrounds keep colored output legible on a light Fluent surface.
+    private val LIGHT_FOREGROUND = listOf(
+        0xFF202020, 0xFFA4262C, 0xFF0F6B0F, 0xFF8A5700,
+        0xFF005A9E, 0xFF744DA9, 0xFF006C70, 0xFF595959,
+        0xFF666666, 0xFFC42B1C, 0xFF107C10, 0xFF986F0B,
+        0xFF0067C0, 0xFF8861B0, 0xFF008080, 0xFF767676
+    ).mapIndexed { index, color ->
+        (if (index < 8) 30 + index else 90 + index - 8) to Color(color)
+    }.toMap()
+
     private val ANSI_BACKGROUND = mapOf(
         40 to Color(0xFF0D1117), // Black
         41 to Color(0xFF5A1E1E), // Red
@@ -70,11 +80,12 @@ object AnsiTextParser {
     /**
      * Parses ANSI text containing SGR color and style sequences into a Compose AnnotatedString.
      */
-    fun parse(text: String, defaultColor: Color = DEFAULT_TEXT_COLOR): AnnotatedString {
+    fun parse(text: String, defaultColor: Color = DEFAULT_TEXT_COLOR, darkTheme: Boolean = true): AnnotatedString {
         if (!text.contains('\u001B') && !text.contains('\r')) {
             return AnnotatedString(text)
         }
 
+        val foregroundPalette = if (darkTheme) ANSI_FOREGROUND else LIGHT_FOREGROUND
         val normalized = text.replace("\r\n", "\n").replace("\r", "")
 
         return buildAnnotatedString {
@@ -165,14 +176,14 @@ object AnsiTextParser {
                             23 -> isItalic = false
                             24 -> isUnderline = false
                             29 -> isStrikethrough = false
-                            in 30..37, in 90..97 -> foregroundColor = ANSI_FOREGROUND[code]
+                            in 30..37, in 90..97 -> foregroundColor = foregroundPalette[code]
                             39 -> foregroundColor = null
                             in 40..47, in 100..107 -> backgroundColor = ANSI_BACKGROUND[code]
                             49 -> backgroundColor = null
                             38 -> {
                                 // Extended foreground color (256-color or 24-bit TrueColor)
                                 if (index + 2 < codes.size && codes[index + 1] == 5) {
-                                    foregroundColor = parse256Color(codes[index + 2])
+                                    foregroundColor = parse256Color(codes[index + 2], foregroundPalette)
                                     index += 2
                                 } else if (index + 4 < codes.size && codes[index + 1] == 2) {
                                     foregroundColor = Color(
@@ -186,7 +197,7 @@ object AnsiTextParser {
                             48 -> {
                                 // Extended background color (256-color or 24-bit TrueColor)
                                 if (index + 2 < codes.size && codes[index + 1] == 5) {
-                                    backgroundColor = parse256Color(codes[index + 2])
+                                    backgroundColor = parse256Color(codes[index + 2], foregroundPalette)
                                     index += 2
                                 } else if (index + 4 < codes.size && codes[index + 1] == 2) {
                                     backgroundColor = Color(
@@ -209,10 +220,10 @@ object AnsiTextParser {
         }
     }
 
-    private fun parse256Color(colorIndex: Int): Color {
+    private fun parse256Color(colorIndex: Int, foregroundPalette: Map<Int, Color>): Color {
         return when (colorIndex) {
-            in 0..7 -> ANSI_FOREGROUND[30 + colorIndex] ?: DEFAULT_TEXT_COLOR
-            in 8..15 -> ANSI_FOREGROUND[90 + (colorIndex - 8)] ?: DEFAULT_TEXT_COLOR
+            in 0..7 -> foregroundPalette[30 + colorIndex] ?: DEFAULT_TEXT_COLOR
+            in 8..15 -> foregroundPalette[90 + (colorIndex - 8)] ?: DEFAULT_TEXT_COLOR
             in 16..231 -> {
                 val index = colorIndex - 16
                 val r = (index / 36) * 51

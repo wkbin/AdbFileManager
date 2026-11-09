@@ -1,26 +1,39 @@
 package view.components
 
+import org.jetbrains.skia.Image as SkiaImage
+
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.Apps
+import io.github.composefluent.icons.regular.ArrowDownload
+import io.github.composefluent.icons.regular.Broom
+import io.github.composefluent.icons.regular.Delete
+import io.github.composefluent.icons.regular.Dismiss
+import io.github.composefluent.icons.regular.MoreVertical
+import io.github.composefluent.icons.regular.Play
+import io.github.composefluent.icons.regular.Search
+import io.github.composefluent.icons.regular.Stop
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import model.AppInfo
-import org.jetbrains.skia.Image as SkiaImage
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.filechooser.FileNameExtensionFilter
@@ -58,8 +71,7 @@ fun AppManagerDialog(
     ) {
         Surface(
             modifier = Modifier.fillMaxWidth(0.76f).fillMaxHeight(0.85f),
-            shape = MaterialTheme.shapes.extraLarge,
-            tonalElevation = 8.dp
+            shape = FluentTheme.shapes.overlay
         ) {
             Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
                 Row(
@@ -67,20 +79,20 @@ fun AppManagerDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Outlined.Apps,
+                        Icons.Regular.Apps,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = FluentTheme.colors.text.accent.primary,
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(Modifier.width(12.dp))
                     Text(
                         text = "应用管理",
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = FluentTheme.typography.subtitle,
                         fontWeight = FontWeight.SemiBold
                     )
                     Spacer(Modifier.weight(1f))
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Outlined.Close, contentDescription = "关闭")
+                        Icon(Icons.Regular.Dismiss, contentDescription = "关闭")
                     }
                 }
 
@@ -91,7 +103,7 @@ fun AppManagerDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     label = { Text("搜索应用名称或包名") },
-                    leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) }
+                    leadingIcon = { Icon(Icons.Regular.Search, contentDescription = null) }
                 )
                 Spacer(Modifier.height(12.dp))
 
@@ -109,7 +121,7 @@ fun AppManagerDialog(
                     ) {
                         Text(
                             text = if (query.isBlank()) "未找到已安装的第三方应用" else "没有匹配的应用",
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = FluentTheme.colors.text.text.secondary
                         )
                     }
 
@@ -141,7 +153,7 @@ fun AppManagerDialog(
                     ) {
                         CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(8.dp))
-                        Text("正在读取应用信息…", style = MaterialTheme.typography.bodySmall)
+                        Text("正在读取应用信息…", style = FluentTheme.typography.caption)
                     }
                 }
             }
@@ -155,7 +167,7 @@ fun AppManagerDialog(
             text = { Text("确定要卸载 ${app.label}\n(${app.packageName}) 吗？") },
             confirmButton = {
                 Button(
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    colors = ButtonDefaults.buttonColors(containerColor = FluentTheme.colors.system.critical),
                     onClick = {
                         val target = pendingUninstall?.packageName
                         pendingUninstall = null
@@ -176,7 +188,7 @@ fun AppManagerDialog(
             text = { Text("确定要清除 ${app.label} 的全部数据与缓存吗？此操作不可逆。") },
             confirmButton = {
                 Button(
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    colors = ButtonDefaults.buttonColors(containerColor = FluentTheme.colors.system.critical),
                     onClick = {
                         val target = pendingClearData?.packageName
                         pendingClearData = null
@@ -217,9 +229,9 @@ private fun AppRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Surface(
-            modifier = Modifier.size(44.dp).clip(RoundedCornerShape(10.dp)),
-            color = MaterialTheme.colorScheme.surfaceVariant,
-            shape = RoundedCornerShape(10.dp)
+            modifier = Modifier.size(44.dp).clip(FluentTheme.shapes.control),
+            color = FluentTheme.colors.subtleFill.secondary,
+            shape = FluentTheme.shapes.control
         ) {
             when {
                 iconBitmap != null -> Image(
@@ -233,9 +245,9 @@ private fun AppRow(
                 }
                 else -> Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Outlined.Apps,
+                        Icons.Regular.Apps,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = FluentTheme.colors.text.text.secondary
                     )
                 }
             }
@@ -244,15 +256,15 @@ private fun AppRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = app.label,
-                style = MaterialTheme.typography.titleSmall,
+                style = FluentTheme.typography.bodyStrong,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             if (app.label != app.packageName) {
                 Text(
                     text = app.packageName,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = FluentTheme.typography.caption,
+                    color = FluentTheme.colors.text.text.secondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -262,21 +274,21 @@ private fun AppRow(
         // 启动应用
         IconButton(onClick = onLaunch) {
             Icon(
-                Icons.Outlined.PlayArrow,
+                Icons.Regular.Play,
                 contentDescription = "运行应用",
-                tint = MaterialTheme.colorScheme.primary
+                tint = FluentTheme.colors.text.accent.primary
             )
         }
 
         // 备份 APK
         IconButton(onClick = onBackup) {
-            Icon(Icons.Outlined.Download, contentDescription = "备份 APK")
+            Icon(Icons.Regular.ArrowDownload, contentDescription = "备份 APK")
         }
 
         // 更多操作
         Box {
             IconButton(onClick = { showMenu = true }) {
-                Icon(Icons.Outlined.MoreVert, contentDescription = "更多操作")
+                Icon(Icons.Regular.MoreVertical, contentDescription = "更多操作")
             }
             DropdownMenu(
                 expanded = showMenu,
@@ -284,7 +296,7 @@ private fun AppRow(
             ) {
                 DropdownMenuItem(
                     text = { Text("运行应用") },
-                    leadingIcon = { Icon(Icons.Outlined.PlayArrow, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Regular.Play, contentDescription = null) },
                     onClick = {
                         showMenu = false
                         onLaunch()
@@ -292,7 +304,7 @@ private fun AppRow(
                 )
                 DropdownMenuItem(
                     text = { Text("强行停止") },
-                    leadingIcon = { Icon(Icons.Outlined.Stop, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Regular.Stop, contentDescription = null) },
                     onClick = {
                         showMenu = false
                         onForceStop()
@@ -300,7 +312,7 @@ private fun AppRow(
                 )
                 DropdownMenuItem(
                     text = { Text("清除数据与缓存") },
-                    leadingIcon = { Icon(Icons.Outlined.CleaningServices, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Regular.Broom, contentDescription = null) },
                     onClick = {
                         showMenu = false
                         onClearData()
@@ -308,7 +320,7 @@ private fun AppRow(
                 )
                 DropdownMenuItem(
                     text = { Text("导出 APK") },
-                    leadingIcon = { Icon(Icons.Outlined.Download, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Regular.ArrowDownload, contentDescription = null) },
                     onClick = {
                         showMenu = false
                         onBackup()
@@ -316,8 +328,8 @@ private fun AppRow(
                 )
                 HorizontalDivider()
                 DropdownMenuItem(
-                    text = { Text("卸载应用", color = MaterialTheme.colorScheme.error) },
-                    leadingIcon = { Icon(Icons.Outlined.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                    text = { Text("卸载应用", color = FluentTheme.colors.system.critical) },
+                    leadingIcon = { Icon(Icons.Regular.Delete, contentDescription = null, tint = FluentTheme.colors.system.critical) },
                     onClick = {
                         showMenu = false
                         onUninstall()

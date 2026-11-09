@@ -1,17 +1,21 @@
 package view.components
 
-import androidx.compose.animation.AnimatedVisibility
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.ArrowClockwise
+import io.github.composefluent.icons.regular.Cast
+import io.github.composefluent.icons.regular.ErrorCircle
+import io.github.composefluent.icons.regular.Settings
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Cast
-import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,9 +55,9 @@ fun ScrcpyDialog(
             modifier = Modifier
                 .width(420.dp)
                 .wrapContentHeight(),
-            shape = RoundedCornerShape(20.dp),
-            tonalElevation = 8.dp,
-            color = MaterialTheme.colorScheme.surface
+            shape = FluentTheme.shapes.overlay,
+
+            color = FluentTheme.colors.background.solid.tertiary
         ) {
             Column(
                 modifier = Modifier.padding(28.dp),
@@ -66,22 +70,22 @@ fun ScrcpyDialog(
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Icon(
-                        Icons.Outlined.Cast,
+                        Icons.Regular.Cast,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = FluentTheme.colors.text.accent.primary,
                         modifier = Modifier.size(28.dp)
                     )
                     Column {
                         Text(
                             text = "一键投屏 (scrcpy)",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface
+                            style = FluentTheme.typography.subtitle,
+                            color = FluentTheme.colors.text.text.primary
                         )
                         if (version.isNotEmpty()) {
                             Text(
                                 text = "v$version",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                style = FluentTheme.typography.caption,
+                                color = FluentTheme.colors.text.text.secondary
                             )
                         }
                     }
@@ -131,8 +135,8 @@ private fun CheckingPhaseContent(statusText: String) {
         )
         Text(
             text = statusText.ifEmpty { "正在检查 scrcpy 最新版本…" },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = FluentTheme.typography.body,
+            color = FluentTheme.colors.text.text.secondary,
             textAlign = TextAlign.Center
         )
     }
@@ -157,14 +161,14 @@ private fun DownloadingPhaseContent(
     ) {
         Text(
             text = statusText.ifEmpty { "正在下载 scrcpy…" },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
+            style = FluentTheme.typography.body,
+            color = FluentTheme.colors.text.text.primary
         )
         LinearProgressIndicator(
             progress = { animatedProgress },
             modifier = Modifier.fillMaxWidth().height(8.dp),
-            trackColor = MaterialTheme.colorScheme.surfaceVariant,
-            color = MaterialTheme.colorScheme.primary
+
+            color = FluentTheme.colors.text.accent.primary
         )
         Text(
             text = buildString {
@@ -173,13 +177,13 @@ private fun DownloadingPhaseContent(
                     append("  ·  ${formatBytes(downloadedBytes)} / ${formatBytes(totalBytes)}")
                 }
             },
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = FluentTheme.typography.caption,
+            color = FluentTheme.colors.text.text.secondary
         )
         Text(
             text = "请勿关闭应用，下载完成后将自动启动投屏",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = FluentTheme.typography.caption,
+            color = FluentTheme.colors.text.text.secondary,
             textAlign = TextAlign.Center
         )
     }
@@ -198,8 +202,8 @@ private fun ExtractingPhaseContent(statusText: String) {
         )
         Text(
             text = statusText.ifEmpty { "正在解压文件…" },
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = FluentTheme.typography.body,
+            color = FluentTheme.colors.text.text.secondary,
             textAlign = TextAlign.Center
         )
     }
@@ -218,33 +222,33 @@ private fun ErrorPhaseContent(
         modifier = Modifier.fillMaxWidth()
     ) {
         Icon(
-            Icons.Outlined.ErrorOutline,
+            Icons.Regular.ErrorCircle,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.error,
+            tint = FluentTheme.colors.system.critical,
             modifier = Modifier.size(48.dp)
         )
         Text(
             text = "下载失败",
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.error
+            style = FluentTheme.typography.bodyStrong,
+            color = FluentTheme.colors.system.critical
         )
         // 错误详情
         Surface(
-            color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+            color = FluentTheme.colors.system.criticalBackground.copy(alpha = 0.4f),
             shape = RoundedCornerShape(8.dp)
         ) {
             Text(
                 text = errorMessage,
-                style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                color = MaterialTheme.colorScheme.onErrorContainer,
+                style = FluentTheme.typography.caption.copy(fontFamily = FontFamily.Monospace),
+                color = FluentTheme.colors.system.critical,
                 modifier = Modifier.padding(12.dp),
                 textAlign = TextAlign.Start
             )
         }
         Text(
             text = "请检查网络连接后重试，或在「设置」中手动指定 scrcpy 路径。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = FluentTheme.typography.caption,
+            color = FluentTheme.colors.text.text.secondary,
             textAlign = TextAlign.Center
         )
         Row(
@@ -255,13 +259,13 @@ private fun ErrorPhaseContent(
                 Text("关闭")
             }
             OutlinedButton(onClick = onOpenSettings) {
-                Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                Icon(Icons.Regular.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
                 Spacer(Modifier.width(6.dp))
                 Text("手动指定路径")
             }
             Button(onClick = onRetry) {
                 Icon(
-                    Icons.Outlined.Refresh,
+                    Icons.Regular.ArrowClockwise,
                     contentDescription = null,
                     modifier = Modifier.size(16.dp)
                 )

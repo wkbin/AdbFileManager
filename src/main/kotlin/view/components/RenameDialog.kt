@@ -1,14 +1,18 @@
 package view.components
 
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.Dismiss
+import io.github.composefluent.icons.regular.Edit
+import io.github.composefluent.icons.regular.TextFont
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.TextFields
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,9 +61,8 @@ fun RenameDialog(
                 .fillMaxWidth(0.6f)
                 .wrapContentHeight()
                 .padding(16.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp
+            shape = FluentTheme.shapes.overlay,
+            color = FluentTheme.colors.background.solid.tertiary
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -70,25 +73,25 @@ fun RenameDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Edit,
+                        imageVector = Icons.Regular.Edit,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = FluentTheme.colors.text.accent.primary,
                         modifier = Modifier.size(28.dp)
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
                         text = strings.fileRename,
-                        style = MaterialTheme.typography.headlineSmall.copy(
+                        style = FluentTheme.typography.subtitle.copy(
                             fontWeight = FontWeight.SemiBold
                         ),
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = FluentTheme.colors.text.text.primary
                     )
                     Spacer(modifier = Modifier.weight(1f))
                     IconButton(onClick = onDismiss) {
                         Icon(
-                            imageVector = Icons.Outlined.Close,
+                            imageVector = Icons.Regular.Dismiss,
                             contentDescription = strings.editorClose,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = FluentTheme.colors.text.text.secondary
                         )
                     }
                 }
@@ -125,13 +128,13 @@ fun RenameDialog(
                         if (newName.isNotEmpty() && !isInputValid) {
                             Text(
                                 strings.fileNameInvalidError,
-                                color = MaterialTheme.colorScheme.error
+                                color = FluentTheme.colors.system.critical
                             )
                         }
                     },
                     leadingIcon = {
                         Icon(
-                            imageVector = Icons.Outlined.TextFields,
+                            imageVector = Icons.Regular.TextFont,
                             contentDescription = null
                         )
                     }
@@ -146,7 +149,7 @@ fun RenameDialog(
                     TextButton(
                         onClick = onDismiss,
                         colors = ButtonDefaults.textButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            contentColor = FluentTheme.colors.text.text.secondary
                         )
                     ) {
                         Text(strings.fileCancel)
@@ -160,7 +163,7 @@ fun RenameDialog(
                         },
                         enabled = isInputValid,
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
+                            containerColor = FluentTheme.colors.text.accent.primary
                         )
                     ) {
                         Text(strings.fileSave)

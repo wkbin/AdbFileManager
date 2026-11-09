@@ -1,5 +1,26 @@
 package view.components
 
+import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.getValue
+
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.ArrowClockwise
+import io.github.composefluent.icons.regular.ArrowLeft
+import io.github.composefluent.icons.regular.ArrowRight
+import io.github.composefluent.icons.regular.CheckboxChecked
+import io.github.composefluent.icons.regular.ChevronLeft
+import io.github.composefluent.icons.regular.ChevronRight
+import io.github.composefluent.icons.regular.Desktop
+import io.github.composefluent.icons.regular.LockClosed
+import io.github.composefluent.icons.regular.SelectAllOff
+import io.github.composefluent.icons.regular.Storage
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,36 +36,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.outlined.CheckBox
-import androidx.compose.material.icons.outlined.Deselect
-import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Storage
-import androidx.compose.material.icons.outlined.East
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Computer
-import androidx.compose.material.icons.outlined.ChevronLeft
-import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import model.FileItem
 import model.FileUtils
@@ -99,10 +97,10 @@ fun LocalFilePane(
     Surface(
         modifier = modifier.border(
             if (isActive) 2.dp else 1.dp,
-            if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant,
-            RoundedCornerShape(10.dp)
+            if (isActive) FluentTheme.colors.text.accent.primary else FluentTheme.colors.stroke.divider.default,
+            FluentTheme.shapes.control
         ),
-        shape = RoundedCornerShape(10.dp)
+        shape = FluentTheme.shapes.control
     ) {
         if (collapsed) {
             Column(
@@ -112,13 +110,13 @@ fun LocalFilePane(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 IconButton(onClick = { onCollapsedChange(false) }) {
-                    Icon(Icons.Outlined.ChevronRight, strings.localPaneExpand)
+                    Icon(Icons.Regular.ChevronRight, strings.localPaneExpand)
                 }
                 Icon(
-                    Icons.Outlined.Computer,
+                    Icons.Regular.Desktop,
                     contentDescription = strings.panelLeft,
                     modifier = Modifier.size(22.dp),
-                    tint = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (isActive) FluentTheme.colors.text.accent.primary else FluentTheme.colors.text.text.secondary
                 )
             }
             return@Surface
@@ -131,33 +129,33 @@ fun LocalFilePane(
         ) {
             Surface(
                 modifier = Modifier.fillMaxWidth().clickable(onClick = onActivate),
-                color = if (isActive) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+                color = if (isActive) FluentTheme.colors.subtleFill.secondary else FluentTheme.colors.subtleFill.secondary
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(strings.panelLeft, style = MaterialTheme.typography.labelLarge)
+                    Text(strings.panelLeft, style = FluentTheme.typography.bodyStrong)
                     Spacer(Modifier.weight(1f))
                     if (!directoryWritable) {
                         Icon(
-                            Icons.Outlined.Lock,
+                            Icons.Regular.LockClosed,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.error
+                            tint = FluentTheme.colors.system.critical
                         )
                         Spacer(Modifier.width(4.dp))
                         Text(
                             strings.localDirectoryReadOnly,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error
+                            style = FluentTheme.typography.caption,
+                            color = FluentTheme.colors.system.critical
                         )
                     }
                     IconButton(
                         onClick = { onCollapsedChange(true) },
                         modifier = Modifier.size(30.dp)
                     ) {
-                        Icon(Icons.Outlined.ChevronLeft, strings.localPaneCollapse)
+                        Icon(Icons.Regular.ChevronLeft, strings.localPaneCollapse)
                     }
                 }
             }
@@ -167,11 +165,11 @@ fun LocalFilePane(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = { directory.parentFile?.let(::navigate) }) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, strings.navBack)
+                    Icon(Icons.Regular.ArrowLeft, strings.navBack)
                 }
                 Box {
                     IconButton(onClick = { showRoots = true }) {
-                        Icon(Icons.Outlined.Storage, "磁盘")
+                        Icon(Icons.Regular.Storage, "磁盘")
                     }
                     DropdownMenu(showRoots, onDismissRequest = { showRoots = false }) {
                         File.listRoots().forEach { root ->
@@ -187,15 +185,15 @@ fun LocalFilePane(
                     onValueChange = { pathText = it },
                     singleLine = true,
                     modifier = Modifier.weight(1f),
-                    textStyle = MaterialTheme.typography.bodySmall,
+                    textStyle = FluentTheme.typography.caption,
                     trailingIcon = {
                         IconButton(onClick = { navigate(File(pathText)) }) {
-                            Icon(Icons.AutoMirrored.Rounded.ArrowBack, "打开路径")
+                            Icon(Icons.Regular.ArrowLeft, "打开路径")
                         }
                     }
                 )
                 IconButton(onClick = { refreshToken++ }) {
-                    Icon(Icons.Outlined.Refresh, "刷新")
+                    Icon(Icons.Regular.ArrowClockwise, "刷新")
                 }
             }
 
@@ -204,17 +202,17 @@ fun LocalFilePane(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 ToolbarButton(
-                    icon = if (selectionMode) Icons.Outlined.Deselect else Icons.Outlined.CheckBox,
+                    icon = if (selectionMode) Icons.Regular.SelectAllOff else Icons.Regular.CheckboxChecked,
                     text = if (selectionMode) "退出多选" else "多选",
                     compact = true,
                     onClick = { selectionMode = !selectionMode; if (!selectionMode) selected = emptySet() }
                 )
                 if (selectionMode) {
                     Spacer(Modifier.width(4.dp))
-                    Text("已选择 ${selected.size} 项", style = MaterialTheme.typography.labelMedium)
+                    Text("已选择 ${selected.size} 项", style = FluentTheme.typography.caption)
                     Spacer(Modifier.weight(1f))
                     ToolbarButton(
-                        icon = Icons.Outlined.East,
+                        icon = Icons.Regular.ArrowRight,
                         text = strings.localCopyToAndroid,
                         compact = true,
                         enabled = selected.isNotEmpty(),
@@ -225,7 +223,7 @@ fun LocalFilePane(
 
             if (localFiles.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(strings.errorEmptyDirectory, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(strings.errorEmptyDirectory, color = FluentTheme.colors.text.text.secondary)
                 }
             } else {
                 LazyColumn(
@@ -243,7 +241,7 @@ fun LocalFilePane(
                             allowMove = false,
                             showDragHandle = true,
                             dragHandleModifier = Modifier.localFileDndSource(file),
-                            copyIcon = Icons.Outlined.East,
+                            copyIcon = Icons.Regular.ArrowRight,
                             selectionMode = selectionMode,
                             isSelected = file.absolutePath in selected,
                             onSelectionChange = {

@@ -1,5 +1,22 @@
 package view.components
 
+import androidx.compose.runtime.setValue
+
+import androidx.compose.runtime.getValue
+
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.ArrowRedo
+import io.github.composefluent.icons.regular.ArrowUndo
+import io.github.composefluent.icons.regular.Dismiss
+import io.github.composefluent.icons.regular.Save
+import io.github.composefluent.icons.regular.Search
+import io.github.composefluent.icons.regular.TextGrammarWand
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -17,33 +34,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.FindReplace
-import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.automirrored.outlined.Redo
-import androidx.compose.material.icons.automirrored.outlined.Undo
-import androidx.compose.material.icons.rounded.Save
-import androidx.compose.material3.Button
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
@@ -100,13 +95,13 @@ fun CodeEditorDialog(
     val lastNewline = if (caret == 0) -1 else value.text.lastIndexOf('\n', startIndex = caret - 1)
     val caretColumn = caret - lastNewline
     val colors = EditorSyntaxColors(
-        plain = MaterialTheme.colorScheme.onSurface,
-        comment = MaterialTheme.colorScheme.onSurfaceVariant,
-        string = MaterialTheme.colorScheme.tertiary,
-        number = MaterialTheme.colorScheme.secondary,
-        keyword = MaterialTheme.colorScheme.primary,
-        property = MaterialTheme.colorScheme.error,
-        tag = MaterialTheme.colorScheme.primary
+        plain = FluentTheme.colors.text.text.primary,
+        comment = FluentTheme.colors.text.text.secondary,
+        string = FluentTheme.colors.text.accent.primary,
+        number = FluentTheme.colors.text.accent.secondary,
+        keyword = FluentTheme.colors.text.accent.primary,
+        property = FluentTheme.colors.system.critical,
+        tag = FluentTheme.colors.text.accent.primary
     )
 
     fun commit(next: TextFieldValue) {
@@ -166,7 +161,7 @@ fun CodeEditorDialog(
         title = strings.editorTitleWithName(fileName),
         onCloseRequest = ::requestClose
     ) {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Surface(modifier = Modifier.fillMaxSize(), color = FluentTheme.colors.background.mica.base) {
             Column(modifier = Modifier.fillMaxSize()) {
                 EditorToolbar(
                     fileName = fileName,
@@ -203,19 +198,18 @@ fun CodeEditorDialog(
                 Surface(
                     modifier = Modifier.weight(1f).fillMaxWidth().padding(12.dp),
                     shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    tonalElevation = 1.dp
+                    color = FluentTheme.colors.background.solid.tertiary
                 ) {
                     Row(modifier = Modifier.fillMaxSize()) {
                         Box(
                             modifier = Modifier.width(58.dp).fillMaxHeight()
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .background(FluentTheme.colors.subtleFill.secondary)
                         ) {
                             Text(
                                 text = (1..lineCount).joinToString("\n"),
                                 modifier = Modifier.fillMaxSize().padding(horizontal = 8.dp, vertical = 10.dp)
                                     .verticalScroll(verticalScroll),
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = FluentTheme.colors.text.text.secondary,
                                 fontFamily = FontFamily.Monospace,
                                 fontSize = 13.sp,
                                 lineHeight = lineHeight,
@@ -254,7 +248,7 @@ fun CodeEditorDialog(
                                 fontSize = 14.sp,
                                 lineHeight = lineHeight
                             ),
-                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            cursorBrush = SolidColor(FluentTheme.colors.text.accent.primary),
                             visualTransformation = { input ->
                                 androidx.compose.ui.text.input.TransformedText(
                                     highlightedText(input.text, fileName, colors),
@@ -272,14 +266,14 @@ fun CodeEditorDialog(
                 ) {
                     Text(
                         text = strings.editorPosition(caretLine, caretColumn, lineCount, value.text.length),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        style = FluentTheme.typography.caption,
+                        color = FluentTheme.colors.text.text.secondary,
                         modifier = Modifier.weight(1f)
                     )
-                    if (hasChanges) Text(strings.editorModified, color = MaterialTheme.colorScheme.tertiary)
+                    if (hasChanges) Text(strings.editorModified, color = FluentTheme.colors.text.accent.primary)
                     OutlinedButton(onClick = ::requestClose) { Text(strings.fileCancel) }
                     Button(onClick = { onSave(value.text) }, enabled = hasChanges) {
-                        Icon(Icons.Rounded.Save, contentDescription = null)
+                        Icon(Icons.Regular.Save, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text(strings.fileSave)
                     }
@@ -320,19 +314,19 @@ private fun EditorToolbar(
     onDismiss: () -> Unit
 ) {
     val strings by StringsManager.strings.collectAsState()
-    Surface(tonalElevation = 2.dp) {
+    Surface() {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text(fileName, style = MaterialTheme.typography.titleMedium)
-                Text(language, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
+                Text(fileName, style = FluentTheme.typography.bodyStrong)
+                Text(language, style = FluentTheme.typography.caption, color = FluentTheme.colors.text.accent.primary)
             }
             Spacer(Modifier.weight(1f))
-            IconButton(onClick = onUndo, enabled = canUndo) { Icon(Icons.AutoMirrored.Outlined.Undo, strings.editorUndo) }
-            IconButton(onClick = onRedo, enabled = canRedo) { Icon(Icons.AutoMirrored.Outlined.Redo, strings.editorRedo) }
-            IconButton(onClick = onFind) { Icon(Icons.Outlined.Search, strings.editorFind) }
+            IconButton(onClick = onUndo, enabled = canUndo) { Icon(Icons.Regular.ArrowUndo, strings.editorUndo) }
+            IconButton(onClick = onRedo, enabled = canRedo) { Icon(Icons.Regular.ArrowRedo, strings.editorRedo) }
+            IconButton(onClick = onFind) { Icon(Icons.Regular.Search, strings.editorFind) }
             Box {
                 TextButton(
                     onClick = { onShowEncodingMenu(true) },
@@ -347,7 +341,7 @@ private fun EditorToolbar(
                     }
                 }
             }
-            IconButton(onClick = onDismiss) { Icon(Icons.Outlined.Close, strings.editorClose) }
+            IconButton(onClick = onDismiss) { Icon(Icons.Regular.Dismiss, strings.editorClose) }
         }
     }
 }
@@ -373,16 +367,16 @@ private fun FindReplaceBar(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         OutlinedTextField(findText, onFindTextChange, label = { Text(strings.editorFind) }, singleLine = true, modifier = Modifier.width(240.dp))
-        IconButton(onClick = onFindNext, enabled = findText.isNotEmpty()) { Icon(Icons.Outlined.Search, strings.editorFindNext) }
-        IconButton(onClick = onToggleReplace) { Icon(Icons.Outlined.FindReplace, strings.editorReplace) }
+        IconButton(onClick = onFindNext, enabled = findText.isNotEmpty()) { Icon(Icons.Regular.Search, strings.editorFindNext) }
+        IconButton(onClick = onToggleReplace) { Icon(Icons.Regular.TextGrammarWand, strings.editorReplace) }
         if (showReplace) {
             OutlinedTextField(replaceText, onReplaceTextChange, label = { Text(strings.editorReplaceWith) }, singleLine = true, modifier = Modifier.width(240.dp))
             TextButton(onClick = onReplace, enabled = findText.isNotEmpty()) { Text(strings.editorReplace) }
             TextButton(onClick = onReplaceAll, enabled = findText.isNotEmpty()) { Text(strings.editorReplaceAll) }
         }
-        if (findText.isNotEmpty() && showNoMatch) Text(strings.editorNoMatch, color = MaterialTheme.colorScheme.error)
+        if (findText.isNotEmpty() && showNoMatch) Text(strings.editorNoMatch, color = FluentTheme.colors.system.critical)
         Spacer(Modifier.weight(1f))
-        IconButton(onClick = onClose) { Icon(Icons.Outlined.Close, strings.editorCloseFind) }
+        IconButton(onClick = onClose) { Icon(Icons.Regular.Dismiss, strings.editorCloseFind) }
     }
 }
 

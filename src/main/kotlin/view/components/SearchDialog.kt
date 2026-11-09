@@ -1,16 +1,21 @@
 package view.components
 
+import io.github.composefluent.icons.Icons
+import io.github.composefluent.icons.regular.Dismiss
+import io.github.composefluent.icons.regular.Document
+import io.github.composefluent.icons.regular.Filter
+import io.github.composefluent.icons.regular.Folder
+import io.github.composefluent.icons.regular.Search
+
+import io.github.composefluent.FluentTheme
+import io.github.composefluent.component.Text
+import io.github.composefluent.component.Icon
+import view.fluent.*
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Folder
-import androidx.compose.material.icons.outlined.InsertDriveFile
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.FilterList
-import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -97,8 +102,7 @@ fun SearchDialog(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
                 .fillMaxHeight(0.85f),
-            shape = MaterialTheme.shapes.extraLarge,
-            tonalElevation = 8.dp
+            shape = FluentTheme.shapes.overlay
         ) {
             Column(
                 modifier = Modifier
@@ -114,12 +118,12 @@ fun SearchDialog(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
                             text = strings.searchTitle,
-                            style = MaterialTheme.typography.titleLarge,
+                            style = FluentTheme.typography.subtitle,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
                     IconButton(onClick = onDismiss) {
-                        Icon(Icons.Rounded.Close, contentDescription = strings.appClose)
+                        Icon(Icons.Regular.Dismiss, contentDescription = strings.appClose)
                     }
                 }
 
@@ -140,19 +144,15 @@ fun SearchDialog(
                                 strings.searchPlaceholder
                         )
                     },
-                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Regular.Search, contentDescription = null) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
                             IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Rounded.Close, contentDescription = "清除")
+                                Icon(Icons.Regular.Dismiss, contentDescription = "清除")
                             }
                         }
                     },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline
-                    )
+                    singleLine = true
                 )
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -185,9 +185,9 @@ fun SearchDialog(
                     Spacer(Modifier.width(8.dp))
 
                     Icon(
-                        imageVector = Icons.Rounded.FilterList,
+                        imageVector = Icons.Regular.Filter,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = FluentTheme.colors.text.text.secondary,
                         modifier = Modifier.size(16.dp)
                     )
 
@@ -202,7 +202,7 @@ fun SearchDialog(
                                         SearchFilter.DirectoriesOnly -> strings.fileDirectory
                                         SearchFilter.FilesOnly -> strings.fileName
                                     },
-                                    style = MaterialTheme.typography.labelSmall
+                                    style = FluentTheme.typography.caption
                                 )
                             }
                         )
@@ -218,8 +218,8 @@ fun SearchDialog(
                     if (searchQuery.isNotBlank()) {
                         Text(
                             text = "$resultCount 个结果",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = FluentTheme.typography.caption,
+                            color = FluentTheme.colors.text.text.secondary
                         )
                     }
                 }
@@ -236,7 +236,7 @@ fun SearchDialog(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 CircularProgressIndicator()
                                 Spacer(Modifier.height(12.dp))
-                                Text("正在递归搜索 Android 存储...", style = MaterialTheme.typography.bodyMedium)
+                                Text("正在递归搜索 Android 存储...", style = FluentTheme.typography.body)
                             }
                         }
                     }
@@ -248,8 +248,8 @@ fun SearchDialog(
                         ) {
                             Text(
                                 text = "输入关键词开始搜索",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                style = FluentTheme.typography.body,
+                                color = FluentTheme.colors.text.text.secondary
                             )
                         }
                     }
@@ -262,8 +262,8 @@ fun SearchDialog(
                             ) {
                                 Text(
                                     text = "未找到匹配的文件或目录",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    style = FluentTheme.typography.body,
+                                    color = FluentTheme.colors.text.text.secondary
                                 )
                             }
                         } else {
@@ -286,25 +286,25 @@ fun SearchDialog(
                                                 viewModel.dispatch(FileManagerIntent.NavigateToFileLocation(file.fileName))
                                             },
                                         colors = CardDefaults.cardColors(
-                                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                            containerColor = FluentTheme.colors.subtleFill.secondary
                                         ),
-                                        shape = MaterialTheme.shapes.medium
+                                        shape = FluentTheme.shapes.overlay
                                     ) {
                                         Row(
                                             modifier = Modifier.fillMaxWidth().padding(12.dp),
                                             verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Icon(
-                                                imageVector = if (file.isDir) Icons.Outlined.Folder else Icons.Outlined.InsertDriveFile,
+                                                imageVector = if (file.isDir) Icons.Regular.Folder else Icons.Regular.Document,
                                                 contentDescription = null,
-                                                tint = if (file.isDir) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary,
+                                                tint = if (file.isDir) FluentTheme.colors.text.accent.primary else FluentTheme.colors.text.accent.secondary,
                                                 modifier = Modifier.size(24.dp)
                                             )
                                             Spacer(Modifier.width(12.dp))
                                             Column(modifier = Modifier.weight(1f)) {
                                                 Text(
                                                     text = fileNameOnly,
-                                                    style = MaterialTheme.typography.titleMedium,
+                                                    style = FluentTheme.typography.bodyStrong,
                                                     fontWeight = FontWeight.Medium,
                                                     maxLines = 1,
                                                     overflow = TextOverflow.Ellipsis
@@ -312,8 +312,8 @@ fun SearchDialog(
                                                 if (parentPath.isNotEmpty()) {
                                                     Text(
                                                         text = parentPath,
-                                                        style = MaterialTheme.typography.bodySmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        style = FluentTheme.typography.caption,
+                                                        color = FluentTheme.colors.text.text.secondary,
                                                         maxLines = 1,
                                                         overflow = TextOverflow.Ellipsis
                                                     )
@@ -322,8 +322,8 @@ fun SearchDialog(
                                             Spacer(Modifier.width(8.dp))
                                             Text(
                                                 text = if (file.isDir) "" else file.size,
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                style = FluentTheme.typography.caption,
+                                                color = FluentTheme.colors.text.text.secondary
                                             )
                                         }
                                     }
@@ -340,8 +340,8 @@ fun SearchDialog(
                             ) {
                                 Text(
                                     text = strings.errorNoFiles,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    style = FluentTheme.typography.body,
+                                    color = FluentTheme.colors.text.text.secondary
                                 )
                             }
                         } else {
